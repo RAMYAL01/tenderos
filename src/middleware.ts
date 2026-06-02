@@ -19,7 +19,7 @@ const isPublicRoute = createRouteMatcher([
  */
 const isAIRoute = createRouteMatcher(["/api/ai(.*)"]);
 const isUploadRoute = createRouteMatcher(["/api/documents(.*)"]);
-const isExportRoute = createRouteMatcher(["/api/proposals/.*/export"]);
+const isExportRoute = createRouteMatcher(["/api/proposals/(.*)/export"]);
 const isAuthRoute = createRouteMatcher(["/api/auth(.*)", "/sign-in(.*)", "/sign-up(.*)"]);
 
 export default clerkMiddleware(async (auth, req: NextRequest) => {
