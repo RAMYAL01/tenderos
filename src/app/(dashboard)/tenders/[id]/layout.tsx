@@ -1,3 +1,4 @@
+import { use } from "react";
 import { TenderNav } from "./tender-nav";
 
 export default function TenderLayout({
@@ -5,11 +6,12 @@ export default function TenderLayout({
   params,
 }: {
   children: React.ReactNode;
-  params: { id: string };
+  params: Promise<{ id: string }>;
 }) {
+  const { id } = use(params);
   return (
     <div className="flex flex-col">
-      <TenderNav tenderId={params.id} />
+      <TenderNav tenderId={id} />
       {children}
     </div>
   );

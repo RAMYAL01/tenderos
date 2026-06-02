@@ -6,24 +6,33 @@ import OpenAI from "openai";
 // Claude 3.5 Sonnet: best quality for Arabic/English procurement documents.
 // Claude 3.5 Haiku: fast + cheap for bulk extractions.
 
-if (!process.env.ANTHROPIC_API_KEY) {
-  throw new Error("ANTHROPIC_API_KEY is not set");
+// Lazy singletons — initialized on first use so Next.js static analysis
+// doesn't throw at build time when env vars aren't set yet.
+let _anthropic: Anthropic | null = null;
+export function getAnthropic(): Anthropic {
+  if (!_anthropic) {
+    if (!process.env.ANTHROPIC_API_KEY) throw new Error("ANTHROPIC_API_KEY is not set");
+    _anthropic = new Anthropic({ apiKey: process.env.ANTHROPIC_API_KEY });
+  }
+  return _anthropic;
 }
 
-export const anthropic = new Anthropic({
-  apiKey: process.env.ANTHROPIC_API_KEY,
+// Keep named export for backwards compat — evaluates lazily via getter
+export const anthropic: Anthropic = new Proxy({} as Anthropic, {
+  get(_t, prop) { return (getAnthropic() as unknown as Record<string|symbol, unknown>)[prop]; },
 });
 
-// ── OpenAI client ─────────────────────────────────────────────────────────────
-// Used for: text-embedding-3-large (1536-dim embeddings for content library)
-// Also used as a fallback LLM if Claude is unavailable.
-
-if (!process.env.OPENAI_API_KEY) {
-  throw new Error("OPENAI_API_KEY is not set");
+let _openai: OpenAI | null = null;
+export function getOpenAI(): OpenAI {
+  if (!_openai) {
+    if (!process.env.OPENAI_API_KEY) throw new Error("OPENAI_API_KEY is not set");
+    _openai = new OpenAI({ apiKey: process.env.OPENAI_API_KEY });
+  }
+  return _openai;
 }
 
-export const openai = new OpenAI({
-  apiKey: process.env.OPENAI_API_KEY,
+export const openai: OpenAI = new Proxy({} as OpenAI, {
+  get(_t, prop) { return (getOpenAI() as unknown as Record<string|symbol, unknown>)[prop]; },
 });
 
 // ── Model constants ───────────────────────────────────────────────────────────
