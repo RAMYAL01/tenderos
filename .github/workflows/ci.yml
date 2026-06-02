@@ -14,6 +14,7 @@ env:
   NODE_VERSION: "20"
   # Dummy values for build/type-check (real values only used at runtime)
   DATABASE_URL: "postgresql://postgres:postgres@localhost:5432/tenderos_test"
+  DIRECT_URL: "postgresql://postgres:postgres@localhost:5432/tenderos_test"
   NEXT_PUBLIC_CLERK_PUBLISHABLE_KEY: "pk_test_dummy"
   CLERK_SECRET_KEY: "sk_test_dummy"
   ANTHROPIC_API_KEY: "sk-ant-dummy"

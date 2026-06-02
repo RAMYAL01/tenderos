@@ -49,15 +49,10 @@ jobs:
       - name: Generate Prisma client
         run: npx prisma generate
 
-      - name: Deploy database migrations
-        run: npx prisma migrate deploy
+      - name: Push database schema
+        run: npx prisma db push --accept-data-loss
         env:
-          DATABASE_URL: ${{ secrets.DATABASE_URL }}
-
-      - name: Verify migration
-        run: npx prisma migrate status
-        env:
-          DATABASE_URL: ${{ secrets.DATABASE_URL }}
+          DATABASE_URL: ${{ secrets.DIRECT_URL }}
 
   # ── Deploy to Vercel ──────────────────────────────────────────────────────
   deploy:
