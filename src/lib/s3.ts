@@ -10,20 +10,30 @@ import { randomUUID } from "crypto";
 
 // ── S3 client singleton ────────────────────────────────────────────────────────
 
-if (!process.env.AWS_ACCESS_KEY_ID) throw new Error("AWS_ACCESS_KEY_ID is not set");
-if (!process.env.AWS_SECRET_ACCESS_KEY) throw new Error("AWS_SECRET_ACCESS_KEY is not set");
-if (!process.env.AWS_REGION) throw new Error("AWS_REGION is not set");
-if (!process.env.AWS_S3_BUCKET_NAME) throw new Error("AWS_S3_BUCKET_NAME is not set");
+// Lazy singleton — initialized on first use so Next.js build doesn't
+// throw when AWS env vars aren't present at build time.
+let _s3: S3Client | null = null;
+export function getS3(): S3Client {
+  if (!_s3) {
+    if (!process.env.AWS_ACCESS_KEY_ID) throw new Error("AWS_ACCESS_KEY_ID is not set");
+    if (!process.env.AWS_SECRET_ACCESS_KEY) throw new Error("AWS_SECRET_ACCESS_KEY is not set");
+    if (!process.env.AWS_REGION) throw new Error("AWS_REGION is not set");
+    _s3 = new S3Client({
+      region: process.env.AWS_REGION,
+      credentials: {
+        accessKeyId: process.env.AWS_ACCESS_KEY_ID,
+        secretAccessKey: process.env.AWS_SECRET_ACCESS_KEY,
+      },
+    });
+  }
+  return _s3;
+}
 
-export const s3 = new S3Client({
-  region: process.env.AWS_REGION,
-  credentials: {
-    accessKeyId: process.env.AWS_ACCESS_KEY_ID,
-    secretAccessKey: process.env.AWS_SECRET_ACCESS_KEY,
-  },
+export const s3: S3Client = new Proxy({} as S3Client, {
+  get(_t, prop) { return (getS3() as unknown as Record<string|symbol, unknown>)[prop]; },
 });
 
-export const S3_BUCKET = process.env.AWS_S3_BUCKET_NAME;
+export const S3_BUCKET = process.env.AWS_S3_BUCKET_NAME ?? "";
 
 // ── Key helpers ────────────────────────────────────────────────────────────────
 
