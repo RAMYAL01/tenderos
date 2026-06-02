@@ -18,7 +18,12 @@
  */
 
 import { NextResponse } from "next/server";
-import { logSecurityEvent } from "./logger";
+
+// Note: pino (logger.ts) is a Node.js module — cannot be imported in Edge runtime
+// (middleware). Use console instead for rate-limit events.
+function logRateLimitExceeded(identifier: string, limit: number, window: string) {
+  console.warn(JSON.stringify({ event: "rate_limit.exceeded", identifier, limit, window }));
+}
 
 interface RateLimitOptions {
   limit: number;           // Max requests per window
@@ -109,7 +114,7 @@ export async function rateLimit(
   const success = entry.count <= options.limit;
 
   if (!success) {
-    logSecurityEvent("rate_limit.exceeded", { identifier, limit: options.limit, window: options.window });
+    logRateLimitExceeded(identifier, options.limit, options.window);
   }
 
   return { success, limit: options.limit, remaining, resetIn };
