@@ -1,0 +1,162 @@
+import { auth } from "@clerk/nextjs/server";
+import { NextResponse } from "next/server";
+import { z } from "zod";
+import { createHash } from "crypto";
+import { db } from "@/lib/prisma";
+import { S3_BUCKET, downloadFromS3 } from "@/lib/s3";
+
+const CreateDocumentSchema = z.object({
+  tenderId: z.string().min(1),
+  storageKey: z.string().min(1),
+  filename: z.string().min(1),
+  mimeType: z.string().min(1),
+  fileSizeBytes: z.number().positive(),
+  isPrimary: z.boolean().default(false),
+});
+
+/**
+ * POST /api/documents
+ *
+ * Step 2 of the upload flow — called AFTER the file has been
+ * successfully uploaded to S3 via the presigned URL.
+ *
+ * Creates the Document record in our database and triggers
+ * async processing.
+ */
+export async function POST(req: Request) {
+  try {
+    const { userId, orgId } = await auth();
+    if (!userId || !orgId) {
+      return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
+    }
+
+    const body = await req.json();
+    const parsed = CreateDocumentSchema.safeParse(body);
+    if (!parsed.success) {
+      return NextResponse.json(
+        { error: "Invalid request", details: parsed.error.flatten() },
+        { status: 400 }
+      );
+    }
+
+    const { tenderId, storageKey, filename, mimeType, fileSizeBytes, isPrimary } =
+      parsed.data;
+
+    // Look up the org
+    const org = await db.organization.findUnique({ where: { clerkOrgId: orgId } });
+    if (!org) {
+      return NextResponse.json({ error: "Organization not found" }, { status: 404 });
+    }
+
+    // Verify tender ownership
+    const tender = await db.tender.findFirst({
+      where: { id: tenderId, orgId: org.id, deletedAt: null },
+    });
+    if (!tender) {
+      return NextResponse.json({ error: "Tender not found" }, { status: 404 });
+    }
+
+    // Look up the member
+    const member = await db.member.findFirst({
+      where: { clerkUserId: userId, orgId: org.id, isActive: true },
+    });
+    if (!member) {
+      return NextResponse.json({ error: "Member not found" }, { status: 404 });
+    }
+
+    // Check for duplicate upload (same file hash)
+    // We do a quick S3 download of the first 8KB for hashing
+    let checksumSha256: string | undefined;
+    try {
+      const headData = await downloadFromS3(storageKey);
+      const sample = headData.slice(0, 8192);
+      checksumSha256 = createHash("sha256").update(sample).digest("hex");
+
+      // Check if a document with this checksum already exists in this tender
+      const existing = await db.document.findFirst({
+        where: {
+          tenderId,
+          checksumSha256,
+          deletedAt: null,
+        },
+      });
+      if (existing) {
+        return NextResponse.json(
+          { error: "This file has already been uploaded to this tender.", documentId: existing.id },
+          { status: 409 }
+        );
+      }
+    } catch {
+      // If we can't compute hash (S3 error), continue without dedup
+    }
+
+    // If this is marked primary, unmark any existing primary
+    if (isPrimary) {
+      await db.document.updateMany({
+        where: { tenderId, isPrimary: true },
+        data: { isPrimary: false },
+      });
+    }
+
+    // Create document record
+    const document = await db.document.create({
+      data: {
+        tenderId,
+        orgId: org.id,
+        filename: filename.replace(/[^a-zA-Z0-9._-؀-ۿ\s]/g, "_"), // sanitize
+        originalFilename: filename,
+        storageKey,
+        storageBucket: S3_BUCKET,
+        mimeType,
+        fileSizeBytes: BigInt(fileSizeBytes),
+        processingStatus: "QUEUED",
+        isPrimary,
+        uploadedById: member.id,
+        checksumSha256,
+      },
+    });
+
+    // Update tender status to ACTIVE if still DRAFT
+    if (tender.status === "DRAFT") {
+      await db.tender.update({
+        where: { id: tenderId },
+        data: { status: "ACTIVE" },
+      });
+    }
+
+    // Update storage usage
+    await db.organization.update({
+      where: { id: org.id },
+      data: {
+        storageBytesUsed: { increment: BigInt(fileSizeBytes) },
+      },
+    });
+
+    // Trigger processing asynchronously via the process endpoint
+    // We fire-and-forget the processing request
+    const processUrl = `${process.env.NEXT_PUBLIC_APP_URL}/api/documents/${document.id}/process`;
+
+    fetch(processUrl, {
+      method: "POST",
+      headers: {
+        "Content-Type": "application/json",
+        // Use internal API key to bypass Clerk auth
+        "x-internal-api-key": process.env.INTERNAL_API_KEY ?? "dev-internal",
+      },
+    }).catch((err) =>
+      console.error(`[documents] Failed to trigger processing for ${document.id}:`, err)
+    );
+
+    return NextResponse.json(
+      {
+        documentId: document.id,
+        status: "QUEUED",
+        message: "Document uploaded. Processing started.",
+      },
+      { status: 201 }
+    );
+  } catch (err) {
+    console.error("[documents POST] Error:", err);
+    return NextResponse.json({ error: "Internal server error" }, { status: 500 });
+  }
+}

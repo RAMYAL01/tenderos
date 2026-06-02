@@ -1,0 +1,75 @@
+{
+  "$schema": "https://openapi.vercel.sh/vercel.json",
+  "framework": "nextjs",
+
+  "buildCommand": "prisma generate && next build",
+  "installCommand": "npm ci",
+  "outputDirectory": ".next",
+
+  "functions": {
+    "src/app/api/documents/[id]/process/route.ts": {
+      "maxDuration": 300,
+      "memory": 1024
+    },
+    "src/app/api/ai/extract-requirements/process/route.ts": {
+      "maxDuration": 300,
+      "memory": 1024
+    },
+    "src/app/api/ai/generate-compliance/process/route.ts": {
+      "maxDuration": 300,
+      "memory": 512
+    },
+    "src/app/api/ai/clarification-questions/process/route.ts": {
+      "maxDuration": 120,
+      "memory": 512
+    },
+    "src/app/api/ai/draft-section/route.ts": {
+      "maxDuration": 120,
+      "memory": 512
+    },
+    "src/app/api/proposals/[id]/export/route.ts": {
+      "maxDuration": 120,
+      "memory": 1024
+    }
+  },
+
+  "headers": [
+    {
+      "source": "/api/(.*)",
+      "headers": [
+        { "key": "X-Content-Type-Options", "value": "nosniff" },
+        { "key": "X-Frame-Options", "value": "DENY" }
+      ]
+    },
+    {
+      "source": "/api/webhooks/(.*)",
+      "headers": [
+        { "key": "Cache-Control", "value": "no-store" }
+      ]
+    }
+  ],
+
+  "redirects": [
+    {
+      "source": "/",
+      "has": [{ "type": "cookie", "key": "__session" }],
+      "destination": "/dashboard",
+      "permanent": false
+    }
+  ],
+
+  "crons": [
+    {
+      "path": "/api/cron/cleanup-expired-exports",
+      "schedule": "0 2 * * *"
+    },
+    {
+      "path": "/api/cron/reset-monthly-usage",
+      "schedule": "0 0 1 * *"
+    }
+  ],
+
+  "env": {
+    "NEXT_TELEMETRY_DISABLED": "1"
+  }
+}
