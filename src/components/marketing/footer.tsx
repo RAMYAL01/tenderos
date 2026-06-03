@@ -3,21 +3,21 @@ import { Logo } from "@/components/ui/logo";
 
 const footerLinks = {
   Product: [
-    { label: "Features", href: "#features" },
-    { label: "Pricing", href: "#pricing" },
-    { label: "FAQ", href: "#faq" },
-    { label: "Changelog", href: "#" },
+    { label: "Features", href: "/#features" },
+    { label: "Pricing", href: "/#pricing" },
+    { label: "FAQ", href: "/#faq" },
+    { label: "Sign In", href: "/sign-in" },
   ],
   Company: [
-    { label: "About", href: "#" },
-    { label: "Blog", href: "#" },
-    { label: "Careers", href: "#" },
-    { label: "Contact", href: "mailto:hello@tenderos.ai" },
+    { label: "About", href: "/about" },
+    { label: "Contact", href: "/contact" },
+    { label: "Blog", href: "/contact" },
+    { label: "Careers", href: "/contact" },
   ],
   Legal: [
-    { label: "Privacy Policy", href: "#" },
-    { label: "Terms of Service", href: "#" },
-    { label: "Security", href: "#" },
+    { label: "Privacy Policy", href: "/contact" },
+    { label: "Terms of Service", href: "/contact" },
+    { label: "Security", href: "/contact" },
   ],
 };
 
