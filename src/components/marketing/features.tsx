@@ -7,6 +7,7 @@ import {
   ShieldCheck,
 } from "lucide-react";
 import { Reveal } from "./reveal";
+import { TiltCard } from "./tilt-card";
 
 const features = [
   {
@@ -95,26 +96,35 @@ export function Features() {
             const Icon = feature.icon;
             return (
               <Reveal key={feature.title} delay={i * 70} className={feature.span}>
-                <div
-                  className={`group relative flex h-full flex-col overflow-hidden rounded-2xl border border-slate-100 bg-white p-7 ring-1 ring-transparent transition-all duration-300 hover:-translate-y-1 hover:shadow-xl hover:shadow-slate-200/60 dark:border-slate-800 dark:bg-slate-900 dark:hover:shadow-none ${feature.ring}`}
+                <TiltCard
+                  max={8}
+                  scale={1.03}
+                  glareColor="rgba(59,130,246,0.12)"
+                  className={`group h-full rounded-2xl ${feature.ring}`}
                 >
-                  {/* Decorative gradient blob for accent cards */}
-                  {feature.accent && (
+                  <div
+                    className="relative flex h-full flex-col overflow-hidden rounded-2xl border border-slate-100 bg-white p-7 shadow-sm transition-shadow duration-300 group-hover:shadow-2xl group-hover:shadow-slate-200/60 dark:border-slate-800 dark:bg-slate-900 dark:group-hover:shadow-blue-950/30"
+                  >
+                    {/* Decorative gradient blob for accent cards */}
+                    {feature.accent && (
+                      <div
+                        className={`pointer-events-none absolute -right-8 -top-8 h-32 w-32 rounded-full opacity-0 blur-2xl transition-opacity duration-500 group-hover:opacity-100 ${feature.color}`}
+                        style={{ background: "radial-gradient(circle, currentColor, transparent)" }}
+                      />
+                    )}
                     <div
-                      className="pointer-events-none absolute -right-8 -top-8 h-32 w-32 rounded-full opacity-0 blur-2xl transition-opacity duration-500 group-hover:opacity-100"
-                      style={{ background: "radial-gradient(circle, currentColor, transparent)" }}
-                    />
-                  )}
-                  <div className={`inline-flex w-fit rounded-xl p-3 ${feature.bg}`}>
-                    <Icon className={`h-6 w-6 ${feature.color}`} />
+                      className={`inline-flex w-fit rounded-xl p-3 transition-transform duration-300 group-hover:scale-110 ${feature.bg}`}
+                    >
+                      <Icon className={`h-6 w-6 ${feature.color}`} />
+                    </div>
+                    <h3 className="mt-4 text-lg font-semibold text-slate-900 dark:text-white">
+                      {feature.title}
+                    </h3>
+                    <p className="mt-2 text-sm leading-relaxed text-slate-600 dark:text-slate-400">
+                      {feature.description}
+                    </p>
                   </div>
-                  <h3 className="mt-4 text-lg font-semibold text-slate-900 dark:text-white">
-                    {feature.title}
-                  </h3>
-                  <p className="mt-2 text-sm leading-relaxed text-slate-600 dark:text-slate-400">
-                    {feature.description}
-                  </p>
-                </div>
+                </TiltCard>
               </Reveal>
             );
           })}

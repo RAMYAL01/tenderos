@@ -247,13 +247,107 @@
   }
 }
 
+/* ── 3D / depth utilities ── */
+.preserve-3d {
+  transform-style: preserve-3d;
+}
+.perspective-1000 {
+  perspective: 1000px;
+}
+.perspective-1500 {
+  perspective: 1500px;
+}
+.backface-hidden {
+  backface-visibility: hidden;
+}
+
+/* Gentle 3D float — translate + subtle rotate for parallax depth */
+@keyframes float-3d {
+  0%, 100% {
+    transform: translate3d(0, 0, 0) rotateX(0deg) rotateY(0deg);
+  }
+  50% {
+    transform: translate3d(0, -14px, 0) rotateX(2deg) rotateY(-2deg);
+  }
+}
+.animate-float-3d {
+  animation: float-3d 7s ease-in-out infinite;
+}
+
+/* Slow spin for orbiting accent rings */
+@keyframes spin-slow {
+  to {
+    transform: rotate(360deg);
+  }
+}
+.animate-spin-slow {
+  animation: spin-slow 24s linear infinite;
+}
+.animate-spin-slow-rev {
+  animation: spin-slow 30s linear infinite reverse;
+}
+
+/* Animated mesh gradient — shifts hue position over time */
+@keyframes mesh-shift {
+  0%, 100% {
+    background-position: 0% 50%, 100% 50%, 50% 0%;
+  }
+  50% {
+    background-position: 100% 50%, 0% 50%, 50% 100%;
+  }
+}
+.animate-mesh {
+  background-size: 200% 200%, 200% 200%, 200% 200%;
+  animation: mesh-shift 16s ease-in-out infinite;
+}
+
+/* Shimmer sweep across a surface */
+@keyframes shimmer {
+  0% {
+    transform: translateX(-120%) skewX(-12deg);
+  }
+  60%, 100% {
+    transform: translateX(220%) skewX(-12deg);
+  }
+}
+.animate-shimmer {
+  animation: shimmer 4.5s ease-in-out infinite;
+}
+
+/* Rising particles for the login scene */
+@keyframes rise {
+  0% {
+    transform: translateY(0) scale(1);
+    opacity: 0;
+  }
+  10% {
+    opacity: 0.7;
+  }
+  90% {
+    opacity: 0.7;
+  }
+  100% {
+    transform: translateY(-120px) scale(0.6);
+    opacity: 0;
+  }
+}
+.animate-rise {
+  animation: rise linear infinite;
+}
+
 /* Respect reduced motion */
 @media (prefers-reduced-motion: reduce) {
   .animate-brand-pulse,
   .animate-brand-ring,
   .animate-aurora,
   .animate-marquee,
-  .animate-float-slow {
+  .animate-float-slow,
+  .animate-float-3d,
+  .animate-spin-slow,
+  .animate-spin-slow-rev,
+  .animate-mesh,
+  .animate-shimmer,
+  .animate-rise {
     animation: none;
   }
   .reveal-init {

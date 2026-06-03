@@ -1,7 +1,7 @@
 import Link from "next/link";
 import { Button } from "@/components/ui/button";
 import { ArrowRight, Play, Star } from "lucide-react";
-import { HeroMockup } from "./hero-mockup";
+import { HeroStage } from "./hero-stage";
 import { Reveal } from "./reveal";
 
 export function Hero() {
@@ -109,9 +109,9 @@ export function Hero() {
           </Reveal>
         </div>
 
-        {/* Product mockup */}
-        <Reveal delay={320} className="mx-auto mt-16 max-w-4xl">
-          <HeroMockup />
+        {/* Product mockup — interactive 3D stage */}
+        <Reveal delay={320}>
+          <HeroStage />
         </Reveal>
       </div>
     </section>
