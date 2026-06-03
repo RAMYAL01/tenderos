@@ -1,8 +1,8 @@
 "use client";
 
 import { useRef, useState, useCallback } from "react";
-import Image from "next/image";
 import { Logo } from "@/components/ui/logo";
+import { BrandMark } from "@/components/ui/brand-mark";
 import {
   Sparkles,
   CheckCircle2,
@@ -212,15 +212,13 @@ export function BrandPanel() {
       </div>
 
       {/* Decorative floating mark, faint, deep background */}
-      <Image
-        src="/images/mark.png"
-        alt=""
-        width={120}
-        height={120}
+      <div
         aria-hidden="true"
-        className="animate-float-3d pointer-events-none absolute -bottom-6 left-1/2 z-0 opacity-[0.06]"
-        style={{ ...layer(-10), width: 120, height: 120 }}
-      />
+        className="animate-float-3d pointer-events-none absolute -bottom-6 left-1/2 z-0 opacity-[0.07]"
+        style={layer(-10)}
+      >
+        <BrandMark size={120} variant="dark" />
+      </div>
     </div>
   );
 }

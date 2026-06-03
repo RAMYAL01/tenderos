@@ -1,6 +1,6 @@
 import { SignUp } from "@clerk/nextjs";
 import { BrandPanel } from "@/components/auth/brand-panel";
-import Image from "next/image";
+import { Logo } from "@/components/ui/logo";
 
 export const metadata = {
   title: "Create Account",
@@ -16,14 +16,7 @@ export default function SignUpPage() {
       <div className="flex flex-1 flex-col items-center justify-center px-4 py-10 sm:px-8">
         {/* Mobile-only logo */}
         <div className="mb-8 lg:hidden">
-          <Image
-            src="/images/logo.png"
-            alt="TenderOS"
-            width={160}
-            height={42}
-            className="h-9 w-auto"
-            priority
-          />
+          <Logo size={34} />
         </div>
 
         <div className="w-full max-w-[400px]">

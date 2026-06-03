@@ -1,5 +1,5 @@
-import Image from "next/image";
 import { cn } from "@/lib/utils";
+import { BrandMark } from "./brand-mark";
 
 interface BrandLoaderProps {
   /** Loading message shown beneath the mark. Pass null to hide. */
@@ -55,15 +55,7 @@ export function BrandLoader({
           aria-hidden="true"
         />
         {/* The mark */}
-        <Image
-          src="/images/mark.png"
-          alt="TenderOS"
-          width={size}
-          height={size}
-          priority
-          className="animate-brand-pulse"
-          style={{ width: size, height: size }}
-        />
+        <BrandMark size={size} className="animate-brand-pulse" />
       </div>
 
       {label && (
