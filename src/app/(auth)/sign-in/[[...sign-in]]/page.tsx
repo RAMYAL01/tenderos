@@ -1,4 +1,6 @@
 import { SignIn } from "@clerk/nextjs";
+import { BrandPanel } from "@/components/auth/brand-panel";
+import Image from "next/image";
 
 export const metadata = {
   title: "Sign In",
@@ -6,30 +8,62 @@ export const metadata = {
 
 export default function SignInPage() {
   return (
-    <div className="flex min-h-screen items-center justify-center bg-gradient-to-br from-slate-900 via-blue-950 to-slate-900 px-4">
-      {/* Decorative background pattern */}
-      <div
-        className="pointer-events-none absolute inset-0 opacity-20"
-        style={{
-          backgroundImage:
-            "radial-gradient(circle at 25% 25%, #3b82f6 0%, transparent 50%), radial-gradient(circle at 75% 75%, #1d4ed8 0%, transparent 50%)",
-        }}
-      />
+    <div className="flex min-h-screen bg-slate-50 dark:bg-slate-950">
+      {/* Left: Brand panel (hidden on mobile) */}
+      <BrandPanel />
 
-      <div className="relative z-10 w-full max-w-md">
-        {/* Logo */}
-        <div className="mb-8 text-center">
-          <h1 className="text-3xl font-bold text-white">TenderOS</h1>
-          <p className="mt-1 text-sm text-slate-400">
-            The Operating System for Winning Contracts
-          </p>
-          {/* Arabic tagline */}
-          <p className="mt-1 text-xs text-slate-500" dir="rtl">
-            نظام تشغيل الفوز بالعقود
-          </p>
+      {/* Right: Auth form */}
+      <div className="flex flex-1 flex-col items-center justify-center px-4 py-10 sm:px-8">
+        {/* Mobile-only logo (hidden when brand panel is visible) */}
+        <div className="mb-8 lg:hidden">
+          <Image
+            src="/images/logo.png"
+            alt="TenderOS"
+            width={160}
+            height={42}
+            className="h-9 w-auto"
+            priority
+          />
         </div>
 
-        <SignIn />
+        <div className="w-full max-w-[400px]">
+          <SignIn
+            appearance={{
+              elements: {
+                rootBox: "w-full",
+                card: "shadow-none border-0 bg-transparent p-0 w-full",
+                headerTitle:
+                  "text-2xl font-bold text-slate-900 dark:text-slate-100",
+                headerSubtitle: "text-slate-500 dark:text-slate-400",
+                formButtonPrimary:
+                  "bg-blue-600 hover:bg-blue-700 text-white font-medium shadow-sm h-10 text-sm",
+                formFieldInput:
+                  "h-10 border-slate-200 bg-white dark:bg-slate-900 dark:border-slate-700 focus:ring-blue-600 focus:border-blue-600",
+                formFieldLabel:
+                  "text-sm font-medium text-slate-700 dark:text-slate-300",
+                footerActionLink:
+                  "text-blue-600 hover:text-blue-700 font-medium",
+                socialButtonsBlockButton:
+                  "border-slate-200 dark:border-slate-700 hover:bg-slate-50 dark:hover:bg-slate-800 h-10 text-sm font-medium",
+                dividerLine: "bg-slate-200 dark:bg-slate-700",
+                dividerText: "text-slate-400 text-xs",
+                identityPreview:
+                  "bg-slate-50 dark:bg-slate-800 border-slate-200 dark:border-slate-700",
+                formResendCodeLink: "text-blue-600 hover:text-blue-700",
+                alert: "rounded-lg",
+              },
+              variables: {
+                colorPrimary: "#2563eb",
+                colorBackground: "transparent",
+                colorText: "#0F172A",
+                colorInputBackground: "#ffffff",
+                borderRadius: "0.5rem",
+                fontFamily: "Inter, system-ui, sans-serif",
+                spacingUnit: "1rem",
+              },
+            }}
+          />
+        </div>
       </div>
     </div>
   );

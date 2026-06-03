@@ -1,4 +1,5 @@
 import { OrganizationSwitcher, UserButton } from "@clerk/nextjs";
+import Image from "next/image";
 import { SidebarNav } from "./sidebar-nav";
 import type { Member } from "@prisma/client";
 
@@ -19,30 +20,15 @@ export function Sidebar({ member }: SidebarProps) {
   return (
     <aside className="flex h-screen w-64 shrink-0 flex-col border-r border-white/10 bg-[#0F172A]">
       {/* ── Logo ────────────────────────────────────────────────── */}
-      <div className="flex h-16 shrink-0 items-center gap-2.5 border-b border-white/10 px-5">
-        {/* Icon mark */}
-        <div className="flex h-8 w-8 items-center justify-center rounded-lg bg-blue-600">
-          <svg
-            className="h-4.5 w-4.5 text-white"
-            fill="none"
-            viewBox="0 0 24 24"
-            stroke="currentColor"
-            strokeWidth={2}
-          >
-            <path
-              strokeLinecap="round"
-              strokeLinejoin="round"
-              d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z"
-            />
-          </svg>
-        </div>
-        {/* Wordmark */}
-        <div className="flex flex-col leading-none">
-          <span className="text-sm font-bold tracking-wide text-white">
-            TenderOS
-          </span>
-          <span className="text-[10px] text-slate-500">Contract Intelligence</span>
-        </div>
+      <div className="flex h-16 shrink-0 items-center border-b border-white/10 px-5">
+        <Image
+          src="/images/logo-dark.png"
+          alt="TenderOS"
+          width={140}
+          height={36}
+          className="h-7 w-auto"
+          priority
+        />
       </div>
 
       {/* ── Organization Switcher ──────────────────────────────── */}
