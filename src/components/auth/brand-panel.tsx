@@ -1,4 +1,4 @@
-import Image from "next/image";
+import { Logo } from "@/components/ui/logo";
 
 const stats = [
   { value: "200+", label: "Proposals Generated" },
@@ -26,14 +26,7 @@ export function BrandPanel() {
 
       {/* Top: Logo */}
       <div className="relative z-10">
-        <Image
-          src="/images/logo-dark.png"
-          alt="TenderOS"
-          width={180}
-          height={48}
-          className="h-10 w-auto"
-          priority
-        />
+        <Logo variant="dark" size={40} />
       </div>
 
       {/* Center: Value Proposition */}

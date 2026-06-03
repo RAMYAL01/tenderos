@@ -1,6 +1,6 @@
 import { OrganizationSwitcher, UserButton } from "@clerk/nextjs";
-import Image from "next/image";
 import { SidebarNav } from "./sidebar-nav";
+import { Logo } from "@/components/ui/logo";
 import type { Member } from "@prisma/client";
 
 interface SidebarProps {
@@ -21,14 +21,7 @@ export function Sidebar({ member }: SidebarProps) {
     <aside className="flex h-screen w-64 shrink-0 flex-col border-r border-white/10 bg-[#0F172A]">
       {/* ── Logo ────────────────────────────────────────────────── */}
       <div className="flex h-16 shrink-0 items-center border-b border-white/10 px-5">
-        <Image
-          src="/images/logo-dark.png"
-          alt="TenderOS"
-          width={140}
-          height={36}
-          className="h-7 w-auto"
-          priority
-        />
+        <Logo variant="dark" size={30} href="/dashboard" />
       </div>
 
       {/* ── Organization Switcher ──────────────────────────────── */}

@@ -2,9 +2,9 @@
 
 import { useState } from "react";
 import Link from "next/link";
-import Image from "next/image";
 import { Menu, X } from "lucide-react";
 import { Button } from "@/components/ui/button";
+import { Logo } from "@/components/ui/logo";
 
 const links = [
   { label: "Features", href: "#features" },
@@ -19,16 +19,7 @@ export function Navbar() {
     <header className="sticky top-0 z-50 border-b border-slate-100 bg-white/80 backdrop-blur-lg dark:border-slate-800 dark:bg-slate-950/80">
       <nav className="mx-auto flex h-16 max-w-6xl items-center justify-between px-4 sm:px-6">
         {/* Logo */}
-        <Link href="/" className="flex items-center">
-          <Image
-            src="/images/logo.png"
-            alt="TenderOS"
-            width={140}
-            height={36}
-            className="h-7 w-auto"
-            priority
-          />
-        </Link>
+        <Logo href="/" size={34} />
 
         {/* Desktop links */}
         <div className="hidden items-center gap-8 md:flex">

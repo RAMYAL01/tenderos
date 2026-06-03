@@ -1,38 +1,72 @@
 import Link from "next/link";
 import { Button } from "@/components/ui/button";
 import { ArrowRight } from "lucide-react";
+import { Reveal } from "./reveal";
 
 export function CTASection() {
   return (
-    <section className="border-t border-slate-100 py-20 dark:border-slate-800 sm:py-28">
-      <div className="mx-auto max-w-3xl px-4 text-center sm:px-6">
-        <h2 className="text-3xl font-bold tracking-tight text-slate-900 dark:text-white sm:text-4xl">
-          Start winning more contracts today
-        </h2>
-        <p className="mt-4 text-lg text-slate-600 dark:text-slate-400">
-          Join contractors across the Gulf who use TenderOS to submit better
-          proposals, faster. 14-day free trial — no credit card required.
-        </p>
-        <div className="mt-8 flex flex-col items-center justify-center gap-4 sm:flex-row">
-          <Button
-            size="lg"
-            className="h-12 gap-2 px-8 text-sm"
-            asChild
-          >
-            <Link href="/sign-up">
-              Start Free Trial
-              <ArrowRight className="h-4 w-4" />
-            </Link>
-          </Button>
-          <Button
-            variant="outline"
-            size="lg"
-            className="h-12 px-8 text-sm"
-            asChild
-          >
-            <a href="mailto:sales@tenderos.ai">Talk to Sales</a>
-          </Button>
-        </div>
+    <section className="py-20 sm:py-28">
+      <div className="mx-auto max-w-6xl px-4 sm:px-6">
+        <Reveal>
+          <div className="relative overflow-hidden rounded-3xl bg-gradient-to-br from-blue-600 via-blue-700 to-[#0c1a35] px-6 py-16 text-center shadow-2xl shadow-blue-600/20 sm:px-12 sm:py-20">
+            {/* Decorative grid */}
+            <div
+              className="pointer-events-none absolute inset-0 opacity-20"
+              aria-hidden="true"
+              style={{
+                backgroundImage:
+                  "linear-gradient(to right, rgba(255,255,255,0.1) 1px, transparent 1px), linear-gradient(to bottom, rgba(255,255,255,0.1) 1px, transparent 1px)",
+                backgroundSize: "40px 40px",
+                maskImage: "radial-gradient(ellipse 60% 80% at 50% 50%, #000, transparent)",
+                WebkitMaskImage: "radial-gradient(ellipse 60% 80% at 50% 50%, #000, transparent)",
+              }}
+            />
+            {/* Glow orb */}
+            <div
+              className="animate-aurora pointer-events-none absolute -right-20 -top-20 h-72 w-72 rounded-full opacity-40 blur-3xl"
+              style={{ background: "radial-gradient(circle, rgba(96,165,250,0.6), transparent)" }}
+              aria-hidden="true"
+            />
+
+            <div className="relative">
+              <h2 className="mx-auto max-w-2xl text-3xl font-bold tracking-tight text-white sm:text-4xl lg:text-5xl">
+                Start winning more contracts today
+              </h2>
+              <p className="mx-auto mt-4 max-w-xl text-lg text-blue-100">
+                Join contractors across the Gulf submitting better proposals,
+                faster. 14-day free trial — no credit card required.
+              </p>
+              <p
+                className="mx-auto mt-3 max-w-md font-arabic text-sm text-blue-200/80"
+                dir="rtl"
+                lang="ar"
+              >
+                ابدأ تجربتك المجانية اليوم وفز بمزيد من العقود
+              </p>
+
+              <div className="mt-9 flex flex-col items-center justify-center gap-4 sm:flex-row">
+                <Button
+                  size="lg"
+                  className="group h-12 gap-2 bg-white px-8 text-sm text-blue-700 hover:bg-blue-50"
+                  asChild
+                >
+                  <Link href="/sign-up">
+                    Start Free Trial
+                    <ArrowRight className="h-4 w-4 transition-transform group-hover:translate-x-0.5" />
+                  </Link>
+                </Button>
+                <Button
+                  size="lg"
+                  variant="outline"
+                  className="h-12 border-white/30 bg-white/0 px-8 text-sm text-white hover:bg-white/10 hover:text-white"
+                  asChild
+                >
+                  <a href="mailto:sales@tenderos.ai">Talk to Sales</a>
+                </Button>
+              </div>
+            </div>
+          </div>
+        </Reveal>
       </div>
     </section>
   );

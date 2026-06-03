@@ -39,16 +39,23 @@ export function FAQ() {
   const [openIndex, setOpenIndex] = useState<number | null>(null);
 
   return (
-    <section id="faq" className="bg-slate-50 py-20 dark:bg-slate-900/50 sm:py-28">
+    <section id="faq" className="py-20 sm:py-28">
       <div className="mx-auto max-w-3xl px-4 sm:px-6">
         {/* Section header */}
         <div className="text-center">
           <p className="text-sm font-semibold uppercase tracking-widest text-blue-600">
             FAQ
           </p>
-          <h2 className="mt-3 text-3xl font-bold tracking-tight text-slate-900 dark:text-white sm:text-4xl">
+          <h2 className="mt-3 text-3xl font-bold tracking-tight text-slate-900 dark:text-white sm:text-4xl lg:text-5xl">
             Frequently asked questions
           </h2>
+          <p className="mt-4 text-base text-slate-600 dark:text-slate-400">
+            Everything you need to know. Can&apos;t find an answer?{" "}
+            <a href="mailto:hello@tenderos.ai" className="font-medium text-blue-600 hover:underline">
+              Email us
+            </a>
+            .
+          </p>
         </div>
 
         {/* Accordion */}

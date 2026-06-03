@@ -1,4 +1,5 @@
 import { Upload, Brain, FileCheck } from "lucide-react";
+import { Reveal } from "./reveal";
 
 const steps = [
   {
@@ -26,24 +27,24 @@ const steps = [
 
 export function HowItWorks() {
   return (
-    <section className="bg-slate-50 py-20 dark:bg-slate-900/50 sm:py-28">
+    <section id="how-it-works" className="bg-slate-50 py-20 dark:bg-slate-900/50 sm:py-28">
       <div className="mx-auto max-w-6xl px-4 sm:px-6">
         {/* Section header */}
-        <div className="mx-auto max-w-2xl text-center">
+        <Reveal className="mx-auto max-w-2xl text-center">
           <p className="text-sm font-semibold uppercase tracking-widest text-blue-600">
             How It Works
           </p>
-          <h2 className="mt-3 text-3xl font-bold tracking-tight text-slate-900 dark:text-white sm:text-4xl">
+          <h2 className="mt-3 text-3xl font-bold tracking-tight text-slate-900 dark:text-white sm:text-4xl lg:text-5xl">
             From RFP to proposal in three steps
           </h2>
-        </div>
+        </Reveal>
 
         {/* Steps */}
         <div className="mt-16 grid grid-cols-1 gap-12 lg:grid-cols-3 lg:gap-8">
           {steps.map((step, i) => {
             const Icon = step.icon;
             return (
-              <div key={step.number} className="relative text-center">
+              <Reveal as="div" key={step.number} delay={i * 120} className="relative text-center">
                 {/* Connector line (desktop only) */}
                 {i < steps.length - 1 && (
                   <div className="absolute right-0 top-10 hidden h-px w-full translate-x-1/2 bg-gradient-to-r from-blue-200 to-transparent lg:block" />
@@ -61,7 +62,7 @@ export function HowItWorks() {
                 <p className="mt-2 text-sm leading-relaxed text-slate-600 dark:text-slate-400">
                   {step.description}
                 </p>
-              </div>
+              </Reveal>
             );
           })}
         </div>

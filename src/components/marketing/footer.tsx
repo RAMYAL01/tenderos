@@ -1,5 +1,5 @@
 import Link from "next/link";
-import Image from "next/image";
+import { Logo } from "@/components/ui/logo";
 
 const footerLinks = {
   Product: [
@@ -28,14 +28,8 @@ export function Footer() {
         <div className="grid grid-cols-2 gap-8 sm:grid-cols-4">
           {/* Logo + description */}
           <div className="col-span-2 sm:col-span-1">
-            <Image
-              src="/images/logo.png"
-              alt="TenderOS"
-              width={120}
-              height={32}
-              className="h-7 w-auto"
-            />
-            <p className="mt-3 text-xs leading-relaxed text-slate-500">
+            <Logo size={34} />
+            <p className="mt-4 text-xs leading-relaxed text-slate-500">
               AI-powered proposal intelligence for government contractors.
             </p>
             <p
