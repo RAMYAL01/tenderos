@@ -32,29 +32,34 @@ export function Logo({
   const wordColor =
     variant === "dark" ? "text-white" : "text-slate-900 dark:text-white";
 
+  // mark.png has ~18% transparent padding on each side, so render the box
+  // ~1.55x the wordmark base size and pull the text in with a negative
+  // margin to keep the visible mark matched to the "TenderOS" cap height.
+  const markBox = Math.round(size * 1.55);
+
   const inner = (
-    <span className={cn("flex items-center gap-2.5", className)}>
+    <span className={cn("flex items-center", className)}>
       <Image
         src="/images/mark.png"
         alt="TenderOS"
-        width={size}
-        height={size}
+        width={markBox}
+        height={markBox}
         priority
-        style={{ width: size, height: size }}
+        style={{ width: markBox, height: markBox, marginRight: -size * 0.18 }}
         className="shrink-0"
       />
       {showWordmark && (
         <span className="flex flex-col leading-none">
           <span
             className={cn("font-bold tracking-tight", wordColor)}
-            style={{ fontSize: size * 0.62 }}
+            style={{ fontSize: size * 0.66 }}
           >
             Tender<span className="text-blue-600">OS</span>
           </span>
           {showTagline && (
             <span
-              className="mt-1 font-medium uppercase tracking-[0.18em] text-slate-400"
-              style={{ fontSize: size * 0.18 }}
+              className="mt-1 font-medium uppercase tracking-[0.16em] text-slate-400"
+              style={{ fontSize: size * 0.17 }}
             >
               Winning Contracts
             </span>
