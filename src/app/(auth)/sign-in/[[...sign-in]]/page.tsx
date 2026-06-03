@@ -31,7 +31,7 @@ export default function SignInPage() {
             appearance={{
               elements: {
                 rootBox: "w-full",
-                card: "shadow-none border-0 bg-transparent p-0 w-full",
+                card: "shadow-sm border border-slate-200 dark:border-slate-800 bg-white dark:bg-slate-900 rounded-xl w-full",
                 headerTitle:
                   "text-2xl font-bold text-slate-900 dark:text-slate-100",
                 headerSubtitle: "text-slate-500 dark:text-slate-400",
@@ -51,10 +51,12 @@ export default function SignInPage() {
                   "bg-slate-50 dark:bg-slate-800 border-slate-200 dark:border-slate-700",
                 formResendCodeLink: "text-blue-600 hover:text-blue-700",
                 alert: "rounded-lg",
+                footer: "bg-transparent",
+                footerAction: "bg-transparent",
               },
               variables: {
                 colorPrimary: "#2563eb",
-                colorBackground: "transparent",
+                colorBackground: "#ffffff",
                 colorText: "#0F172A",
                 colorInputBackground: "#ffffff",
                 borderRadius: "0.5rem",
