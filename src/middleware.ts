@@ -8,6 +8,8 @@ import { rateLimit, RATE_LIMITS, tooManyRequests } from "@/lib/rate-limit";
  */
 const isPublicRoute = createRouteMatcher([
   "/",
+  "/about(.*)",          // Marketing — public
+  "/contact(.*)",        // Marketing — public
   "/sign-in(.*)",
   "/sign-up(.*)",
   "/api/webhooks(.*)",   // Clerk webhook — verified via svix signature

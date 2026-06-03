@@ -7,6 +7,8 @@ import { NextResponse } from "next/server";
  */
 const isPublicRoute = createRouteMatcher([
   "/",                   // landing page
+  "/about(.*)",          // marketing — public
+  "/contact(.*)",        // marketing — public
   "/sign-in(.*)",        // Clerk sign-in pages
   "/sign-up(.*)",        // Clerk sign-up pages
   "/api/webhooks(.*)",   // Clerk webhook — verified via svix signature, NOT by Clerk session
