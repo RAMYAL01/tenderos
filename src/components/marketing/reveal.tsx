@@ -25,6 +25,17 @@ export function Reveal({ children, className, delay = 0 }: RevealProps) {
     const el = ref.current;
     if (!el) return;
 
+    // If the element is already in view on mount (above-the-fold hero),
+    // reveal immediately — IntersectionObserver can miss already-visible
+    // elements on initial load, leaving content stuck hidden.
+    const rect = el.getBoundingClientRect();
+    const alreadyInView =
+      rect.top < window.innerHeight && rect.bottom > 0;
+    if (alreadyInView) {
+      const t = setTimeout(() => setShown(true), delay);
+      return () => clearTimeout(t);
+    }
+
     const observer = new IntersectionObserver(
       ([entry]) => {
         if (entry.isIntersecting) {
