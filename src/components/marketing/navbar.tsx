@@ -44,6 +44,7 @@ export function Navbar() {
   const [mobileOpen, setMobileOpen] = useState(false);
   const [showBanner, setShowBanner] = useState(true);
   const [openMenu, setOpenMenu] = useState<"product" | "resources" | null>(null);
+  const [activeSection, setActiveSection] = useState("");
   const closeTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
 
   useEffect(() => {
@@ -51,6 +52,24 @@ export function Navbar() {
     onScroll();
     window.addEventListener("scroll", onScroll, { passive: true });
     return () => window.removeEventListener("scroll", onScroll);
+  }, []);
+
+  // Scrollspy — highlight the nav item for the section in view (home page).
+  useEffect(() => {
+    const ids = ["features", "pricing", "faq"];
+    const observer = new IntersectionObserver(
+      (entries) => {
+        entries.forEach((e) => {
+          if (e.isIntersecting) setActiveSection(e.target.id);
+        });
+      },
+      { rootMargin: "-45% 0px -50% 0px" }
+    );
+    ids.forEach((id) => {
+      const el = document.getElementById(id);
+      if (el) observer.observe(el);
+    });
+    return () => observer.disconnect();
   }, []);
 
   // Lock body scroll when mobile drawer is open
@@ -108,7 +127,10 @@ export function Navbar() {
           )}
         >
           {/* Logo */}
-          <Link href="/" className="transition-transform hover:scale-[1.03]">
+          <Link
+            href="/"
+            className="transition-transform duration-300 hover:scale-[1.04] hover:drop-shadow-[0_0_12px_rgba(59,130,246,0.35)]"
+          >
             <Logo size={34} />
           </Link>
 
@@ -120,7 +142,14 @@ export function Navbar() {
               onMouseEnter={() => openDropdown("product")}
               onMouseLeave={scheduleClose}
             >
-              <button className="flex items-center gap-1 rounded-lg px-3 py-2 text-sm font-medium text-slate-600 transition-colors hover:text-slate-900 dark:text-slate-300 dark:hover:text-white">
+              <button
+                className={cn(
+                  "flex items-center gap-1 rounded-lg px-3 py-2 text-sm font-medium transition-colors",
+                  activeSection === "features"
+                    ? "text-blue-600"
+                    : "text-slate-600 hover:text-slate-900 dark:text-slate-300 dark:hover:text-white"
+                )}
+              >
                 Product
                 <ChevronDown
                   className={cn(
@@ -165,7 +194,9 @@ export function Navbar() {
               </div>
             </div>
 
-            <NavLink href="/#pricing">Pricing</NavLink>
+            <NavLink href="/#pricing" active={activeSection === "pricing"}>
+              Pricing
+            </NavLink>
             <NavLink href="/about">About</NavLink>
 
             {/* Resources dropdown */}
@@ -331,11 +362,24 @@ export function Navbar() {
   );
 }
 
-function NavLink({ href, children }: { href: string; children: React.ReactNode }) {
+function NavLink({
+  href,
+  children,
+  active = false,
+}: {
+  href: string;
+  children: React.ReactNode;
+  active?: boolean;
+}) {
   return (
     <Link
       href={href}
-      className="relative rounded-lg px-3 py-2 text-sm font-medium text-slate-600 transition-colors after:absolute after:bottom-1 after:left-3 after:h-0.5 after:w-[calc(100%-1.5rem)] after:origin-left after:scale-x-0 after:rounded-full after:bg-blue-600 after:transition-transform after:duration-300 hover:text-slate-900 hover:after:scale-x-100 dark:text-slate-300 dark:hover:text-white"
+      className={cn(
+        "relative rounded-lg px-3 py-2 text-sm font-medium transition-colors after:absolute after:bottom-1 after:left-3 after:h-0.5 after:w-[calc(100%-1.5rem)] after:origin-left after:rounded-full after:bg-blue-600 after:transition-transform after:duration-300 hover:after:scale-x-100",
+        active
+          ? "text-blue-600 after:scale-x-100"
+          : "text-slate-600 after:scale-x-0 hover:text-slate-900 dark:text-slate-300 dark:hover:text-white"
+      )}
     >
       {children}
     </Link>

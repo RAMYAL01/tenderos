@@ -1,9 +1,11 @@
 import { auth } from "@clerk/nextjs/server";
 import { redirect } from "next/navigation";
 import { Navbar } from "@/components/marketing/navbar";
+import { ScrollProgress } from "@/components/marketing/scroll-progress";
 import { Hero } from "@/components/marketing/hero";
 import { LogoMarquee } from "@/components/marketing/logo-marquee";
 import { Features } from "@/components/marketing/features";
+import { FeatureShowcase } from "@/components/marketing/feature-showcase";
 import { HowItWorks } from "@/components/marketing/how-it-works";
 import { StatsBand } from "@/components/marketing/stats-band";
 import { Testimonials } from "@/components/marketing/testimonials";
@@ -28,11 +30,13 @@ export default async function LandingPage() {
 
   return (
     <>
+      <ScrollProgress />
       <Navbar />
       <main>
         <Hero />
         <LogoMarquee />
         <Features />
+        <FeatureShowcase />
         <HowItWorks />
         <StatsBand />
         <Testimonials />
