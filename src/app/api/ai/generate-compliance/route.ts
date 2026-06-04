@@ -42,7 +42,7 @@ export async function POST(req: Request) {
       jobType: "GENERATE_COMPLIANCE_MATRIX",
       resourceType: "tender",
       resourceId: tenderId,
-      modelName: "claude-3-5-haiku-20241022",
+      modelName: "claude-haiku-4-5-20251001",
       status: "QUEUED",
       progress: 0,
       inputMetadata: { tenderId, requirementCount: reqCount },

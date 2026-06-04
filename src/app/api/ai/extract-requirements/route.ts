@@ -61,7 +61,7 @@ export async function POST(req: Request) {
       jobType: "EXTRACT_REQUIREMENTS",
       resourceType: "tender",
       resourceId: tenderId,
-      modelName: "claude-3-5-haiku-20241022",
+      modelName: "claude-haiku-4-5-20251001",
       status: "QUEUED",
       progress: 0,
       inputMetadata: { tenderId, documentIds: readyDocs.map((d) => d.id) },

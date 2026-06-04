@@ -138,7 +138,7 @@ export function SectionEditor({
     fetch(`/api/sections/${section.id}`, {
       method: "PATCH",
       headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ isAiGenerated: true, aiModelUsed: "claude-3-5-sonnet-20241022" }),
+      body: JSON.stringify({ isAiGenerated: true, aiModelUsed: "claude-sonnet-4-6" }),
     }).catch(() => {});
   }
 

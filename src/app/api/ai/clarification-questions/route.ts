@@ -40,7 +40,7 @@ export async function POST(req: Request) {
       jobType: "CLARIFICATION_QUESTIONS",
       resourceType: "tender",
       resourceId: tenderId,
-      modelName: "claude-3-5-sonnet-20241022",
+      modelName: "claude-sonnet-4-6",
       status: "QUEUED",
       progress: 0,
     },

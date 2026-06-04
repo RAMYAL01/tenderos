@@ -74,8 +74,8 @@ export const PRESIGNED_URL_EXPIRY = 15 * 60; // 15 minutes in seconds
 
 export const AI_MODELS = {
   // Primary: Claude for proposal generation (best quality)
-  CLAUDE_SONNET: "claude-3-5-sonnet-20241022",
-  CLAUDE_HAIKU: "claude-3-5-haiku-20241022",   // Fast + cheap for extractions
+  CLAUDE_SONNET: "claude-sonnet-4-6",
+  CLAUDE_HAIKU: "claude-haiku-4-5-20251001",   // Fast + cheap for extractions
   // Secondary: OpenAI for embeddings
   OPENAI_EMBEDDING: "text-embedding-3-large",
   // GPT-4o as fallback

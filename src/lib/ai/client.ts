@@ -39,9 +39,9 @@ export const openai: OpenAI = new Proxy({} as OpenAI, {
 
 export const MODELS = {
   // High-quality generation: proposal sections, executive summaries
-  CLAUDE_SONNET: "claude-3-5-sonnet-20241022",
+  CLAUDE_SONNET: "claude-sonnet-4-6",
   // Fast, cost-efficient: requirement extraction, compliance matrix
-  CLAUDE_HAIKU: "claude-3-5-haiku-20241022",
+  CLAUDE_HAIKU: "claude-haiku-4-5-20251001",
   // Embeddings: content library search
   EMBEDDING: "text-embedding-3-large",
   EMBEDDING_DIMS: 1536,
