@@ -31,33 +31,75 @@ export default async function BillingPage() {
       />
 
       <div className="mx-auto max-w-3xl space-y-6 p-6">
-        {/* Current plan */}
-        <div className="rounded-xl border border-slate-200 bg-white p-6 dark:border-slate-800 dark:bg-slate-900">
-          <div className="mb-4 flex items-center justify-between">
+        {/* Current plan — premium dark hero card */}
+        <div className="relative overflow-hidden rounded-2xl bg-gradient-to-br from-slate-900 to-[#0a1730] p-6 shadow-xl shadow-blue-900/20 sm:p-8">
+          {/* Grid texture */}
+          <div
+            aria-hidden="true"
+            className="pointer-events-none absolute inset-0 opacity-[0.35]"
+            style={{
+              backgroundImage:
+                "linear-gradient(rgba(148,163,184,0.08) 1px, transparent 1px), linear-gradient(90deg, rgba(148,163,184,0.08) 1px, transparent 1px)",
+              backgroundSize: "32px 32px",
+              maskImage: "radial-gradient(ellipse 80% 70% at 80% 0%, #000, transparent)",
+              WebkitMaskImage: "radial-gradient(ellipse 80% 70% at 80% 0%, #000, transparent)",
+            }}
+          />
+          {/* Glow orb */}
+          <div
+            aria-hidden="true"
+            className="pointer-events-none absolute -right-16 -top-16 h-48 w-48 rounded-full opacity-50 blur-3xl"
+            style={{ background: "radial-gradient(circle, rgba(59,130,246,0.5), transparent)" }}
+          />
+
+          <div className="relative flex items-start justify-between gap-4">
             <div>
               <div className="flex items-center gap-2">
-                <h3 className="font-semibold text-slate-900 dark:text-slate-100">
+                <span className="text-xs font-semibold uppercase tracking-widest text-blue-300">
                   Current Plan
-                </h3>
-                <Badge variant="secondary">{limits.label}</Badge>
+                </span>
                 {subscription?.isTrial && (
-                  <Badge className="bg-blue-100 text-blue-700">Trial</Badge>
+                  <Badge className="border-0 bg-blue-500/20 text-blue-200">Trial</Badge>
                 )}
               </div>
-              <p className="mt-1 text-sm text-slate-500">
-                {limits.price === 0
-                  ? "Custom enterprise pricing"
-                  : `$${limits.price}/month · billed ${subscription?.billingCycle ?? "monthly"}`}
+              <h3 className="mt-2 text-3xl font-bold text-white">{limits.label}</h3>
+              <p className="mt-1 text-sm text-slate-400">
+                {limits.price === 0 ? (
+                  "Custom enterprise pricing"
+                ) : (
+                  <>
+                    <span className="bg-gradient-to-r from-white to-blue-200 bg-clip-text text-lg font-semibold text-transparent">
+                      ${limits.price}
+                    </span>
+                    /month · billed {subscription?.billingCycle ?? "monthly"}
+                  </>
+                )}
               </p>
             </div>
-            <Button className="gap-2">
+            <Button className="gap-2 bg-white text-blue-700 shadow-lg hover:bg-blue-50">
               <ArrowUpRight className="h-4 w-4" />
-              Upgrade Plan
+              Upgrade
             </Button>
           </div>
 
-          {/* Usage grid */}
-          <div className="grid grid-cols-2 gap-4 sm:grid-cols-4">
+          {subscription?.currentPeriodEnd && (
+            <p className="relative mt-6 text-xs text-slate-500">
+              Current period ends:{" "}
+              {new Date(subscription.currentPeriodEnd).toLocaleDateString("en-US", {
+                month: "long",
+                day: "numeric",
+                year: "numeric",
+              })}
+            </p>
+          )}
+        </div>
+
+        {/* Usage card */}
+        <div className="rounded-2xl border border-slate-200 bg-white p-6 shadow-sm dark:border-slate-800 dark:bg-slate-900">
+          <h3 className="mb-5 text-sm font-semibold text-slate-900 dark:text-slate-100">
+            Usage this period
+          </h3>
+          <div className="grid grid-cols-2 gap-5 sm:grid-cols-4">
             <UsageStat
               icon={<Users className="h-4 w-4 text-blue-500" />}
               label="Team Seats"
@@ -86,16 +128,6 @@ export default async function BillingPage() {
               suffix="/mo"
             />
           </div>
-
-          {subscription?.currentPeriodEnd && (
-            <p className="mt-4 text-xs text-slate-400">
-              Current period ends:{" "}
-              {new Date(subscription.currentPeriodEnd).toLocaleDateString(
-                "en-US",
-                { month: "long", day: "numeric", year: "numeric" }
-              )}
-            </p>
-          )}
         </div>
 
         {/* Stripe portal placeholder */}
@@ -162,9 +194,13 @@ function UsageStat({
         {suffix}
       </p>
       {limit && (
-        <div className="h-1 w-full overflow-hidden rounded-full bg-slate-200 dark:bg-slate-700">
+        <div className="h-1.5 w-full overflow-hidden rounded-full bg-slate-100 dark:bg-slate-800">
           <div
-            className={`h-full rounded-full transition-all ${isNearLimit ? "bg-amber-500" : "bg-blue-500"}`}
+            className={`h-full rounded-full bg-gradient-to-r transition-all duration-500 ${
+              isNearLimit
+                ? "from-amber-400 to-amber-500"
+                : "from-blue-500 to-cyan-400"
+            }`}
             style={{ width: `${pct}%` }}
           />
         </div>
