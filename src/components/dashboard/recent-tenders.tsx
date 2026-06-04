@@ -83,7 +83,7 @@ export function RecentTenders({ tenders }: RecentTendersProps) {
       </div>
 
       {/* Table */}
-      <div className="overflow-hidden rounded-xl border border-slate-200 dark:border-slate-800">
+      <div className="overflow-hidden rounded-xl border border-slate-200 bg-white shadow-sm dark:border-slate-800 dark:bg-slate-950">
         <table className="w-full text-sm">
           <thead className="bg-slate-50 dark:bg-slate-900">
             <tr>

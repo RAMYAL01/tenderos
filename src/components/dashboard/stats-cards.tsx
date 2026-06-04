@@ -28,13 +28,15 @@ function StatCard({
   trend,
 }: StatCardProps) {
   return (
-    <div className="flex flex-col gap-3 rounded-xl border border-slate-200 bg-white p-5 shadow-sm dark:border-slate-800 dark:bg-slate-900">
+    <div className="group relative flex flex-col gap-3 overflow-hidden rounded-xl border border-slate-200 bg-white p-5 shadow-sm transition-all duration-300 hover:-translate-y-1 hover:border-slate-300 hover:shadow-lg hover:shadow-slate-200/60 dark:border-slate-800 dark:bg-slate-900 dark:hover:border-slate-700 dark:hover:shadow-none">
+      {/* Hover sheen */}
+      <span className="pointer-events-none absolute -inset-px -left-1/3 w-1/3 -skew-x-12 bg-gradient-to-r from-transparent via-slate-100/60 to-transparent opacity-0 transition-all duration-700 group-hover:left-[120%] group-hover:opacity-100 dark:via-white/[0.03]" />
       <div className="flex items-start justify-between">
-        <div className={cn("rounded-lg p-2", iconBg)}>
+        <div className={cn("rounded-lg p-2 transition-transform duration-300 group-hover:scale-110", iconBg)}>
           <Icon className={cn("h-5 w-5", iconColor)} />
         </div>
         {trend && (
-          <div className="flex items-center gap-1 text-xs text-emerald-600">
+          <div className="flex items-center gap-1 rounded-full bg-emerald-50 px-2 py-0.5 text-xs font-medium text-emerald-600 dark:bg-emerald-950/50">
             <TrendingUp className="h-3 w-3" />
             <span>+{trend.value}%</span>
           </div>
@@ -86,9 +88,10 @@ export function StatsCards({ stats }: StatsCardsProps) {
         iconBg="bg-blue-50 dark:bg-blue-900/30"
       />
 
-      <div className="flex flex-col gap-3 rounded-xl border border-slate-200 bg-white p-5 shadow-sm dark:border-slate-800 dark:bg-slate-900">
+      <div className="group relative flex flex-col gap-3 overflow-hidden rounded-xl border border-slate-200 bg-white p-5 shadow-sm transition-all duration-300 hover:-translate-y-1 hover:border-slate-300 hover:shadow-lg hover:shadow-slate-200/60 dark:border-slate-800 dark:bg-slate-900 dark:hover:border-slate-700 dark:hover:shadow-none">
+        <span className="pointer-events-none absolute -inset-px -left-1/3 w-1/3 -skew-x-12 bg-gradient-to-r from-transparent via-slate-100/60 to-transparent opacity-0 transition-all duration-700 group-hover:left-[120%] group-hover:opacity-100 dark:via-white/[0.03]" />
         <div className="flex items-start justify-between">
-          <div className="rounded-lg bg-emerald-50 p-2 dark:bg-emerald-900/30">
+          <div className="rounded-lg bg-emerald-50 p-2 transition-transform duration-300 group-hover:scale-110 dark:bg-emerald-900/30">
             <CheckSquare className="h-5 w-5 text-emerald-600" />
           </div>
         </div>

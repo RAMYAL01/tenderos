@@ -100,10 +100,10 @@ interface UpcomingDeadlinesProps {
 
 export function UpcomingDeadlines({ deadlines }: UpcomingDeadlinesProps) {
   return (
-    <div className="flex flex-col rounded-xl border border-slate-200 bg-white dark:border-slate-800 dark:bg-slate-950">
+    <div className="flex flex-col rounded-xl border border-slate-200 bg-white shadow-sm dark:border-slate-800 dark:bg-slate-950">
       {/* Header */}
       <div className="flex items-center gap-2 border-b border-slate-100 px-4 py-3 dark:border-slate-800">
-        <CalendarClock className="h-4 w-4 text-slate-400" />
+        <CalendarClock className="h-4 w-4 text-blue-500" />
         <h3 className="text-sm font-semibold text-slate-900 dark:text-slate-100">
           Upcoming Deadlines
         </h3>

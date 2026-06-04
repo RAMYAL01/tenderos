@@ -95,16 +95,22 @@ export function SidebarNav({ memberRole }: SidebarNavProps) {
               key={item.href}
               href={item.href}
               className={cn(
-                "group flex items-center gap-3 rounded-md px-3 py-2 text-sm font-medium transition-all duration-150",
+                "group relative flex items-center gap-3 rounded-lg px-3 py-2 text-sm font-medium transition-all duration-200",
                 active
-                  ? "bg-white/15 text-white"
-                  : "text-slate-400 hover:bg-white/8 hover:text-slate-100"
+                  ? "bg-gradient-to-r from-blue-600/25 via-blue-600/10 to-transparent text-white"
+                  : "text-slate-400 hover:bg-white/[0.06] hover:text-slate-100"
               )}
             >
+              {/* Active accent bar */}
+              {active && (
+                <span className="absolute left-0 top-1/2 h-5 w-1 -translate-y-1/2 rounded-r-full bg-blue-400 shadow-[0_0_8px_rgba(96,165,250,0.6)]" />
+              )}
               <Icon
                 className={cn(
-                  "h-4 w-4 shrink-0 transition-colors",
-                  active ? "text-blue-400" : "text-slate-500 group-hover:text-slate-300"
+                  "h-4 w-4 shrink-0 transition-all duration-200",
+                  active
+                    ? "text-blue-400"
+                    : "text-slate-500 group-hover:translate-x-0.5 group-hover:text-slate-300"
                 )}
               />
               <span>{item.label}</span>
@@ -135,16 +141,21 @@ export function SidebarNav({ memberRole }: SidebarNavProps) {
               key={item.href}
               href={item.href}
               className={cn(
-                "group flex items-center gap-3 rounded-md px-3 py-2 text-sm font-medium transition-all duration-150",
+                "group relative flex items-center gap-3 rounded-lg px-3 py-2 text-sm font-medium transition-all duration-200",
                 active
-                  ? "bg-white/15 text-white"
-                  : "text-slate-400 hover:bg-white/8 hover:text-slate-100"
+                  ? "bg-gradient-to-r from-blue-600/25 via-blue-600/10 to-transparent text-white"
+                  : "text-slate-400 hover:bg-white/[0.06] hover:text-slate-100"
               )}
             >
+              {active && (
+                <span className="absolute left-0 top-1/2 h-5 w-1 -translate-y-1/2 rounded-r-full bg-blue-400 shadow-[0_0_8px_rgba(96,165,250,0.6)]" />
+              )}
               <Icon
                 className={cn(
-                  "h-4 w-4 shrink-0",
-                  active ? "text-blue-400" : "text-slate-500 group-hover:text-slate-300"
+                  "h-4 w-4 shrink-0 transition-all duration-200",
+                  active
+                    ? "text-blue-400"
+                    : "text-slate-500 group-hover:translate-x-0.5 group-hover:text-slate-300"
                 )}
               />
               <span>{item.label}</span>
@@ -157,13 +168,23 @@ export function SidebarNav({ memberRole }: SidebarNavProps) {
           <Link
             href="/settings/members"
             className={cn(
-              "group flex items-center gap-3 rounded-md px-3 py-2 text-sm font-medium transition-all duration-150",
+              "group relative flex items-center gap-3 rounded-lg px-3 py-2 text-sm font-medium transition-all duration-200",
               pathname.startsWith("/settings/members")
-                ? "bg-white/15 text-white"
-                : "text-slate-400 hover:bg-white/8 hover:text-slate-100"
+                ? "bg-gradient-to-r from-blue-600/25 via-blue-600/10 to-transparent text-white"
+                : "text-slate-400 hover:bg-white/[0.06] hover:text-slate-100"
             )}
           >
-            <Shield className="h-4 w-4 shrink-0 text-slate-500 group-hover:text-slate-300" />
+            {pathname.startsWith("/settings/members") && (
+              <span className="absolute left-0 top-1/2 h-5 w-1 -translate-y-1/2 rounded-r-full bg-blue-400 shadow-[0_0_8px_rgba(96,165,250,0.6)]" />
+            )}
+            <Shield
+              className={cn(
+                "h-4 w-4 shrink-0 transition-all duration-200",
+                pathname.startsWith("/settings/members")
+                  ? "text-blue-400"
+                  : "text-slate-500 group-hover:translate-x-0.5 group-hover:text-slate-300"
+              )}
+            />
             <span>Members</span>
           </Link>
         )}
