@@ -24,6 +24,11 @@ const isUploadRoute = createRouteMatcher(["/api/documents(.*)"]);
 const isExportRoute = createRouteMatcher(["/api/proposals/(.*)/export"]);
 const isAuthRoute = createRouteMatcher(["/api/auth(.*)", "/sign-in(.*)", "/sign-up(.*)"]);
 
+// API routes authenticate themselves (each handler calls auth() and returns a
+// JSON 401 when unauthenticated). Calling auth.protect() on them in middleware
+// returns an HTML 404 page instead, which breaks client-side fetch().json().
+const isApiRoute = createRouteMatcher(["/api(.*)"]);
+
 export default clerkMiddleware(async (auth, req: NextRequest) => {
   // ── Rate limiting ──────────────────────────────────────────────────────────
   // Apply BEFORE auth check to protect against unauthenticated attacks.
@@ -53,7 +58,9 @@ export default clerkMiddleware(async (auth, req: NextRequest) => {
   }
 
   // ── Auth protection ────────────────────────────────────────────────────────
-  if (!isPublicRoute(req)) {
+  // Protect pages (redirects to sign-in). API routes self-authenticate via
+  // their own auth() check, so we don't auth.protect() them here.
+  if (!isPublicRoute(req) && !isApiRoute(req)) {
     await auth.protect();
   }
 

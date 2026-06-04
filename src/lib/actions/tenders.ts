@@ -121,10 +121,7 @@ export async function createTender(
       return { success: false, error: "Insufficient permissions." };
     }
     console.error("createTender error:", err);
-    return {
-      success: false,
-      error: `Failed to create tender: ${err instanceof Error ? err.message : String(err)}`,
-    };
+    return { success: false, error: "Failed to create tender. Please try again." };
   }
 }
 
