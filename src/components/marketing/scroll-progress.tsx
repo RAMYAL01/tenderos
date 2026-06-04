@@ -1,41 +1,52 @@
 "use client";
 
-import { useEffect, useState } from "react";
+import { useEffect, useRef } from "react";
 
 /**
- * Thin gradient bar pinned to the very top that fills as the user scrolls
- * the page. Pure scroll-driven, rAF-throttled.
+ * Thin gradient bar pinned to the top that fills as the user scrolls.
+ *
+ * Smoothness: we never call setState on scroll (that re-renders React on
+ * every frame and stutters). Instead we mutate the bar's transform directly
+ * via ref inside a single rAF, using GPU-accelerated scaleX.
  */
 export function ScrollProgress() {
-  const [progress, setProgress] = useState(0);
+  const barRef = useRef<HTMLDivElement>(null);
+  const ticking = useRef(false);
 
   useEffect(() => {
-    let raf = 0;
-    const update = () => {
-      const h = document.documentElement;
-      const scrolled = h.scrollTop;
-      const max = h.scrollHeight - h.clientHeight;
-      setProgress(max > 0 ? (scrolled / max) * 100 : 0);
+    const bar = barRef.current;
+    if (!bar) return;
+
+    const apply = () => {
+      const doc = document.documentElement;
+      const max = doc.scrollHeight - doc.clientHeight;
+      const p = max > 0 ? doc.scrollTop / max : 0;
+      bar.style.transform = `scaleX(${p})`;
+      ticking.current = false;
     };
+
     const onScroll = () => {
-      cancelAnimationFrame(raf);
-      raf = requestAnimationFrame(update);
+      if (!ticking.current) {
+        ticking.current = true;
+        requestAnimationFrame(apply);
+      }
     };
-    update();
+
+    apply();
     window.addEventListener("scroll", onScroll, { passive: true });
     window.addEventListener("resize", onScroll, { passive: true });
     return () => {
-      cancelAnimationFrame(raf);
       window.removeEventListener("scroll", onScroll);
       window.removeEventListener("resize", onScroll);
     };
   }, []);
 
   return (
-    <div className="fixed inset-x-0 top-0 z-[60] h-0.5 bg-transparent">
+    <div className="pointer-events-none fixed inset-x-0 top-0 z-[60] h-[3px]">
       <div
-        className="h-full origin-left bg-gradient-to-r from-blue-500 via-cyan-400 to-blue-600 transition-[width] duration-75 ease-out"
-        style={{ width: `${progress}%` }}
+        ref={barRef}
+        className="h-full w-full origin-left bg-gradient-to-r from-blue-500 via-cyan-400 to-blue-600 will-change-transform"
+        style={{ transform: "scaleX(0)" }}
       />
     </div>
   );

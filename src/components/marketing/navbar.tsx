@@ -19,8 +19,8 @@ import {
   Newspaper,
   Sparkles,
 } from "lucide-react";
-import { Button } from "@/components/ui/button";
 import { Logo } from "@/components/ui/logo";
+import { ShinyButton } from "./shiny-button";
 import { cn } from "@/lib/utils";
 
 const productMenu = [
@@ -48,13 +48,12 @@ export function Navbar() {
   const closeTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
 
   useEffect(() => {
-    const onScroll = () => setScrolled(window.scrollY > 12);
+    const onScroll = () => setScrolled(window.scrollY > 24);
     onScroll();
     window.addEventListener("scroll", onScroll, { passive: true });
     return () => window.removeEventListener("scroll", onScroll);
   }, []);
 
-  // Scrollspy — highlight the nav item for the section in view (home page).
   useEffect(() => {
     const ids = ["features", "pricing", "faq"];
     const observer = new IntersectionObserver(
@@ -72,7 +71,6 @@ export function Navbar() {
     return () => observer.disconnect();
   }, []);
 
-  // Lock body scroll when mobile drawer is open
   useEffect(() => {
     document.body.style.overflow = mobileOpen ? "hidden" : "";
     return () => {
@@ -86,16 +84,18 @@ export function Navbar() {
   };
   const scheduleClose = () => {
     if (closeTimer.current) clearTimeout(closeTimer.current);
-    closeTimer.current = setTimeout(() => setOpenMenu(null), 120);
+    closeTimer.current = setTimeout(() => setOpenMenu(null), 140);
   };
 
   return (
     <>
-      {/* Announcement bar — scrolls away in normal flow */}
+      {/* Announcement bar */}
       {showBanner && (
-        <div className="relative flex items-center justify-center gap-2 bg-gradient-to-r from-blue-600 via-blue-700 to-blue-600 px-4 py-2 text-center text-xs font-medium text-white">
-          <Sparkles className="h-3.5 w-3.5 shrink-0" />
-          <span>
+        <div className="relative flex items-center justify-center gap-2 overflow-hidden bg-gradient-to-r from-blue-600 via-blue-500 to-blue-700 px-4 py-2 text-center text-xs font-medium text-white">
+          {/* moving sheen */}
+          <span className="animate-shimmer pointer-events-none absolute inset-y-0 left-0 w-1/4 bg-white/15 blur-md" />
+          <Sparkles className="relative h-3.5 w-3.5 shrink-0" />
+          <span className="relative">
             New: AI proposal generation now supports bilingual export.{" "}
             <Link href="/sign-up" className="underline underline-offset-2 hover:text-blue-100">
               Try it free →
@@ -111,167 +111,107 @@ export function Navbar() {
         </div>
       )}
 
-      {/* Main nav — sticks to top after the banner scrolls away */}
-      <header
-        className={cn(
-          "sticky top-0 z-40 border-b transition-all duration-300",
-          scrolled
-            ? "border-slate-200/80 bg-white/85 shadow-sm backdrop-blur-lg dark:border-slate-800 dark:bg-slate-950/85"
-            : "border-transparent bg-white/60 backdrop-blur-sm dark:bg-slate-950/60"
-        )}
-      >
+      {/* Main nav — morphs into a floating pill island on scroll */}
+      <header className="sticky top-0 z-40 px-3 transition-all duration-300 sm:px-4">
         <nav
           className={cn(
-            "mx-auto flex max-w-6xl items-center justify-between px-4 transition-all duration-300 sm:px-6",
-            scrolled ? "h-16" : "h-20"
+            "mx-auto flex items-center justify-between transition-all duration-300 ease-out",
+            scrolled
+              ? "mt-3 h-14 max-w-5xl rounded-2xl border border-slate-200/70 bg-white/80 px-3 pl-5 shadow-lg shadow-slate-900/[0.06] backdrop-blur-xl dark:border-slate-800/80 dark:bg-slate-950/80"
+              : "h-20 max-w-6xl border-b border-transparent px-1"
           )}
         >
           {/* Logo */}
           <Link
             href="/"
-            className="transition-transform duration-300 hover:scale-[1.04] hover:drop-shadow-[0_0_12px_rgba(59,130,246,0.35)]"
+            className="transition-all duration-300 hover:scale-[1.04] hover:drop-shadow-[0_0_12px_rgba(59,130,246,0.4)]"
           >
-            <Logo size={34} />
+            <Logo size={32} />
           </Link>
 
           {/* Desktop links */}
-          <div className="hidden items-center gap-1 lg:flex">
-            {/* Product dropdown */}
-            <div
-              className="relative"
-              onMouseEnter={() => openDropdown("product")}
-              onMouseLeave={scheduleClose}
+          <div className="hidden items-center gap-0.5 lg:flex">
+            <Dropdown
+              label="Product"
+              isOpen={openMenu === "product"}
+              active={activeSection === "features"}
+              onEnter={() => openDropdown("product")}
+              onLeave={scheduleClose}
+              panelClassName="w-[560px]"
             >
-              <button
-                className={cn(
-                  "flex items-center gap-1 rounded-lg px-3 py-2 text-sm font-medium transition-colors",
-                  activeSection === "features"
-                    ? "text-blue-600"
-                    : "text-slate-600 hover:text-slate-900 dark:text-slate-300 dark:hover:text-white"
-                )}
-              >
-                Product
-                <ChevronDown
-                  className={cn(
-                    "h-4 w-4 transition-transform",
-                    openMenu === "product" && "rotate-180"
-                  )}
-                />
-              </button>
-
-              <div
-                className={cn(
-                  "absolute left-1/2 top-full w-[560px] -translate-x-1/2 pt-3 transition-all duration-200",
-                  openMenu === "product"
-                    ? "visible translate-y-0 opacity-100"
-                    : "invisible translate-y-1 opacity-0"
-                )}
-              >
-                <div className="grid grid-cols-2 gap-1 rounded-2xl border border-slate-200 bg-white p-3 shadow-xl shadow-slate-200/60 dark:border-slate-800 dark:bg-slate-900 dark:shadow-none">
-                  {productMenu.map((item) => {
-                    const Icon = item.icon;
-                    return (
-                      <Link
-                        key={item.title}
-                        href={item.href}
-                        className="flex items-start gap-3 rounded-xl p-3 transition-colors hover:bg-slate-50 dark:hover:bg-slate-800"
-                      >
-                        <span className={cn("rounded-lg p-2", item.bg)}>
-                          <Icon className={cn("h-4 w-4", item.color)} />
+              <div className="grid grid-cols-2 gap-1 p-3">
+                {productMenu.map((item) => {
+                  const Icon = item.icon;
+                  return (
+                    <Link
+                      key={item.title}
+                      href={item.href}
+                      className="group/item flex items-start gap-3 rounded-xl p-3 transition-colors hover:bg-slate-50 dark:hover:bg-slate-800"
+                    >
+                      <span className={cn("rounded-lg p-2 transition-transform group-hover/item:scale-110", item.bg)}>
+                        <Icon className={cn("h-4 w-4", item.color)} />
+                      </span>
+                      <span>
+                        <span className="block text-sm font-medium text-slate-900 dark:text-white">
+                          {item.title}
                         </span>
-                        <span>
-                          <span className="block text-sm font-medium text-slate-900 dark:text-white">
-                            {item.title}
-                          </span>
-                          <span className="block text-xs text-slate-500">
-                            {item.desc}
-                          </span>
-                        </span>
-                      </Link>
-                    );
-                  })}
-                </div>
+                        <span className="block text-xs text-slate-500">{item.desc}</span>
+                      </span>
+                    </Link>
+                  );
+                })}
               </div>
-            </div>
+            </Dropdown>
 
-            <NavLink href="/#pricing" active={activeSection === "pricing"}>
+            <PillLink href="/#pricing" active={activeSection === "pricing"}>
               Pricing
-            </NavLink>
-            <NavLink href="/about">About</NavLink>
+            </PillLink>
+            <PillLink href="/about">About</PillLink>
 
-            {/* Resources dropdown */}
-            <div
-              className="relative"
-              onMouseEnter={() => openDropdown("resources")}
-              onMouseLeave={scheduleClose}
+            <Dropdown
+              label="Resources"
+              isOpen={openMenu === "resources"}
+              onEnter={() => openDropdown("resources")}
+              onLeave={scheduleClose}
+              panelClassName="w-72"
             >
-              <button className="flex items-center gap-1 rounded-lg px-3 py-2 text-sm font-medium text-slate-600 transition-colors hover:text-slate-900 dark:text-slate-300 dark:hover:text-white">
-                Resources
-                <ChevronDown
-                  className={cn(
-                    "h-4 w-4 transition-transform",
-                    openMenu === "resources" && "rotate-180"
-                  )}
-                />
-              </button>
-
-              <div
-                className={cn(
-                  "absolute left-1/2 top-full w-72 -translate-x-1/2 pt-3 transition-all duration-200",
-                  openMenu === "resources"
-                    ? "visible translate-y-0 opacity-100"
-                    : "invisible translate-y-1 opacity-0"
-                )}
-              >
-                <div className="rounded-2xl border border-slate-200 bg-white p-2 shadow-xl shadow-slate-200/60 dark:border-slate-800 dark:bg-slate-900 dark:shadow-none">
-                  {resourcesMenu.map((item) => {
-                    const Icon = item.icon;
-                    return (
-                      <Link
-                        key={item.title}
-                        href={item.href}
-                        className="flex items-start gap-3 rounded-xl p-3 transition-colors hover:bg-slate-50 dark:hover:bg-slate-800"
-                      >
-                        <span className="rounded-lg bg-slate-100 p-2 dark:bg-slate-800">
-                          <Icon className="h-4 w-4 text-slate-600 dark:text-slate-300" />
+              <div className="p-2">
+                {resourcesMenu.map((item) => {
+                  const Icon = item.icon;
+                  return (
+                    <Link
+                      key={item.title}
+                      href={item.href}
+                      className="flex items-start gap-3 rounded-xl p-3 transition-colors hover:bg-slate-50 dark:hover:bg-slate-800"
+                    >
+                      <span className="rounded-lg bg-slate-100 p-2 dark:bg-slate-800">
+                        <Icon className="h-4 w-4 text-slate-600 dark:text-slate-300" />
+                      </span>
+                      <span>
+                        <span className="block text-sm font-medium text-slate-900 dark:text-white">
+                          {item.title}
                         </span>
-                        <span>
-                          <span className="block text-sm font-medium text-slate-900 dark:text-white">
-                            {item.title}
-                          </span>
-                          <span className="block text-xs text-slate-500">
-                            {item.desc}
-                          </span>
-                        </span>
-                      </Link>
-                    );
-                  })}
-                </div>
+                        <span className="block text-xs text-slate-500">{item.desc}</span>
+                      </span>
+                    </Link>
+                  );
+                })}
               </div>
-            </div>
+            </Dropdown>
           </div>
 
           {/* CTA buttons */}
           <div className="hidden items-center gap-2 lg:flex">
-            <Button variant="ghost" size="sm" asChild>
-              <Link href="/sign-in">Sign In</Link>
-            </Button>
-            <Button
-              size="sm"
-              className="group relative overflow-hidden shadow-sm shadow-blue-600/20"
-              asChild
+            <Link
+              href="/sign-in"
+              className="rounded-lg px-3 py-2 text-sm font-medium text-slate-600 transition-colors hover:text-slate-900 dark:text-slate-300 dark:hover:text-white"
             >
-              <Link href="/sign-up">
-                <span className="relative z-10 flex items-center gap-1.5">
-                  Start Free Trial
-                  <ArrowRight className="h-3.5 w-3.5 transition-transform group-hover:translate-x-0.5" />
-                </span>
-                {/* Shimmer */}
-                <span className="absolute inset-0 -z-0 overflow-hidden rounded-md">
-                  <span className="animate-shimmer absolute inset-y-0 left-0 w-1/3 bg-white/25 blur-md" />
-                </span>
-              </Link>
-            </Button>
+              Sign In
+            </Link>
+            <ShinyButton href="/sign-up" size="sm">
+              Start Free Trial
+              <ArrowRight className="h-3.5 w-3.5 transition-transform group-hover:translate-x-0.5" />
+            </ShinyButton>
           </div>
 
           {/* Mobile hamburger */}
@@ -286,13 +226,7 @@ export function Navbar() {
       </header>
 
       {/* Mobile drawer */}
-      <div
-        className={cn(
-          "fixed inset-0 z-50 lg:hidden",
-          mobileOpen ? "visible" : "invisible"
-        )}
-      >
-        {/* Backdrop */}
+      <div className={cn("fixed inset-0 z-50 lg:hidden", mobileOpen ? "visible" : "invisible")}>
         <div
           className={cn(
             "absolute inset-0 bg-slate-900/40 backdrop-blur-sm transition-opacity duration-300",
@@ -300,21 +234,15 @@ export function Navbar() {
           )}
           onClick={() => setMobileOpen(false)}
         />
-
-        {/* Panel */}
         <div
           className={cn(
-            "absolute right-0 top-0 flex h-full w-[82%] max-w-sm flex-col bg-white shadow-2xl transition-transform duration-300 ease-out dark:bg-slate-950",
+            "absolute right-0 top-0 flex h-full w-[84%] max-w-sm flex-col bg-white shadow-2xl transition-transform duration-300 ease-out dark:bg-slate-950",
             mobileOpen ? "translate-x-0" : "translate-x-full"
           )}
         >
           <div className="flex items-center justify-between border-b border-slate-100 px-5 py-4 dark:border-slate-800">
             <Logo size={30} />
-            <button
-              onClick={() => setMobileOpen(false)}
-              className="rounded-lg p-2"
-              aria-label="Close menu"
-            >
+            <button onClick={() => setMobileOpen(false)} className="rounded-lg p-2" aria-label="Close menu">
               <X className="h-5 w-5 text-slate-700 dark:text-slate-200" />
             </button>
           </div>
@@ -332,29 +260,29 @@ export function Navbar() {
                 href={link.href}
                 onClick={() => setMobileOpen(false)}
                 className={cn(
-                  "block border-b border-slate-50 py-3.5 text-base font-medium text-slate-800 transition-all dark:border-slate-800/50 dark:text-slate-200",
-                  mobileOpen
-                    ? "translate-x-0 opacity-100"
-                    : "translate-x-4 opacity-0"
+                  "flex items-center justify-between border-b border-slate-50 py-3.5 text-base font-medium text-slate-800 transition-all dark:border-slate-800/50 dark:text-slate-200",
+                  mobileOpen ? "translate-x-0 opacity-100" : "translate-x-4 opacity-0"
                 )}
                 style={{ transitionDelay: mobileOpen ? `${i * 50 + 100}ms` : "0ms" }}
               >
                 {link.label}
+                <ArrowRight className="h-4 w-4 text-slate-400" />
               </Link>
             ))}
           </div>
 
           <div className="flex flex-col gap-3 border-t border-slate-100 p-5 dark:border-slate-800">
-            <Button variant="outline" asChild>
-              <Link href="/sign-in" onClick={() => setMobileOpen(false)}>
-                Sign In
-              </Link>
-            </Button>
-            <Button asChild>
-              <Link href="/sign-up" onClick={() => setMobileOpen(false)}>
-                Start Free Trial
-              </Link>
-            </Button>
+            <Link
+              href="/sign-in"
+              onClick={() => setMobileOpen(false)}
+              className="flex h-11 items-center justify-center rounded-xl border border-slate-200 text-sm font-semibold text-slate-700 dark:border-slate-700 dark:text-slate-200"
+            >
+              Sign In
+            </Link>
+            <ShinyButton href="/sign-up" size="md" className="w-full">
+              Start Free Trial
+              <ArrowRight className="h-4 w-4" />
+            </ShinyButton>
           </div>
         </div>
       </div>
@@ -362,7 +290,9 @@ export function Navbar() {
   );
 }
 
-function NavLink({
+/* ── Sub-components ── */
+
+function PillLink({
   href,
   children,
   active = false,
@@ -375,13 +305,65 @@ function NavLink({
     <Link
       href={href}
       className={cn(
-        "relative rounded-lg px-3 py-2 text-sm font-medium transition-colors after:absolute after:bottom-1 after:left-3 after:h-0.5 after:w-[calc(100%-1.5rem)] after:origin-left after:rounded-full after:bg-blue-600 after:transition-transform after:duration-300 hover:after:scale-x-100",
+        "rounded-lg px-3 py-2 text-sm font-medium transition-all duration-200",
         active
-          ? "text-blue-600 after:scale-x-100"
-          : "text-slate-600 after:scale-x-0 hover:text-slate-900 dark:text-slate-300 dark:hover:text-white"
+          ? "bg-blue-50 text-blue-700 dark:bg-blue-950/60 dark:text-blue-300"
+          : "text-slate-600 hover:bg-slate-100 hover:text-slate-900 dark:text-slate-300 dark:hover:bg-slate-800 dark:hover:text-white"
       )}
     >
       {children}
     </Link>
+  );
+}
+
+function Dropdown({
+  label,
+  isOpen,
+  active = false,
+  onEnter,
+  onLeave,
+  panelClassName,
+  children,
+}: {
+  label: string;
+  isOpen: boolean;
+  active?: boolean;
+  onEnter: () => void;
+  onLeave: () => void;
+  panelClassName?: string;
+  children: React.ReactNode;
+}) {
+  return (
+    <div className="relative" onMouseEnter={onEnter} onMouseLeave={onLeave}>
+      <button
+        className={cn(
+          "flex items-center gap-1 rounded-lg px-3 py-2 text-sm font-medium transition-all duration-200",
+          active || isOpen
+            ? "text-blue-700 dark:text-blue-300"
+            : "text-slate-600 hover:bg-slate-100 hover:text-slate-900 dark:text-slate-300 dark:hover:bg-slate-800 dark:hover:text-white"
+        )}
+      >
+        {label}
+        <ChevronDown className={cn("h-4 w-4 transition-transform duration-200", isOpen && "rotate-180")} />
+      </button>
+
+      <div
+        className={cn(
+          "absolute left-1/2 top-full -translate-x-1/2 pt-3 transition-all duration-200 ease-out",
+          isOpen
+            ? "visible translate-y-0 scale-100 opacity-100"
+            : "invisible -translate-y-1 scale-95 opacity-0"
+        )}
+      >
+        <div
+          className={cn(
+            "origin-top rounded-2xl border border-slate-200 bg-white shadow-2xl shadow-slate-900/10 dark:border-slate-800 dark:bg-slate-900 dark:shadow-black/40",
+            panelClassName
+          )}
+        >
+          {children}
+        </div>
+      </div>
+    </div>
   );
 }

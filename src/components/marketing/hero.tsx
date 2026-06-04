@@ -1,8 +1,7 @@
-import Link from "next/link";
-import { Button } from "@/components/ui/button";
 import { ArrowRight, Play, Star } from "lucide-react";
 import { HeroStage } from "./hero-stage";
 import { Reveal } from "./reveal";
+import { ShinyButton } from "./shiny-button";
 
 export function Hero() {
   return (
@@ -72,27 +71,14 @@ export function Hero() {
           {/* CTAs */}
           <Reveal delay={240}>
             <div className="mt-9 flex flex-col items-center justify-center gap-4 sm:flex-row">
-              <Button
-                size="lg"
-                className="group h-12 gap-2 px-8 text-sm shadow-lg shadow-blue-600/20"
-                asChild
-              >
-                <Link href="/sign-up">
-                  Start Free Trial
-                  <ArrowRight className="h-4 w-4 transition-transform group-hover:translate-x-0.5" />
-                </Link>
-              </Button>
-              <Button
-                variant="outline"
-                size="lg"
-                className="h-12 gap-2 px-8 text-sm"
-                asChild
-              >
-                <Link href="#how-it-works">
-                  <Play className="h-4 w-4" />
-                  See How It Works
-                </Link>
-              </Button>
+              <ShinyButton href="/sign-up" size="lg">
+                Start Free Trial
+                <ArrowRight className="h-4 w-4 transition-transform group-hover:translate-x-0.5" />
+              </ShinyButton>
+              <ShinyButton href="#how-it-works" variant="ghost" size="lg">
+                <Play className="h-4 w-4" />
+                See How It Works
+              </ShinyButton>
             </div>
 
             {/* Trust line */}

@@ -1,7 +1,6 @@
-import Link from "next/link";
-import { Button } from "@/components/ui/button";
 import { ArrowRight } from "lucide-react";
 import { Reveal } from "./reveal";
+import { ShinyButton } from "./shiny-button";
 
 export function CTASection() {
   return (
@@ -45,24 +44,16 @@ export function CTASection() {
               </p>
 
               <div className="mt-9 flex flex-col items-center justify-center gap-4 sm:flex-row">
-                <Button
-                  size="lg"
-                  className="group h-12 gap-2 bg-white px-8 text-sm text-blue-700 hover:bg-blue-50"
-                  asChild
+                <ShinyButton href="/sign-up" variant="white" size="lg">
+                  Start Free Trial
+                  <ArrowRight className="h-4 w-4 transition-transform group-hover:translate-x-0.5" />
+                </ShinyButton>
+                <a
+                  href="mailto:sales@tenderos.ai"
+                  className="inline-flex h-12 items-center justify-center rounded-xl border border-white/30 px-8 text-[15px] font-semibold text-white transition-colors hover:bg-white/10"
                 >
-                  <Link href="/sign-up">
-                    Start Free Trial
-                    <ArrowRight className="h-4 w-4 transition-transform group-hover:translate-x-0.5" />
-                  </Link>
-                </Button>
-                <Button
-                  size="lg"
-                  variant="outline"
-                  className="h-12 border-white/30 bg-white/0 px-8 text-sm text-white hover:bg-white/10 hover:text-white"
-                  asChild
-                >
-                  <a href="mailto:sales@tenderos.ai">Talk to Sales</a>
-                </Button>
+                  Talk to Sales
+                </a>
               </div>
             </div>
           </div>
