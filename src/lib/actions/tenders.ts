@@ -105,11 +105,26 @@ export async function createTender(
 
     return { success: true, tenderId: tender.id };
   } catch (err) {
+    // Next.js control-flow errors (redirect/notFound) MUST propagate, not be
+    // swallowed — catching them produces a malformed Server Action response.
+    if (
+      err &&
+      typeof err === "object" &&
+      "digest" in err &&
+      typeof (err as { digest?: unknown }).digest === "string" &&
+      ((err as { digest: string }).digest.startsWith("NEXT_REDIRECT") ||
+        (err as { digest: string }).digest === "NEXT_NOT_FOUND")
+    ) {
+      throw err;
+    }
     if (err instanceof Error && err.message.includes("Requires")) {
       return { success: false, error: "Insufficient permissions." };
     }
     console.error("createTender error:", err);
-    return { success: false, error: "Failed to create tender. Please try again." };
+    return {
+      success: false,
+      error: `Failed to create tender: ${err instanceof Error ? err.message : String(err)}`,
+    };
   }
 }
 
