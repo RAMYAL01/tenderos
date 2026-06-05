@@ -3,7 +3,7 @@
 import Link from "next/link";
 import { usePathname } from "next/navigation";
 import { cn } from "@/lib/utils";
-import { FileText, CheckSquare, FolderOpen, ClipboardList, HelpCircle, Calculator } from "lucide-react";
+import { FileText, CheckSquare, FolderOpen, ClipboardList, HelpCircle, Calculator, Target } from "lucide-react";
 
 const tabs = [
   { label: "Documents", href: "", icon: FolderOpen },
@@ -11,6 +11,7 @@ const tabs = [
   { label: "Compliance", href: "/compliance", icon: CheckSquare },
   { label: "Proposals", href: "/proposals", icon: FileText },
   { label: "Financial", href: "/financial", icon: Calculator },
+  { label: "Optimization", href: "/optimization", icon: Target },
   { label: "Clarifications", href: "/clarifications", icon: HelpCircle },
 ];
 

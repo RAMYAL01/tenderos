@@ -5,6 +5,7 @@ import { getAuthContext } from "@/lib/auth";
 import { db } from "@/lib/prisma";
 import { FinancialBuilder } from "@/components/financial/financial-builder";
 import { StartFinancialButton } from "@/components/financial/start-financial-button";
+import { ExportFinancialButton } from "@/components/financial/export-financial-button";
 
 export const metadata = { title: "Financial Proposal" };
 
@@ -35,7 +36,9 @@ export default async function FinancialPage({
         title="Financial Proposal"
         titleAr="العرض المالي"
         description="Build a priced commercial proposal from your own rates — no AI pricing."
-      />
+      >
+        {financial && <ExportFinancialButton financialId={financial.id} />}
+      </PageHeader>
 
       <div className="p-6">
         {!financial ? (
