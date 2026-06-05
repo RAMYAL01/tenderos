@@ -565,9 +565,12 @@ model ContentLibraryItem {
   isTemplate    Boolean         @default(false) // Workspace-wide template
   usageCount    Int             @default(0)
   contentSource ContentSource   @default(HUMAN)
-  // Embedding stored as JSON array until pgvector is configured
+  // Embedding stored as JSON array (legacy in-process cosine path)
   embeddingEn   Json? // Float[] from OpenAI text-embedding-3-large
   embeddingAr   Json?
+  // pgvector column for tenant-bound RAG (queried only via $queryRaw).
+  // Backed by Neon `vector` extension; see src/lib/security/rag-search.ts.
+  embedding     Unsupported("vector(1536)")?
   createdById   String
   createdAt     DateTime        @default(now())
   updatedAt     DateTime        @updatedAt
