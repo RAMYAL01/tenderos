@@ -10,6 +10,8 @@ import {
   Sparkles,
   AlertTriangle,
   Clock,
+  Target,
+  TrendingUp,
 } from "lucide-react";
 import { cn } from "@/lib/utils";
 
@@ -49,6 +51,15 @@ const tabs = [
       "Generate in Arabic, English, or perfectly aligned side-by-side bilingual documents — formatting and RTL handled automatically.",
     color: "text-amber-600",
     bg: "bg-amber-50 dark:bg-amber-950",
+  },
+  {
+    key: "optimize",
+    icon: Target,
+    label: "Bid Optimization",
+    blurb:
+      "Before you submit, get a deterministic win-probability score — compliance coverage, proposal completeness, pricing risk, and the exact gaps to close. No AI guesswork, just the numbers from your own data.",
+    color: "text-rose-600",
+    bg: "bg-rose-50 dark:bg-rose-950",
   },
 ] as const;
 
@@ -179,6 +190,7 @@ export function FeatureShowcase() {
                 {active === 1 && <CompliancePanel />}
                 {active === 2 && <ProposalPanel />}
                 {active === 3 && <BilingualPanel />}
+                {active === 4 && <OptimizePanel />}
               </div>
             </div>
           </div>
@@ -335,6 +347,89 @@ function BilingualPanel() {
       <div className="flex items-center justify-center gap-2 rounded-lg bg-slate-50 py-2 text-xs text-slate-500 dark:bg-slate-800/40">
         <Languages className="h-3.5 w-3.5 text-amber-600" />
         Synced bilingual export · DOCX &amp; PDF
+      </div>
+    </PanelWrap>
+  );
+}
+
+function OptimizePanel() {
+  const score = 78;
+  const r = 34;
+  const circ = 2 * Math.PI * r;
+  const offset = circ - (score / 100) * circ;
+  const metrics = [
+    { label: "Compliance", value: 92, display: "92%", color: "bg-emerald-500" },
+    { label: "Completeness", value: 85, display: "85%", color: "bg-blue-500" },
+    { label: "Pricing risk", value: 22, display: "Low", color: "bg-amber-500" },
+  ];
+  return (
+    <PanelWrap>
+      <div className="flex items-center gap-5">
+        <div className="relative h-24 w-24 shrink-0">
+          <svg className="h-full w-full -rotate-90" viewBox="0 0 80 80">
+            <circle
+              cx="40"
+              cy="40"
+              r={r}
+              fill="none"
+              strokeWidth="7"
+              className="stroke-slate-100 dark:stroke-slate-800"
+            />
+            <circle
+              cx="40"
+              cy="40"
+              r={r}
+              fill="none"
+              strokeWidth="7"
+              strokeLinecap="round"
+              className="text-rose-500"
+              stroke="currentColor"
+              strokeDasharray={circ}
+              strokeDashoffset={offset}
+              style={{ transition: "stroke-dashoffset 0.8s ease" }}
+            />
+          </svg>
+          <div className="absolute inset-0 flex items-center justify-center">
+            <span className="text-xl font-bold text-slate-900 dark:text-white">
+              {score}
+              <span className="text-sm text-slate-400">%</span>
+            </span>
+          </div>
+        </div>
+        <div className="min-w-0">
+          <div className="flex items-center gap-1.5 text-xs font-semibold text-rose-600">
+            <TrendingUp className="h-3.5 w-3.5" /> Win probability — Strong
+          </div>
+          <p className="mt-1 text-xs leading-relaxed text-slate-500 dark:text-slate-400">
+            Scored deterministically from compliance, proposal completeness, your
+            priced financials, and historical win rate.
+          </p>
+        </div>
+      </div>
+
+      <div className="space-y-2.5">
+        {metrics.map((m, i) => (
+          <div
+            key={m.label}
+            style={{ animation: `fade-in 0.4s ease-out ${i * 0.1}s both` }}
+          >
+            <div className="mb-1 flex items-center justify-between text-[11px]">
+              <span className="text-slate-600 dark:text-slate-300">{m.label}</span>
+              <span className="font-medium text-slate-500">{m.display}</span>
+            </div>
+            <div className="h-1.5 w-full overflow-hidden rounded-full bg-slate-100 dark:bg-slate-800">
+              <div
+                className={cn("h-full rounded-full", m.color)}
+                style={{ width: `${m.value}%` }}
+              />
+            </div>
+          </div>
+        ))}
+      </div>
+
+      <div className="flex items-center gap-2 rounded-lg bg-rose-50/60 px-3 py-2 text-xs text-rose-700 dark:bg-rose-950/30 dark:text-rose-400">
+        <AlertTriangle className="h-3.5 w-3.5 shrink-0" />
+        2 mandatory gaps to close before submitting
       </div>
     </PanelWrap>
   );
