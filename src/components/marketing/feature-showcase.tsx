@@ -194,8 +194,8 @@ export function FeatureShowcase() {
           </div>
 
           {/* Preview panel */}
-          <div className="perspective-1500">
-            <div className="relative min-h-[420px] overflow-hidden rounded-2xl border border-slate-200 bg-white shadow-xl shadow-slate-200/50 dark:border-slate-800 dark:bg-slate-900 dark:shadow-none">
+          <div className="perspective-1500 h-full">
+            <div className="relative flex h-full min-h-[420px] flex-col overflow-hidden rounded-2xl border border-slate-200 bg-white shadow-xl shadow-slate-200/50 dark:border-slate-800 dark:bg-slate-900 dark:shadow-none">
               {/* Window chrome */}
               <div className="flex items-center gap-2 border-b border-slate-100 bg-slate-50 px-4 py-3 dark:border-slate-800 dark:bg-slate-800/40">
                 <span className="h-2.5 w-2.5 rounded-full bg-red-400" />
@@ -207,7 +207,7 @@ export function FeatureShowcase() {
               </div>
 
               {/* Panels */}
-              <div className="relative p-5 sm:p-6">
+              <div className="relative flex flex-1 flex-col justify-center p-5 sm:p-6">
                 {active === 0 && <ExtractPanel />}
                 {active === 1 && <CompliancePanel />}
                 {active === 2 && <KnowledgePanel />}
