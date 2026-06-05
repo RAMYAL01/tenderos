@@ -151,7 +151,7 @@ export function PricingTable() {
                 </p>
               </div>
             </div>
-            <ShinyButton href="mailto:sales@tenderos.ai" variant="ghost" external className="shrink-0">
+            <ShinyButton href="mailto:support@thetenderos.com" variant="ghost" external className="shrink-0">
               Contact Sales
             </ShinyButton>
           </div>

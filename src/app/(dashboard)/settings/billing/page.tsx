@@ -136,10 +136,10 @@ export default async function BillingPage() {
             <strong>Billing management</strong> via Stripe Customer Portal is
             configured in Phase 2. Contact{" "}
             <a
-              href="mailto:billing@tenderos.ai"
+              href="mailto:support@thetenderos.com"
               className="text-blue-600 hover:underline"
             >
-              billing@tenderos.ai
+              support@thetenderos.com
             </a>{" "}
             to upgrade, cancel, or request an invoice.
           </p>

@@ -51,7 +51,7 @@ export function FAQ() {
           </h2>
           <p className="mt-4 text-base text-slate-600 dark:text-slate-400">
             Everything you need to know. Can&apos;t find an answer?{" "}
-            <a href="mailto:hello@tenderos.ai" className="font-medium text-blue-600 hover:underline">
+            <a href="mailto:support@thetenderos.com" className="font-medium text-blue-600 hover:underline">
               Email us
             </a>
             .

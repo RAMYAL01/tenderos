@@ -18,7 +18,7 @@ export function HeroMockup() {
             <span className="h-3 w-3 rounded-full bg-emerald-400" />
           </div>
           <div className="ml-3 flex-1 rounded-md bg-white px-3 py-1 text-[11px] text-slate-400 dark:bg-slate-900">
-            app.tenderos.ai/tenders/riyadh-metro-phase-3
+            www.thetenderos.com/tenders/riyadh-metro-phase-3
           </div>
         </div>
 
