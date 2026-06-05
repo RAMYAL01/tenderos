@@ -1,4 +1,4 @@
-import { Upload, Brain, FileCheck } from "lucide-react";
+import { Upload, FileSearch, Brain, Calculator, Target, FileCheck } from "lucide-react";
 import { Reveal } from "./reveal";
 
 const steps = [
@@ -11,17 +11,38 @@ const steps = [
   },
   {
     number: "02",
-    icon: Brain,
-    title: "AI Extracts & Analyzes",
+    icon: FileSearch,
+    title: "Extract & Map Compliance",
     description:
-      "Claude AI reads every requirement, builds a compliance matrix, and identifies gaps in your capabilities within minutes.",
+      "Claude AI reads every requirement, builds a compliance matrix, and flags gaps in your capabilities within minutes.",
   },
   {
     number: "03",
-    icon: FileCheck,
-    title: "Generate & Submit",
+    icon: Brain,
+    title: "Draft with Your Knowledge Brain",
     description:
-      "Draft technical sections with AI, collaborate with your team in the rich editor, and export to DOCX or PDF when ready.",
+      "Generate technical sections grounded in your own documents — past performance, CVs, certifications — with every claim cited to its source.",
+  },
+  {
+    number: "04",
+    icon: Calculator,
+    title: "Build the Financial Proposal",
+    description:
+      "Price the bid from your own rates. Overhead, contingency, profit and VAT are computed deterministically — the AI never invents a price.",
+  },
+  {
+    number: "05",
+    icon: Target,
+    title: "Optimize to Win",
+    description:
+      "Get a deterministic win-probability score with pricing-risk analysis and the exact gaps to close before you submit.",
+  },
+  {
+    number: "06",
+    icon: FileCheck,
+    title: "Export & Submit",
+    description:
+      "Collaborate in the rich editor, then export a polished, perfectly aligned bilingual proposal to DOCX or PDF.",
   },
 ];
 
@@ -35,7 +56,7 @@ export function HowItWorks() {
             How It Works
           </p>
           <h2 className="mt-3 text-3xl font-bold tracking-tight text-slate-900 dark:text-white sm:text-4xl lg:text-5xl">
-            From RFP to proposal in three steps
+            From RFP to a winning, submitted proposal
           </h2>
         </Reveal>
 
@@ -45,8 +66,8 @@ export function HowItWorks() {
             const Icon = step.icon;
             return (
               <Reveal as="div" key={step.number} delay={i * 120} className="relative text-center">
-                {/* Connector line (desktop only) */}
-                {i < steps.length - 1 && (
+                {/* Connector line (desktop only) — not after the last item in a row */}
+                {i % 3 !== 2 && i < steps.length - 1 && (
                   <div className="absolute right-0 top-10 hidden h-px w-full translate-x-1/2 bg-gradient-to-r from-blue-200 to-transparent lg:block" />
                 )}
 
