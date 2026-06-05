@@ -107,11 +107,7 @@ export default async function RequirementsPage({
         )}
 
         {/* Requirements table */}
-        <RequirementsTable
-          requirements={requirements}
-          canEdit={canEdit}
-          onRequirementUpdated={() => {}}
-        />
+        <RequirementsTable requirements={requirements} canEdit={canEdit} />
       </div>
     </>
   );

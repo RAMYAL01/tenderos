@@ -1,6 +1,7 @@
 "use client";
 
 import { useState } from "react";
+import { useRouter } from "next/navigation";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -33,14 +34,13 @@ const TYPE_STYLES: Record<RequirementType, string> = {
 interface RequirementsTableProps {
   requirements: Requirement[];
   canEdit: boolean;
-  onRequirementUpdated: () => void;
 }
 
 export function RequirementsTable({
   requirements,
   canEdit,
-  onRequirementUpdated,
 }: RequirementsTableProps) {
+  const router = useRouter();
   const [searchQuery, setSearchQuery] = useState("");
   const [filterType, setFilterType] = useState<string>("all");
   const [filterPriority, setFilterPriority] = useState<string>("all");
@@ -69,7 +69,7 @@ export function RequirementsTable({
       const res = await fetch(`/api/requirements/${reqId}`, { method: "DELETE" });
       if (!res.ok) throw new Error("Delete failed");
       toast({ title: "Requirement deleted" });
-      onRequirementUpdated();
+      router.refresh();
     } catch {
       toast({ title: "Failed to delete requirement", variant: "destructive" });
     }
@@ -86,7 +86,7 @@ export function RequirementsTable({
       if (!res.ok) throw new Error("Update failed");
       toast({ title: "Requirement updated" });
       setEditingId(null);
-      onRequirementUpdated();
+      router.refresh();
     } catch {
       toast({ title: "Failed to update requirement", variant: "destructive" });
     }
