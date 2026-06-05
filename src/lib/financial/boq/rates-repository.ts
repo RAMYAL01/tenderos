@@ -1,10 +1,11 @@
 /**
  * Rate catalogue data-access layer (the "internal cost" source of truth).
  *
- * `RateRepository` is a port so the calculation engine never knows where rates
- * come from. The mock below seeds an in-memory `labor_rates` + `material_costs`
- * catalogue for local dev/tests; the commented `SupabaseRateRepository` shows
- * the exact production drop-in.
+ * `RateRepository` is a PORT so the calculation engine never knows where rates
+ * come from. Two adapters implement it:
+ *   - `InMemoryRateRepository` (below) — seeded fixtures for local dev / tests.
+ *   - `PrismaRateRepository` (./prisma-rate-repository) — production, backed by
+ *     Prisma + Neon Postgres (the `rate_catalogue_items` table).
  */
 
 import type { RateRecord, UnitOfMeasurement } from "./types";
@@ -59,8 +60,8 @@ const MATERIAL_COSTS: RateRecord[] = [
   { item_code: "5.1.2", unit_of_measurement: "no", unit_cost: 9.99, currency: "SAR", source: "material_costs" },
 ];
 
-/** In-memory mock implementing the Supabase contract. Deterministic, no I/O. */
-export class MockSupabaseRateRepository implements RateRepository {
+/** In-memory adapter. Deterministic, no I/O — for local dev and unit tests. */
+export class InMemoryRateRepository implements RateRepository {
   private readonly index = new Map<string, RateRecord>();
 
   constructor(seed: RateRecord[] = [...LABOR_RATES, ...MATERIAL_COSTS]) {
@@ -85,31 +86,3 @@ export class MockSupabaseRateRepository implements RateRepository {
     return itemCode.trim().toUpperCase();
   }
 }
-
-/*
- * ── Production drop-in (real Supabase) ───────────────────────────────────────
- * Create a `rate_catalogue` VIEW that UNIONs labor_rates + material_costs and
- * exposes the effective-dated current rate per item_code. Then:
- *
- * import { createClient } from "@supabase/supabase-js";
- *
- * export class SupabaseRateRepository implements RateRepository {
- *   private supabase = createClient(
- *     process.env.SUPABASE_URL!,
- *     process.env.SUPABASE_SERVICE_ROLE_KEY!, // server-only key
- *   );
- *
- *   async getRatesForItemCodes(itemCodes: string[]): Promise<Map<string, RateRecord>> {
- *     const { data, error } = await this.supabase
- *       .from("rate_catalogue")
- *       .select("item_code, unit_of_measurement, unit_cost, currency, source")
- *       .in("item_code", itemCodes);
- *     if (error) throw new Error(`Supabase rate lookup failed: ${error.message}`);
- *     const map = new Map<string, RateRecord>();
- *     for (const row of data ?? []) {
- *       map.set(row.item_code, { ...row, unit_of_measurement: normalizeUnit(row.unit_of_measurement) });
- *     }
- *     return map;
- *   }
- * }
- */

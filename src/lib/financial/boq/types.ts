@@ -45,8 +45,13 @@ export type RateSource = "labor_rates" | "material_costs";
 export interface RateRecord {
   item_code: string;
   unit_of_measurement: UnitOfMeasurement;
-  /** Internal unit cost as a decimal in MAJOR currency units (e.g. 45.75 SAR). */
-  unit_cost: number;
+  /**
+   * Internal unit cost in MAJOR currency units (e.g. 45.75 SAR).
+   * Accepts a string so a Postgres NUMERIC / Prisma Decimal can be passed
+   * verbatim (e.g. "1875.3330") without a lossy float conversion — the money
+   * engine parses it digit-by-digit.
+   */
+  unit_cost: number | string;
   /** ISO 4217 — must match the pricing currency. */
   currency: string;
   source: RateSource;

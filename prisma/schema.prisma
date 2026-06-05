@@ -219,6 +219,7 @@ model Organization {
   subscription        Subscription?
   auditLogs           AuditLog[]
   financialProposals  FinancialProposal[]
+  rateCatalogueItems  RateCatalogueItem[]
 
   @@map("organizations")
 }
@@ -741,4 +742,37 @@ model CostLine {
 
   @@index([financialProposalId])
   @@map("cost_lines")
+}
+
+// ─────────────────────────────────────────────────────────────────────────────
+// MODEL 18: RateCatalogueItem
+// The company's internal unit costs (labor + materials), org-scoped. This is
+// the deterministic source of truth the BOQ pricing engine queries — the AI
+// NEVER reads or writes prices here. unitCost is user/admin-maintained.
+// ─────────────────────────────────────────────────────────────────────────────
+enum RateSourceType {
+  LABOR
+  MATERIAL
+}
+
+model RateCatalogueItem {
+  id                String         @id @default(cuid())
+  orgId             String
+  itemCode          String // BOQ reference / catalogue code, e.g. "2.1.4", "L-FM-01"
+  description       String?
+  unitOfMeasurement String // normalized unit token: m2, m3, hr, no, ls, ton, kg
+  unitCost          Decimal        @db.Decimal(18, 4) // major currency units — never AI-set
+  currency          String         @default("SAR") @db.Char(3)
+  source            RateSourceType
+  effectiveFrom     DateTime? // optional effective-date for rate versioning
+  createdById       String?
+  createdAt         DateTime       @default(now())
+  updatedAt         DateTime       @updatedAt
+  deletedAt         DateTime?
+
+  organization Organization @relation(fields: [orgId], references: [id], onDelete: Cascade)
+
+  @@unique([orgId, itemCode]) // one active rate per code per org
+  @@index([orgId, itemCode])
+  @@map("rate_catalogue_items")
 }

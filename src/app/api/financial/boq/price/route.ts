@@ -18,9 +18,10 @@
 
 import { auth } from "@clerk/nextjs/server";
 import { NextResponse } from "next/server";
+import { db } from "@/lib/prisma";
 import { extractBoqLineItems } from "@/lib/financial/boq/extraction-prompt";
 import { priceBoq } from "@/lib/financial/boq/calculate-boq";
-import { MockSupabaseRateRepository } from "@/lib/financial/boq/rates-repository";
+import { PrismaRateRepository } from "@/lib/financial/boq/prisma-rate-repository";
 import { BoqPricingError } from "@/lib/financial/boq/errors";
 import type { BoqExtraction, ExtractedBoqLineItem, PricingConfig } from "@/lib/financial/boq/types";
 
@@ -31,6 +32,12 @@ export async function POST(req: Request) {
   // Auth guard — extraction calls a paid LLM, so never leave this open.
   const { userId, orgId } = await auth();
   if (!userId || !orgId) {
+    return NextResponse.json({ error: "UNAUTHORIZED" }, { status: 401 });
+  }
+
+  // Resolve the internal org id (rates are org-scoped in Neon/Postgres).
+  const org = await db.organization.findUnique({ where: { clerkOrgId: orgId } });
+  if (!org) {
     return NextResponse.json({ error: "UNAUTHORIZED" }, { status: 401 });
   }
 
@@ -58,8 +65,8 @@ export async function POST(req: Request) {
       ? { line_items: body.line_items }
       : await extractBoqLineItems(body.raw_boq ?? "");
 
-    // Part 2: deterministic pricing. Swap the repo for SupabaseRateRepository in prod.
-    const repo = new MockSupabaseRateRepository();
+    // Part 2: deterministic pricing against the org's Prisma/Neon rate catalogue.
+    const repo = new PrismaRateRepository(org.id);
     const result = await priceBoq(extraction, body.config, repo);
 
     return NextResponse.json(result);
