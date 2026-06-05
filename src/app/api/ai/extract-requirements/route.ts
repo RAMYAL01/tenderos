@@ -1,7 +1,11 @@
 import { auth } from "@clerk/nextjs/server";
-import { NextResponse } from "next/server";
+import { NextResponse, after } from "next/server";
 import { z } from "zod";
 import { db } from "@/lib/prisma";
+import { runExtractionAgent } from "@/lib/ai/agents/extract-requirements";
+
+export const runtime = "nodejs";
+export const maxDuration = 300;
 
 const RequestSchema = z.object({
   tenderId: z.string().min(1),
@@ -68,23 +72,25 @@ export async function POST(req: Request) {
     },
   });
 
-  // Fire-and-forget processing
-  const processUrl = `${process.env.NEXT_PUBLIC_APP_URL}/api/ai/extract-requirements/process`;
-  fetch(processUrl, {
-    method: "POST",
-    headers: {
-      "Content-Type": "application/json",
-      "x-internal-api-key": process.env.INTERNAL_API_KEY ?? "dev-internal",
-    },
-    body: JSON.stringify({
-      jobId: job.id,
-      tenderId,
-      documentIds: readyDocs.map((d) => d.id),
-      orgId: org.id,
-    }),
-  }).catch((err) =>
-    console.error("[extract-requirements] Failed to trigger process:", err)
-  );
+  // Run the extraction after the response is sent. after() keeps the
+  // function alive on Vercel (a fire-and-forget fetch would be killed).
+  const docIds = readyDocs.map((d) => d.id);
+  after(async () => {
+    try {
+      await runExtractionAgent(job.id, tenderId, docIds, org.id);
+    } catch (err) {
+      console.error("[extract-requirements] agent failed:", err);
+      await db.aIJob
+        .update({
+          where: { id: job.id },
+          data: {
+            status: "FAILED",
+            errorMessage: err instanceof Error ? err.message : "Extraction failed",
+          },
+        })
+        .catch(() => {});
+    }
+  });
 
   return NextResponse.json(
     {

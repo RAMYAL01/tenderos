@@ -1,12 +1,13 @@
 import { auth } from "@clerk/nextjs/server";
-import { NextResponse } from "next/server";
+import { NextResponse, after } from "next/server";
 import { z } from "zod";
 import { db } from "@/lib/prisma";
+import { runClarificationAgent } from "@/lib/ai/agents/clarification-questions";
 
 const RequestSchema = z.object({ tenderId: z.string().min(1) });
 
 export const runtime = "nodejs";
-export const maxDuration = 120;
+export const maxDuration = 300;
 
 /**
  * POST /api/ai/clarification-questions
@@ -46,17 +47,22 @@ export async function POST(req: Request) {
     },
   });
 
-  fetch(
-    `${process.env.NEXT_PUBLIC_APP_URL}/api/ai/clarification-questions/process`,
-    {
-      method: "POST",
-      headers: {
-        "Content-Type": "application/json",
-        "x-internal-api-key": process.env.INTERNAL_API_KEY ?? "dev-internal",
-      },
-      body: JSON.stringify({ jobId: job.id, tenderId, orgId: org.id }),
+  after(async () => {
+    try {
+      await runClarificationAgent(job.id, tenderId, org.id);
+    } catch (err) {
+      console.error("[clarification-questions] agent failed:", err);
+      await db.aIJob
+        .update({
+          where: { id: job.id },
+          data: {
+            status: "FAILED",
+            errorMessage: err instanceof Error ? err.message : "Clarification generation failed",
+          },
+        })
+        .catch(() => {});
     }
-  ).catch(console.error);
+  });
 
   return NextResponse.json({ jobId: job.id, status: "QUEUED" }, { status: 202 });
 }

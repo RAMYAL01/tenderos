@@ -1,7 +1,11 @@
 import { auth } from "@clerk/nextjs/server";
-import { NextResponse } from "next/server";
+import { NextResponse, after } from "next/server";
 import { z } from "zod";
 import { db } from "@/lib/prisma";
+import { runComplianceAgent } from "@/lib/ai/agents/generate-compliance";
+
+export const runtime = "nodejs";
+export const maxDuration = 300;
 
 const RequestSchema = z.object({ tenderId: z.string().min(1) });
 
@@ -49,17 +53,22 @@ export async function POST(req: Request) {
     },
   });
 
-  fetch(
-    `${process.env.NEXT_PUBLIC_APP_URL}/api/ai/generate-compliance/process`,
-    {
-      method: "POST",
-      headers: {
-        "Content-Type": "application/json",
-        "x-internal-api-key": process.env.INTERNAL_API_KEY ?? "dev-internal",
-      },
-      body: JSON.stringify({ jobId: job.id, tenderId, orgId: org.id }),
+  after(async () => {
+    try {
+      await runComplianceAgent(job.id, tenderId, org.id);
+    } catch (err) {
+      console.error("[generate-compliance] agent failed:", err);
+      await db.aIJob
+        .update({
+          where: { id: job.id },
+          data: {
+            status: "FAILED",
+            errorMessage: err instanceof Error ? err.message : "Compliance generation failed",
+          },
+        })
+        .catch(() => {});
     }
-  ).catch(console.error);
+  });
 
   return NextResponse.json({ jobId: job.id, status: "QUEUED" }, { status: 202 });
 }
