@@ -5,8 +5,9 @@ import { z } from "zod";
 import { db } from "@/lib/prisma";
 import { getAuthContext, requireRole } from "@/lib/auth";
 import { embedText } from "@/lib/ai/embeddings";
+import { KNOWLEDGE_TYPES } from "@/lib/knowledge-types";
 
-export interface ActionResult {
+interface ActionResult {
   success: boolean;
   id?: string;
   error?: string;
@@ -21,19 +22,6 @@ function isRedirect(err: unknown): boolean {
     (err as { digest: string }).digest.startsWith("NEXT_REDIRECT")
   );
 }
-
-/** Knowledge categories — stored as the first tag for filtering. */
-export const KNOWLEDGE_TYPES = [
-  "case_study",
-  "past_performance",
-  "cv",
-  "company_profile",
-  "certification",
-  "iso_document",
-  "sop",
-  "technical_report",
-  "other",
-] as const;
 
 const AddSchema = z.object({
   title: z.string().min(2, "Title required").max(300),

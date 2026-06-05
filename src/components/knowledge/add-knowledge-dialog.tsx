@@ -23,19 +23,8 @@ import {
   SelectValue,
 } from "@/components/ui/select";
 import { toast } from "@/hooks/use-toast";
-import { addKnowledgeItem, KNOWLEDGE_TYPES } from "@/lib/actions/knowledge";
-
-const TYPE_LABELS: Record<string, string> = {
-  case_study: "Case Study",
-  past_performance: "Past Performance",
-  cv: "CV / Resume",
-  company_profile: "Company Profile",
-  certification: "Certification",
-  iso_document: "ISO Document",
-  sop: "SOP",
-  technical_report: "Technical Report",
-  other: "Other",
-};
+import { addKnowledgeItem } from "@/lib/actions/knowledge";
+import { KNOWLEDGE_TYPES, KNOWLEDGE_TYPE_LABELS as TYPE_LABELS } from "@/lib/knowledge-types";
 
 export function AddKnowledgeDialog() {
   const router = useRouter();
