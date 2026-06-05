@@ -1,9 +1,15 @@
 import { auth } from "@clerk/nextjs/server";
-import { NextResponse } from "next/server";
+import { NextResponse, after } from "next/server";
 import { z } from "zod";
 import { createHash } from "crypto";
 import { db } from "@/lib/prisma";
 import { S3_BUCKET, downloadFromS3 } from "@/lib/s3";
+import { processDocument } from "@/lib/document-processing/pipeline";
+
+// pdf-parse / mammoth need the Node.js runtime; allow time for processing
+// to run via after() once the response has been sent.
+export const runtime = "nodejs";
+export const maxDuration = 300;
 
 const CreateDocumentSchema = z.object({
   tenderId: z.string().min(1),
@@ -132,20 +138,17 @@ export async function POST(req: Request) {
       },
     });
 
-    // Trigger processing asynchronously via the process endpoint
-    // We fire-and-forget the processing request
-    const processUrl = `${process.env.NEXT_PUBLIC_APP_URL}/api/documents/${document.id}/process`;
-
-    fetch(processUrl, {
-      method: "POST",
-      headers: {
-        "Content-Type": "application/json",
-        // Use internal API key to bypass Clerk auth
-        "x-internal-api-key": process.env.INTERNAL_API_KEY ?? "dev-internal",
-      },
-    }).catch((err) =>
-      console.error(`[documents] Failed to trigger processing for ${document.id}:`, err)
-    );
+    // Process the document AFTER the response is sent. after() keeps the
+    // serverless function alive past the response, so this runs reliably on
+    // Vercel — unlike a fire-and-forget fetch(), which gets killed when the
+    // function returns. processDocument() updates the doc status itself.
+    after(async () => {
+      try {
+        await processDocument(document.id);
+      } catch (err) {
+        console.error(`[documents] processing failed for ${document.id}:`, err);
+      }
+    });
 
     return NextResponse.json(
       {
