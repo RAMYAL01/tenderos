@@ -3,13 +3,14 @@
 import Link from "next/link";
 import { usePathname } from "next/navigation";
 import { cn } from "@/lib/utils";
-import { FileText, CheckSquare, FolderOpen, ClipboardList, HelpCircle } from "lucide-react";
+import { FileText, CheckSquare, FolderOpen, ClipboardList, HelpCircle, Calculator } from "lucide-react";
 
 const tabs = [
   { label: "Documents", href: "", icon: FolderOpen },
   { label: "Requirements", href: "/requirements", icon: ClipboardList },
   { label: "Compliance", href: "/compliance", icon: CheckSquare },
   { label: "Proposals", href: "/proposals", icon: FileText },
+  { label: "Financial", href: "/financial", icon: Calculator },
   { label: "Clarifications", href: "/clarifications", icon: HelpCircle },
 ];
 

@@ -166,6 +166,22 @@ enum LossReason {
   OTHER
 }
 
+enum CostCategory {
+  LABOR
+  EQUIPMENT
+  MATERIAL
+  SUBCONTRACTOR
+  TRANSPORT
+  OTHER_DIRECT
+}
+
+enum FinancialStatus {
+  DRAFT
+  PRICED
+  APPROVED
+  EXPORTED
+}
+
 // ─────────────────────────────────────────────────────────────────────────────
 // MODEL 1: Organization
 // Multi-tenant root. Every other table has orgId → this.
@@ -202,6 +218,7 @@ model Organization {
   aiJobs               AIJob[]
   subscription         Subscription?
   auditLogs            AuditLog[]
+  financialProposals   FinancialProposal[]
 
   @@map("organizations")
 }
@@ -283,10 +300,11 @@ model Tender {
   organization     Organization          @relation(fields: [orgId], references: [id], onDelete: Cascade)
   createdBy        Member                @relation("TenderCreatedBy", fields: [createdById], references: [id])
   assignedManager  Member?               @relation("TenderManager", fields: [assignedManagerId], references: [id])
-  documents        Document[]
-  requirements     Requirement[]
-  proposals        Proposal[]
-  complianceRows   ComplianceMatrixRow[]
+  documents          Document[]
+  requirements       Requirement[]
+  proposals          Proposal[]
+  complianceRows     ComplianceMatrixRow[]
+  financialProposals FinancialProposal[]
 
   @@map("tenders")
 }
@@ -664,4 +682,63 @@ model AuditLog {
   member       Member?       @relation(fields: [memberId], references: [id])
 
   @@map("audit_logs")
+}
+
+// ─────────────────────────────────────────────────────────────────────────────
+// MODEL 16: FinancialProposal
+// A priced commercial proposal for a tender. ALL monetary values derive
+// deterministically from user-entered CostLines + user-set assumptions.
+// No AI ever sets or invents a price — see src/lib/financial/calculate.ts.
+// ─────────────────────────────────────────────────────────────────────────────
+model FinancialProposal {
+  id              String          @id @default(cuid())
+  tenderId        String
+  orgId           String
+  title           String          @default("Financial Proposal")
+  currency        String          @default("SAR") @db.Char(3)
+  // Assumptions — user-entered percentages applied during calculation
+  overheadPct     Decimal         @default(0) @db.Decimal(7, 4)   // % of direct cost
+  contingencyPct  Decimal         @default(0) @db.Decimal(7, 4)   // % of (direct + overhead)
+  profitMarginPct Decimal         @default(0) @db.Decimal(7, 4)   // markup %
+  vatPct          Decimal         @default(0) @db.Decimal(7, 4)   // tax %
+  notes           String?
+  status          FinancialStatus @default(DRAFT)
+  createdById     String
+  createdAt       DateTime        @default(now())
+  updatedAt       DateTime        @updatedAt
+  deletedAt       DateTime?
+
+  tender       Tender       @relation(fields: [tenderId], references: [id], onDelete: Cascade)
+  organization Organization @relation(fields: [orgId], references: [id], onDelete: Cascade)
+  lines        CostLine[]
+
+  @@index([tenderId])
+  @@map("financial_proposals")
+}
+
+// ─────────────────────────────────────────────────────────────────────────────
+// MODEL 17: CostLine
+// A single priced line item. unitRate is ALWAYS user-entered (from BOQ,
+// rate cards, or vendor quotes). lineTotal = quantity * unitRate (computed).
+// ─────────────────────────────────────────────────────────────────────────────
+model CostLine {
+  id                  String       @id @default(cuid())
+  financialProposalId String
+  orgId               String
+  category            CostCategory @default(MATERIAL)
+  itemRef             String? // BOQ reference e.g. "2.1.4"
+  description         String
+  descriptionAr       String?
+  unit                String? // m2, hr, no, ls, m3, ton
+  quantity            Decimal      @default(0) @db.Decimal(18, 4)
+  unitRate            Decimal      @default(0) @db.Decimal(18, 4) // user-entered — never AI
+  source              String? // provenance: "Vendor quote #A-203", "Rate card 2026"
+  orderIndex          Int          @default(0)
+  createdAt           DateTime     @default(now())
+  updatedAt           DateTime     @updatedAt
+
+  financialProposal FinancialProposal @relation(fields: [financialProposalId], references: [id], onDelete: Cascade)
+
+  @@index([financialProposalId])
+  @@map("cost_lines")
 }
