@@ -195,7 +195,7 @@ export function FeatureShowcase() {
 
           {/* Preview panel */}
           <div className="perspective-1500 lg:self-center">
-            <div className="relative flex min-h-[440px] flex-col overflow-hidden rounded-2xl border border-slate-200 bg-white shadow-xl shadow-slate-200/50 dark:border-slate-800 dark:bg-slate-900 dark:shadow-none">
+            <div className="relative flex min-h-[380px] flex-col overflow-hidden rounded-2xl border border-slate-200 bg-white shadow-xl shadow-slate-200/50 dark:border-slate-800 dark:bg-slate-900 dark:shadow-none">
               {/* Window chrome */}
               <div className="flex items-center gap-2 border-b border-slate-100 bg-slate-50 px-4 py-3 dark:border-slate-800 dark:bg-slate-800/40">
                 <span className="h-2.5 w-2.5 rounded-full bg-red-400" />
