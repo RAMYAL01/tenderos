@@ -15,7 +15,9 @@ env:
   # Dummy values for build/type-check (real values only used at runtime)
   DATABASE_URL: "postgresql://postgres:postgres@localhost:5432/tenderos_test"
   DIRECT_URL: "postgresql://postgres:postgres@localhost:5432/tenderos_test"
-  NEXT_PUBLIC_CLERK_PUBLISHABLE_KEY: "pk_test_dummy"
+  # Valid-format placeholder (decodes to clerk.example.com$) so `next build`
+  # can prerender Clerk-wrapped pages. Real key is injected at runtime/Vercel.
+  NEXT_PUBLIC_CLERK_PUBLISHABLE_KEY: "pk_test_Y2xlcmsuZXhhbXBsZS5jb20k"
   CLERK_SECRET_KEY: "sk_test_dummy"
   ANTHROPIC_API_KEY: "sk-ant-dummy"
   OPENAI_API_KEY: "sk-dummy"
