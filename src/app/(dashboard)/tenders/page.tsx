@@ -14,7 +14,6 @@ export default function TendersPage() {
     <>
       <PageHeader
         title="Tenders"
-        titleAr="المناقصات"
         description="Manage all your bid projects and RFP responses."
       >
         <Button variant="outline" size="sm" asChild>

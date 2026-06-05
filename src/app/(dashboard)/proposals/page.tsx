@@ -42,7 +42,6 @@ export default async function ProposalsPage() {
     <>
       <PageHeader
         title="Proposals"
-        titleAr="العروض الفنية"
         description="All technical proposals across your tenders."
       >
         <Button size="sm" asChild>

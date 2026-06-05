@@ -7,7 +7,6 @@ export default function AnalyticsPage() {
     <>
       <PageHeader
         title="Analytics"
-        titleAr="التحليلات"
         description="Win rates, proposal performance, team activity, and AI usage."
       />
       <div className="flex flex-col items-center justify-center py-32 text-center">

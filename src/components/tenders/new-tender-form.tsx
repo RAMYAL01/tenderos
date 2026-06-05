@@ -48,7 +48,7 @@ const STEPS = [
 
 const LANGUAGE_OPTIONS = [
   { value: "EN", label: "English" },
-  { value: "AR", label: "Arabic (عربي)" },
+  { value: "AR", label: "Arabic" },
   { value: "BILINGUAL", label: "Bilingual (EN + AR)" },
   { value: "AR_SA", label: "Arabic — Saudi" },
   { value: "AR_AE", label: "Arabic — UAE" },
@@ -206,7 +206,7 @@ export function NewTenderForm() {
                 </Label>
                 <Input
                   id="titleAr"
-                  placeholder="مشروع محطة معالجة مياه الصرف"
+                  placeholder="e.g. Wastewater Treatment Plant Project"
                   dir="rtl"
                   style={{ fontFamily: "'IBM Plex Sans Arabic', system-ui, sans-serif" }}
                   {...register("titleAr")}

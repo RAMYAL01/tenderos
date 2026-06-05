@@ -113,7 +113,6 @@ export default async function OptimizationPage({
     <>
       <PageHeader
         title="Bid Optimization"
-        titleAr="تحسين العطاء"
         description="A deterministic read on bid health — win probability, compliance, pricing risk, and the gaps to close before you submit."
       />
       <div className="p-6">

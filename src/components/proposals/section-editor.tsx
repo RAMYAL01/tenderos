@@ -228,7 +228,7 @@ export function SectionEditor({
             )}
             style={{ fontFamily: "'IBM Plex Sans Arabic', system-ui, sans-serif" }}
           >
-            عربي
+            Arabic
           </button>
         </div>
       )}
@@ -250,7 +250,7 @@ export function SectionEditor({
             <TiptapEditor
               content={contentAr}
               onChange={(html) => handleContentChange("ar", html)}
-              placeholder="اكتب هنا أو استخدم الذكاء الاصطناعي لإنشاء هذا القسم..."
+              placeholder="Write here, or use AI to generate this section..."
               isRTL={true}
               disabled={!canEdit}
               minHeight={350}

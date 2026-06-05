@@ -58,15 +58,7 @@ export function Hero() {
               requirement, builds your compliance matrix, and drafts winning
               proposals with AI. Purpose-built for government contractors, EPC
               firms, and defense companies.
-            </p>
-            <p
-              className="mx-auto mt-3 max-w-lg font-arabic text-sm text-slate-400"
-              dir="rtl"
-              lang="ar"
-            >
-              حمّل أي مناقصة بالعربية أو الإنجليزية واحصل على عروض فنية جاهزة للفوز
-            </p>
-          </Reveal>
+            </p>          </Reveal>
 
           {/* CTAs */}
           <Reveal delay={240}>

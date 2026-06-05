@@ -45,7 +45,7 @@ const TONE_OPTIONS = [
 
 const LANGUAGE_OPTIONS = [
   { value: "EN", label: "English" },
-  { value: "AR", label: "Arabic (عربي)" },
+  { value: "AR", label: "Arabic" },
   { value: "BILINGUAL", label: "Bilingual" },
 ];
 

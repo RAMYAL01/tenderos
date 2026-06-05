@@ -31,15 +31,7 @@ export function Footer() {
             <Logo size={34} />
             <p className="mt-4 text-xs leading-relaxed text-slate-500">
               AI-powered proposal intelligence for government contractors.
-            </p>
-            <p
-              className="mt-2 font-arabic text-xs text-slate-400"
-              dir="rtl"
-              lang="ar"
-            >
-              نظام تشغيل الفوز بالعقود
-            </p>
-          </div>
+            </p>          </div>
 
           {/* Link columns */}
           {Object.entries(footerLinks).map(([category, links]) => (

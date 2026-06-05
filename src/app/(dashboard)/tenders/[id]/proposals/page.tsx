@@ -59,7 +59,6 @@ export default async function ProposalsPage({
     <>
       <PageHeader
         title="Proposals"
-        titleAr="العروض الفنية"
         description={`${proposals.length} proposal${proposals.length === 1 ? "" : "s"} for this tender`}
       >
         {canCreate && (

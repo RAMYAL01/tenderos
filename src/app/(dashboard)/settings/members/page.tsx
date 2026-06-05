@@ -30,7 +30,6 @@ export default async function MembersPage() {
     <>
       <PageHeader
         title="Team Members"
-        titleAr="أعضاء الفريق"
         description={`${members.length} member${members.length === 1 ? "" : "s"} in your workspace`}
       >
         {canManage && <InviteMemberDialog />}

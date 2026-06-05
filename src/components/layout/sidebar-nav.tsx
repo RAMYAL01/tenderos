@@ -16,7 +16,6 @@ import {
 
 interface NavItem {
   label: string;
-  labelAr: string;
   href: string;
   icon: React.ElementType;
   badge?: number;
@@ -25,37 +24,31 @@ interface NavItem {
 const mainNav: NavItem[] = [
   {
     label: "Dashboard",
-    labelAr: "لوحة التحكم",
     href: "/dashboard",
     icon: LayoutDashboard,
   },
   {
     label: "Tenders",
-    labelAr: "المناقصات",
     href: "/tenders",
     icon: FolderOpen,
   },
   {
     label: "Proposals",
-    labelAr: "العروض الفنية",
     href: "/proposals",
     icon: FileText,
   },
   {
     label: "Compliance",
-    labelAr: "الامتثال",
     href: "/compliance",
     icon: CheckSquare,
   },
   {
     label: "Knowledge",
-    labelAr: "ذاكرة الشركة",
     href: "/library",
     icon: BookOpen,
   },
   {
     label: "Analytics",
-    labelAr: "التحليلات",
     href: "/analytics",
     icon: BarChart2,
   },
@@ -64,7 +57,6 @@ const mainNav: NavItem[] = [
 const bottomNav: NavItem[] = [
   {
     label: "Settings",
-    labelAr: "الإعدادات",
     href: "/settings/workspace",
     icon: Settings,
   },

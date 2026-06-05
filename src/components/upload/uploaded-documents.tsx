@@ -9,8 +9,8 @@ import type { UploadedDocument } from "@/hooks/use-file-upload";
 
 const LANGUAGE_LABELS: Record<string, string> = {
   ENGLISH: "English",
-  ARABIC: "Arabic / عربي",
-  BILINGUAL: "Bilingual / ثنائي اللغة",
+  ARABIC: "Arabic",
+  BILINGUAL: "Bilingual",
   UNKNOWN: "Unknown",
 };
 

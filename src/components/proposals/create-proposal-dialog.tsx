@@ -18,7 +18,7 @@ import { toast } from "@/hooks/use-toast";
 
 const LANGUAGE_OPTIONS = [
   { value: "EN", label: "English only" },
-  { value: "AR", label: "Arabic only (عربي)" },
+  { value: "AR", label: "Arabic only" },
   { value: "AR_SA", label: "Arabic — Saudi Arabia" },
   { value: "AR_AE", label: "Arabic — UAE" },
   { value: "AR_EG", label: "Arabic — Egypt" },

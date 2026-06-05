@@ -45,7 +45,6 @@ export default async function CompliancePage({
     <>
       <PageHeader
         title="Compliance Matrix"
-        titleAr="مصفوفة الامتثال"
         description={`${rows.length} requirements · ${score}% coverage`}
       />
       <div className="p-6">

@@ -50,7 +50,6 @@ export default async function RequirementsPage({
     <>
       <PageHeader
         title="Requirements"
-        titleAr="المتطلبات"
         description={
           hasRequirements
             ? `${requirements.length} requirements extracted from tender documents`

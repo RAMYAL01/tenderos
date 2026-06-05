@@ -39,7 +39,6 @@ export default async function ClarificationsPage({
     <>
       <PageHeader
         title="Clarification Questions"
-        titleAr="أسئلة الاستيضاح"
         description="AI-generated RFI questions for submission to the client"
       />
       <div className="p-6">

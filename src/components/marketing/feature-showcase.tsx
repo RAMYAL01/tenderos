@@ -321,7 +321,7 @@ function BilingualPanel() {
         </div>
         <div className="rounded-lg border border-slate-100 p-3 dark:border-slate-800" dir="rtl">
           <div className="mb-2 text-[10px] font-semibold uppercase tracking-wide text-slate-400">
-            العربية
+            Arabic
           </div>
           {["100%", "82%", "90%", "65%"].map((w, i) => (
             <div

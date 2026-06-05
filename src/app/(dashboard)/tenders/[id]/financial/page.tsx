@@ -34,7 +34,6 @@ export default async function FinancialPage({
     <>
       <PageHeader
         title="Financial Proposal"
-        titleAr="العرض المالي"
         description="Build a priced commercial proposal from your own rates — no AI pricing."
       >
         {financial && <ExportFinancialButton financialId={financial.id} />}

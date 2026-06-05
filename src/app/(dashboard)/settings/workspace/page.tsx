@@ -96,7 +96,6 @@ export default async function WorkspaceSettingsPage() {
     <>
       <PageHeader
         title="Workspace Settings"
-        titleAr="إعدادات مساحة العمل"
         description="Manage your organization profile, language preferences, and plan usage."
       />
 

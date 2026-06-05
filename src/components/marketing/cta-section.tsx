@@ -35,14 +35,6 @@ export function CTASection() {
                 Join contractors across the Gulf submitting better proposals,
                 faster. 14-day free trial — no credit card required.
               </p>
-              <p
-                className="mx-auto mt-3 max-w-md font-arabic text-sm text-blue-200/80"
-                dir="rtl"
-                lang="ar"
-              >
-                ابدأ تجربتك المجانية اليوم وفز بمزيد من العقود
-              </p>
-
               <div className="mt-9 flex flex-col items-center justify-center gap-4 sm:flex-row">
                 <ShinyButton href="/sign-up" variant="white" size="lg">
                   Start Free Trial

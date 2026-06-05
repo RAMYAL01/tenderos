@@ -135,14 +135,6 @@ export function BrandPanel() {
           AI-powered bilingual proposal intelligence for government contractors,
           EPC firms, and defense companies across MENA and globally.
         </p>
-        <p
-          className="mt-3 font-arabic text-sm text-slate-400/70"
-          dir="rtl"
-          lang="ar"
-        >
-          نظام تشغيل الفوز بالعقود — الذكاء الاصطناعي لتقديم العطاءات
-        </p>
-
         {/* Social proof stats */}
         <div className="mt-9 grid grid-cols-3 gap-6">
           {stats.map((stat) => (

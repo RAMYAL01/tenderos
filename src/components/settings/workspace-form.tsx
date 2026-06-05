@@ -122,7 +122,7 @@ export function WorkspaceForm({ org, canEdit }: WorkspaceFormProps) {
           </Label>
           <Input
             id="nameAr"
-            placeholder="شركة أكمي للمقاولات"
+            placeholder="e.g. Acme Contracting Co."
             dir="rtl"
             disabled={!canEdit || isPending}
             style={{ fontFamily: "'IBM Plex Sans Arabic', system-ui, sans-serif" }}

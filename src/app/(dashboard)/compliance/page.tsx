@@ -35,7 +35,6 @@ export default async function CompliancePage() {
     <>
       <PageHeader
         title="Compliance"
-        titleAr="الامتثال"
         description="Track requirement coverage across all your tenders."
       />
 

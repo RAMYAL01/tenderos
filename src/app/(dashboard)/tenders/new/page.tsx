@@ -17,7 +17,6 @@ export default async function NewTenderPage() {
     <>
       <PageHeader
         title="Create New Tender"
-        titleAr="إنشاء مناقصة جديدة"
         description="Set up your bid project and upload the RFP documents to get started."
       />
       <div className="p-6">

@@ -35,7 +35,6 @@ export default async function LibraryPage() {
     <>
       <PageHeader
         title="Knowledge Brain"
-        titleAr="ذاكرة الشركة"
         description="Your company's knowledge — ask questions, get answers grounded in your own documents."
       >
         <AddKnowledgeDialog />

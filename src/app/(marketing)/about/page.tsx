@@ -104,15 +104,7 @@ export default function AboutPage() {
                 operating system to extract requirements, prove compliance, and
                 write winning proposals in Arabic and English, in a fraction of
                 the time.
-              </p>
-              <p
-                className="mx-auto mt-3 max-w-lg font-arabic text-sm text-slate-400"
-                dir="rtl"
-                lang="ar"
-              >
-                نساعد المقاولين على الفوز بالمشاريع التي تبني الأوطان
-              </p>
-            </Reveal>
+              </p>            </Reveal>
           </div>
         </section>
 

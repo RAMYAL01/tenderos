@@ -163,16 +163,7 @@ export function FileDropzone({
             </p>
             <p className="mt-1.5 text-xs text-slate-500">
               PDF, DOCX, DOC, TXT — up to 50 MB each
-            </p>
-            {/* Arabic hint */}
-            <p
-              className="mt-1 text-xs text-slate-400"
-              dir="rtl"
-              style={{ fontFamily: "'IBM Plex Sans Arabic', system-ui, sans-serif" }}
-            >
-              ملفات PDF و DOCX — بالعربية والإنجليزية
-            </p>
-          </>
+            </p>          </>
         )}
       </div>
 
