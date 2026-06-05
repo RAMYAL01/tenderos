@@ -52,6 +52,7 @@ enum DocumentStatus {
   PARSING
   INDEXING
   READY
+  NEEDS_REVIEW // OCR/parse succeeded but low confidence — held for human review
   FAILED
   QUARANTINED
 }
@@ -341,11 +342,57 @@ model Document {
   deletedAt          DateTime?
 
   // Relations
-  tender       Tender        @relation(fields: [tenderId], references: [id], onDelete: Cascade)
-  uploadedBy   Member        @relation(fields: [uploadedById], references: [id])
+  tender       Tender               @relation(fields: [tenderId], references: [id], onDelete: Cascade)
+  uploadedBy   Member               @relation(fields: [uploadedById], references: [id])
   requirements Requirement[]
+  reviewFlags  DocumentReviewFlag[]
 
   @@map("documents")
+}
+
+// ─────────────────────────────────────────────────────────────────────────────
+// MODEL: DocumentReviewFlag
+// Fault tolerance for the ingestion pipeline. When OCR/stitching confidence is
+// too low to trust (unreadable table, inconsistent column counts, low word
+// confidence), the pipeline records a flag here and sets the document to
+// NEEDS_REVIEW instead of silently emitting garbage. A human resolves it.
+// ─────────────────────────────────────────────────────────────────────────────
+enum ReviewFlagType {
+  LOW_OCR_CONFIDENCE
+  UNREADABLE_TABLE
+  TABLE_COLUMN_MISMATCH
+  EMPTY_PAGE
+  STITCH_AMBIGUITY
+  LANGUAGE_DETECTION_LOW
+  LLM_STRUCTURING_FAILED
+}
+
+enum ReviewFlagSeverity {
+  WARNING // proceed, but surface to the user
+  BLOCKER // hold the document; do not auto-promote downstream
+}
+
+model DocumentReviewFlag {
+  id         String             @id @default(cuid())
+  documentId String
+  orgId      String
+  type       ReviewFlagType
+  severity   ReviewFlagSeverity @default(WARNING)
+  message    String
+  pageNumber Int? // 1-based page the issue was found on, if applicable
+  tableIndex Int? // index of the offending table on that page, if applicable
+  confidence Float? // 0.0–1.0 aggregate confidence that triggered the flag
+  context    Json? // arbitrary debug payload (bounding regions, raw snippet)
+  resolved   Boolean            @default(false)
+  resolvedBy String?
+  resolvedAt DateTime?
+  createdAt  DateTime           @default(now())
+
+  document Document @relation(fields: [documentId], references: [id], onDelete: Cascade)
+
+  @@index([documentId])
+  @@index([orgId, resolved])
+  @@map("document_review_flags")
 }
 
 // ─────────────────────────────────────────────────────────────────────────────
