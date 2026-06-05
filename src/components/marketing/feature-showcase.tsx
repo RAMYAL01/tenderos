@@ -141,7 +141,7 @@ export function FeatureShowcase() {
 
         <div className="mt-14 grid grid-cols-1 gap-8 lg:grid-cols-[minmax(0,400px)_1fr] lg:gap-12">
           {/* Tabs */}
-          <div className="flex flex-col gap-3">
+          <div className="flex flex-col gap-2">
             {tabs.map((t, i) => {
               const Icon = t.icon;
               const isActive = i === active;
@@ -150,7 +150,7 @@ export function FeatureShowcase() {
                   key={t.key}
                   onClick={() => select(i)}
                   className={cn(
-                    "group relative overflow-hidden rounded-2xl border p-5 text-left transition-all",
+                    "group relative overflow-hidden rounded-2xl border p-4 text-left transition-all",
                     isActive
                       ? "border-blue-200 bg-white shadow-lg shadow-blue-100/50 dark:border-blue-900 dark:bg-slate-900 dark:shadow-none"
                       : "border-transparent bg-white/50 hover:bg-white dark:bg-slate-900/40 dark:hover:bg-slate-900"
