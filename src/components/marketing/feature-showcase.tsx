@@ -12,6 +12,10 @@ import {
   Clock,
   Target,
   TrendingUp,
+  Calculator,
+  Brain,
+  ShieldCheck,
+  FileText,
 } from "lucide-react";
 import { cn } from "@/lib/utils";
 
@@ -35,6 +39,15 @@ const tabs = [
     bg: "bg-emerald-50 dark:bg-emerald-950",
   },
   {
+    key: "knowledge",
+    icon: Brain,
+    label: "Corporate Knowledge Brain",
+    blurb:
+      "Ask plain-English questions and get answers grounded only in your own documents — certifications, CVs, past performance — every answer cited back to the source file.",
+    color: "text-cyan-600",
+    bg: "bg-cyan-50 dark:bg-cyan-950",
+  },
+  {
     key: "proposal",
     icon: PenTool,
     label: "Proposal Generation",
@@ -42,6 +55,15 @@ const tabs = [
       "Draft technical sections with Claude AI — grounded in your past performance and calibrated to the tender's scoring criteria.",
     color: "text-violet-600",
     bg: "bg-violet-50 dark:bg-violet-950",
+  },
+  {
+    key: "financial",
+    icon: Calculator,
+    label: "Financial Proposal Engine",
+    blurb:
+      "Build a priced commercial proposal from your own rates. Every figure — overhead, contingency, profit, VAT — is computed deterministically. The AI never invents a price. Export to a clean DOCX.",
+    color: "text-teal-600",
+    bg: "bg-teal-50 dark:bg-teal-950",
   },
   {
     key: "bilingual",
@@ -188,9 +210,11 @@ export function FeatureShowcase() {
               <div className="relative p-5 sm:p-6">
                 {active === 0 && <ExtractPanel />}
                 {active === 1 && <CompliancePanel />}
-                {active === 2 && <ProposalPanel />}
-                {active === 3 && <BilingualPanel />}
-                {active === 4 && <OptimizePanel />}
+                {active === 2 && <KnowledgePanel />}
+                {active === 3 && <ProposalPanel />}
+                {active === 4 && <FinancialPanel />}
+                {active === 5 && <BilingualPanel />}
+                {active === 6 && <OptimizePanel />}
               </div>
             </div>
           </div>
@@ -430,6 +454,99 @@ function OptimizePanel() {
       <div className="flex items-center gap-2 rounded-lg bg-rose-50/60 px-3 py-2 text-xs text-rose-700 dark:bg-rose-950/30 dark:text-rose-400">
         <AlertTriangle className="h-3.5 w-3.5 shrink-0" />
         2 mandatory gaps to close before submitting
+      </div>
+    </PanelWrap>
+  );
+}
+
+function KnowledgePanel() {
+  const sources = ["ISO 9001 Certificate.pdf", "Company Profile 2024", "QHSE Manual"];
+  return (
+    <PanelWrap>
+      <div className="flex items-center gap-2 rounded-lg border border-slate-200 bg-slate-50/60 px-3 py-2.5 dark:border-slate-700 dark:bg-slate-800/40">
+        <Brain className="h-4 w-4 shrink-0 text-cyan-500" />
+        <span className="text-xs text-slate-700 dark:text-slate-300">
+          What ISO certifications do we hold?
+        </span>
+        <Sparkles className="ml-auto h-3.5 w-3.5 shrink-0 text-cyan-500" />
+      </div>
+      <div
+        className="rounded-lg border border-slate-100 bg-white p-3 text-xs leading-relaxed text-slate-700 dark:border-slate-800 dark:bg-slate-900 dark:text-slate-300"
+        style={{ animation: "fade-in 0.5s ease-out both" }}
+      >
+        Your company holds{" "}
+        <span className="font-semibold text-slate-900 dark:text-white">ISO 9001:2015</span>,{" "}
+        <span className="font-semibold text-slate-900 dark:text-white">ISO 14001</span>, and{" "}
+        <span className="font-semibold text-slate-900 dark:text-white">ISO 45001</span> — all
+        current and verified in your uploaded certificates.
+      </div>
+      <div>
+        <div className="mb-1.5 text-[10px] font-medium uppercase tracking-wide text-slate-400">
+          Sources
+        </div>
+        <div className="flex flex-wrap gap-1.5">
+          {sources.map((s, i) => (
+            <span
+              key={s}
+              className="inline-flex items-center gap-1 rounded-md border border-slate-200 bg-white px-2 py-0.5 text-[10px] text-slate-600 dark:border-slate-700 dark:bg-slate-900 dark:text-slate-300"
+              style={{ animation: `fade-in 0.4s ease-out ${0.25 + i * 0.1}s both` }}
+            >
+              <FileText className="h-2.5 w-2.5 text-cyan-500" /> {s}
+            </span>
+          ))}
+        </div>
+      </div>
+    </PanelWrap>
+  );
+}
+
+function FinancialPanel() {
+  const rows = [
+    { label: "Direct cost", value: "SAR 274,000", bold: true },
+    { label: "Overhead (10%)", value: "27,400" },
+    { label: "Contingency (5%)", value: "15,070" },
+    { label: "Profit (12%)", value: "37,976" },
+    { label: "VAT (15%)", value: "53,167" },
+  ];
+  return (
+    <PanelWrap>
+      <div className="flex items-center justify-between">
+        <div className="flex items-center gap-2 text-xs font-medium text-teal-600">
+          <Calculator className="h-3.5 w-3.5" /> Deterministic cost build-up
+        </div>
+        <span className="inline-flex items-center gap-1 rounded-full bg-teal-50 px-2 py-0.5 text-[10px] font-medium text-teal-700 dark:bg-teal-950 dark:text-teal-400">
+          <ShieldCheck className="h-3 w-3" /> No AI pricing
+        </span>
+      </div>
+      <div className="overflow-hidden rounded-lg border border-slate-100 dark:border-slate-800">
+        {rows.map((r, i) => (
+          <div
+            key={r.label}
+            className="flex items-center justify-between border-b border-slate-50 px-3 py-2 last:border-0 dark:border-slate-800/60"
+            style={{ animation: `fade-in 0.4s ease-out ${i * 0.08}s both` }}
+          >
+            <span
+              className={cn(
+                "text-xs text-slate-600 dark:text-slate-300",
+                r.bold && "font-semibold text-slate-900 dark:text-white"
+              )}
+            >
+              {r.label}
+            </span>
+            <span
+              className={cn(
+                "font-mono text-xs text-slate-500",
+                r.bold && "font-semibold text-slate-900 dark:text-white"
+              )}
+            >
+              {r.value}
+            </span>
+          </div>
+        ))}
+      </div>
+      <div className="flex items-center justify-between rounded-lg bg-slate-900 px-3 py-2.5 text-white dark:bg-blue-600">
+        <span className="text-xs font-semibold">Total price (incl. VAT)</span>
+        <span className="font-mono text-sm font-bold">SAR 407,613</span>
       </div>
     </PanelWrap>
   );
