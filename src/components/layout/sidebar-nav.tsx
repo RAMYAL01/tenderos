@@ -48,8 +48,8 @@ const mainNav: NavItem[] = [
     icon: CheckSquare,
   },
   {
-    label: "Library",
-    labelAr: "مكتبة المحتوى",
+    label: "Knowledge",
+    labelAr: "ذاكرة الشركة",
     href: "/library",
     icon: BookOpen,
   },
