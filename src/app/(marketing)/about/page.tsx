@@ -222,7 +222,7 @@ export default function AboutPage() {
                   <Button
                     size="lg"
                     variant="outline"
-                    className="h-12 border-white/30 px-8 text-sm text-white hover:bg-white/10 hover:text-white"
+                    className="h-12 border-white/40 bg-transparent px-8 text-sm text-white hover:bg-white/10 hover:text-white"
                     asChild
                   >
                     <Link href="/contact">Contact Us</Link>
