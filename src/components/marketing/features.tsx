@@ -1,9 +1,11 @@
 import {
   FileSearch,
   CheckSquare,
+  Brain,
   PenTool,
+  Calculator,
+  Target,
   Languages,
-  Library,
   ShieldCheck,
 } from "lucide-react";
 import { Reveal } from "./reveal";
@@ -32,6 +34,16 @@ const features = [
     span: "",
   },
   {
+    icon: Brain,
+    title: "Corporate Knowledge Brain",
+    description:
+      "Ask plain-English questions and get answers grounded only in your own documents — each one cited to its source file.",
+    color: "text-cyan-600",
+    bg: "bg-cyan-50 dark:bg-cyan-950/60",
+    ring: "group-hover:ring-cyan-200 dark:group-hover:ring-cyan-900",
+    span: "",
+  },
+  {
     icon: PenTool,
     title: "Proposal Generation",
     description:
@@ -42,6 +54,26 @@ const features = [
     span: "",
   },
   {
+    icon: Calculator,
+    title: "Financial Proposal Engine",
+    description:
+      "Price the bid from your own rates — overhead, contingency, profit and VAT computed deterministically. The AI never invents a price.",
+    color: "text-teal-600",
+    bg: "bg-teal-50 dark:bg-teal-950/60",
+    ring: "group-hover:ring-teal-200 dark:group-hover:ring-teal-900",
+    span: "",
+  },
+  {
+    icon: Target,
+    title: "Bid Optimization",
+    description:
+      "A deterministic win-probability score with pricing-risk and the exact gaps to close before you submit.",
+    color: "text-rose-600",
+    bg: "bg-rose-50 dark:bg-rose-950/60",
+    ring: "group-hover:ring-rose-200 dark:group-hover:ring-rose-900",
+    span: "",
+  },
+  {
     icon: Languages,
     title: "Truly Bilingual",
     description:
@@ -49,17 +81,6 @@ const features = [
     color: "text-amber-600",
     bg: "bg-amber-50 dark:bg-amber-950/60",
     ring: "group-hover:ring-amber-200 dark:group-hover:ring-amber-900",
-    span: "lg:col-span-2",
-    accent: true,
-  },
-  {
-    icon: Library,
-    title: "Content Library",
-    description:
-      "Reuse past performance, CVs, and methodology with AI-powered search.",
-    color: "text-rose-600",
-    bg: "bg-rose-50 dark:bg-rose-950/60",
-    ring: "group-hover:ring-rose-200 dark:group-hover:ring-rose-900",
     span: "",
   },
   {
@@ -67,9 +88,9 @@ const features = [
     title: "Enterprise Security",
     description:
       "Role-based access, audit logs, encrypted storage, and isolated multi-tenant workspaces.",
-    color: "text-cyan-600",
-    bg: "bg-cyan-50 dark:bg-cyan-950/60",
-    ring: "group-hover:ring-cyan-200 dark:group-hover:ring-cyan-900",
+    color: "text-indigo-600",
+    bg: "bg-indigo-50 dark:bg-indigo-950/60",
+    ring: "group-hover:ring-indigo-200 dark:group-hover:ring-indigo-900",
     span: "",
   },
 ];
