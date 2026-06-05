@@ -9,8 +9,8 @@ generator client {
 
 datasource db {
   provider  = "postgresql"
-  url       = env("DATABASE_URL")       // pooled connection (Neon / PgBouncer)
-  directUrl = env("DIRECT_URL")         // direct connection for migrations
+  url       = env("DATABASE_URL") // pooled connection (Neon / PgBouncer)
+  directUrl = env("DIRECT_URL") // direct connection for migrations
 }
 
 // ─────────────────────────────────────────────────────────────────────────────
@@ -189,19 +189,19 @@ enum FinancialStatus {
 // ─────────────────────────────────────────────────────────────────────────────
 model Organization {
   id                String          @id @default(cuid())
-  clerkOrgId        String          @unique   // Clerk org ID e.g. "org_xxxx"
+  clerkOrgId        String          @unique // Clerk org ID e.g. "org_xxxx"
   name              String
-  nameAr            String?                   // Arabic organization name
+  nameAr            String? // Arabic organization name
   slug              String          @unique
   planTier          PlanTier        @default(STARTER)
   maxSeats          Int             @default(3)
   maxProposalsMonth Int             @default(5)
   aiCreditsMonth    Int             @default(50)
-  storageBytesLimit BigInt          @default(2147483648)  // 2 GB
+  storageBytesLimit BigInt          @default(2147483648) // 2 GB
   storageBytesUsed  BigInt          @default(0)
   defaultLanguage   ContentLanguage @default(EN)
-  industry          String?         // construction | defense | facilities | oil_gas
-  countryCode       String?         @db.Char(2)   // ISO 3166-1: AE, SA, EG, QA
+  industry          String? // construction | defense | facilities | oil_gas
+  countryCode       String?         @db.Char(2) // ISO 3166-1: AE, SA, EG, QA
   settings          Json            @default("{}")
   logoUrl           String?
   website           String?
@@ -212,13 +212,13 @@ model Organization {
   deletedAt         DateTime?
 
   // Relations
-  members              Member[]
-  tenders              Tender[]
-  contentLibraryItems  ContentLibraryItem[]
-  aiJobs               AIJob[]
-  subscription         Subscription?
-  auditLogs            AuditLog[]
-  financialProposals   FinancialProposal[]
+  members             Member[]
+  tenders             Tender[]
+  contentLibraryItems ContentLibraryItem[]
+  aiJobs              AIJob[]
+  subscription        Subscription?
+  auditLogs           AuditLog[]
+  financialProposals  FinancialProposal[]
 
   @@map("organizations")
 }
@@ -230,7 +230,7 @@ model Organization {
 // ─────────────────────────────────────────────────────────────────────────────
 model Member {
   id                String          @id @default(cuid())
-  clerkUserId       String                    // Clerk user ID e.g. "user_xxxx"
+  clerkUserId       String // Clerk user ID e.g. "user_xxxx"
   orgId             String
   email             String
   name              String
@@ -246,19 +246,19 @@ model Member {
   deletedAt         DateTime?
 
   // Relations
-  organization          Organization          @relation(fields: [orgId], references: [id], onDelete: Cascade)
-  createdTenders        Tender[]              @relation("TenderCreatedBy")
-  managedTenders        Tender[]              @relation("TenderManager")
-  uploadedDocuments     Document[]
-  assignedCompliance    ComplianceMatrixRow[] @relation("ComplianceAssignee")
-  createdProposals      Proposal[]
-  assignedSections      ProposalSection[]     @relation("SectionAssignee")
-  editedSections        ProposalSection[]     @relation("SectionEditor")
-  createdVersions       ProposalVersion[]
-  comments              ProposalComment[]
-  libraryItems          ContentLibraryItem[]
-  exportJobs            ExportJob[]
-  auditLogs             AuditLog[]
+  organization       Organization          @relation(fields: [orgId], references: [id], onDelete: Cascade)
+  createdTenders     Tender[]              @relation("TenderCreatedBy")
+  managedTenders     Tender[]              @relation("TenderManager")
+  uploadedDocuments  Document[]
+  assignedCompliance ComplianceMatrixRow[] @relation("ComplianceAssignee")
+  createdProposals   Proposal[]
+  assignedSections   ProposalSection[]     @relation("SectionAssignee")
+  editedSections     ProposalSection[]     @relation("SectionEditor")
+  createdVersions    ProposalVersion[]
+  comments           ProposalComment[]
+  libraryItems       ContentLibraryItem[]
+  exportJobs         ExportJob[]
+  auditLogs          AuditLog[]
 
   @@unique([orgId, clerkUserId])
   @@unique([orgId, email])
@@ -275,12 +275,12 @@ model Tender {
   orgId              String
   titleEn            String
   titleAr            String?
-  referenceNo        String?         // Client's RFP reference number
+  referenceNo        String? // Client's RFP reference number
   clientName         String?
   clientNameAr       String?
   clientCountry      String?         @db.Char(2)
-  sector             String?         // construction | defense | facilities | oil_gas
-  tenderType         String?         // RFP | RFQ | ITB | EOI | ITT
+  sector             String? // construction | defense | facilities | oil_gas
+  tenderType         String? // RFP | RFQ | ITB | EOI | ITT
   submissionDeadline DateTime?
   estimatedValue     Decimal?        @db.Decimal(18, 2)
   currency           String?         @default("USD") @db.Char(3)
@@ -289,7 +289,7 @@ model Tender {
   tags               String[]        @default([])
   notes              String?
   lossReason         LossReason?
-  outcomeNotes       String?         // Post-bid debrief notes
+  outcomeNotes       String? // Post-bid debrief notes
   createdById        String
   assignedManagerId  String?
   createdAt          DateTime        @default(now())
@@ -297,9 +297,9 @@ model Tender {
   deletedAt          DateTime?
 
   // Relations
-  organization     Organization          @relation(fields: [orgId], references: [id], onDelete: Cascade)
-  createdBy        Member                @relation("TenderCreatedBy", fields: [createdById], references: [id])
-  assignedManager  Member?               @relation("TenderManager", fields: [assignedManagerId], references: [id])
+  organization       Organization          @relation(fields: [orgId], references: [id], onDelete: Cascade)
+  createdBy          Member                @relation("TenderCreatedBy", fields: [createdById], references: [id])
+  assignedManager    Member?               @relation("TenderManager", fields: [assignedManagerId], references: [id])
   documents          Document[]
   requirements       Requirement[]
   proposals          Proposal[]
@@ -315,29 +315,29 @@ model Tender {
 // storageKey → S3 object key.
 // ─────────────────────────────────────────────────────────────────────────────
 model Document {
-  id                  String           @id @default(cuid())
-  tenderId            String
-  orgId               String
-  filename            String
-  originalFilename    String
-  storageKey          String           @unique  // S3 key
-  storageBucket       String
-  mimeType            String
-  fileSizeBytes       BigInt
-  pageCount           Int?
-  languageDetected    DocumentLanguage?
-  languageConfidence  Float?           // 0.0–1.0
-  processingStatus    DocumentStatus   @default(PENDING)
-  errorMessage        String?
-  retryCount          Int              @default(0)
-  ocrCompletedAt      DateTime?
-  indexedAt           DateTime?
-  checksumSha256      String?          // For dedup detection
-  isPrimary           Boolean          @default(false)  // Main RFP document
-  uploadedById        String
-  createdAt           DateTime         @default(now())
-  updatedAt           DateTime         @updatedAt
-  deletedAt           DateTime?
+  id                 String            @id @default(cuid())
+  tenderId           String
+  orgId              String
+  filename           String
+  originalFilename   String
+  storageKey         String            @unique // S3 key
+  storageBucket      String
+  mimeType           String
+  fileSizeBytes      BigInt
+  pageCount          Int?
+  languageDetected   DocumentLanguage?
+  languageConfidence Float? // 0.0–1.0
+  processingStatus   DocumentStatus    @default(PENDING)
+  errorMessage       String?
+  retryCount         Int               @default(0)
+  ocrCompletedAt     DateTime?
+  indexedAt          DateTime?
+  checksumSha256     String? // For dedup detection
+  isPrimary          Boolean           @default(false) // Main RFP document
+  uploadedById       String
+  createdAt          DateTime          @default(now())
+  updatedAt          DateTime          @updatedAt
+  deletedAt          DateTime?
 
   // Relations
   tender       Tender        @relation(fields: [tenderId], references: [id], onDelete: Cascade)
@@ -353,28 +353,28 @@ model Document {
 // Both AI-extracted and manually added requirements live here.
 // ─────────────────────────────────────────────────────────────────────────────
 model Requirement {
-  id                String              @id @default(cuid())
-  tenderId          String
-  documentId        String?
-  orgId             String
-  textEn            String?             // English requirement text
-  textAr            String?             // Arabic requirement text
-  sectionRef        String?             // Source section e.g. "Section 3.2.1"
-  pageRef           Int?                // Source page number
-  requirementType   RequirementType     @default(MANDATORY)
-  priority          RequirementPriority @default(HIGH)
-  confidenceScore   Float?              // AI confidence 0.0–1.0
-  isAiExtracted     Boolean             @default(true)
-  tags              String[]            @default([])
-  createdById       String?
-  createdAt         DateTime            @default(now())
-  updatedAt         DateTime            @updatedAt
-  deletedAt         DateTime?
+  id              String              @id @default(cuid())
+  tenderId        String
+  documentId      String?
+  orgId           String
+  textEn          String? // English requirement text
+  textAr          String? // Arabic requirement text
+  sectionRef      String? // Source section e.g. "Section 3.2.1"
+  pageRef         Int? // Source page number
+  requirementType RequirementType     @default(MANDATORY)
+  priority        RequirementPriority @default(HIGH)
+  confidenceScore Float? // AI confidence 0.0–1.0
+  isAiExtracted   Boolean             @default(true)
+  tags            String[]            @default([])
+  createdById     String?
+  createdAt       DateTime            @default(now())
+  updatedAt       DateTime            @updatedAt
+  deletedAt       DateTime?
 
   // Relations
-  tender          Tender               @relation(fields: [tenderId], references: [id], onDelete: Cascade)
-  document        Document?            @relation(fields: [documentId], references: [id], onDelete: SetNull)
-  complianceRow   ComplianceMatrixRow?
+  tender        Tender               @relation(fields: [tenderId], references: [id], onDelete: Cascade)
+  document      Document?            @relation(fields: [documentId], references: [id], onDelete: SetNull)
+  complianceRow ComplianceMatrixRow?
 
   @@map("requirements")
 }
@@ -387,11 +387,11 @@ model Requirement {
 model ComplianceMatrixRow {
   id               String           @id @default(cuid())
   tenderId         String
-  requirementId    String           @unique  // One matrix row per requirement
+  requirementId    String           @unique // One matrix row per requirement
   orgId            String
-  responseEn       String?          // How we address this requirement (English)
-  responseAr       String?          // How we address this requirement (Arabic)
-  sectionReference String?          // Which proposal section addresses this
+  responseEn       String? // How we address this requirement (English)
+  responseAr       String? // How we address this requirement (Arabic)
+  sectionReference String? // Which proposal section addresses this
   status           ComplianceStatus @default(NOT_STARTED)
   assignedToId     String?
   dueDate          DateTime?
@@ -420,7 +420,7 @@ model Proposal {
   language        ContentLanguage @default(EN)
   status          ProposalStatus  @default(DRAFT)
   currentVersion  Int             @default(1)
-  complianceScore Float?          // Cached %, recalculated on compliance update
+  complianceScore Float? // Cached %, recalculated on compliance update
   submittedAt     DateTime?
   createdById     String
   createdAt       DateTime        @default(now())
@@ -450,25 +450,25 @@ model ProposalSection {
   sectionType    SectionType   @default(CUSTOM)
   titleEn        String?
   titleAr        String?
-  contentEn      String?       @db.Text  // Rich text / Markdown
+  contentEn      String?       @db.Text // Rich text / Markdown
   contentAr      String?       @db.Text
   orderIndex     Int           @default(0)
   isAiGenerated  Boolean       @default(false)
-  aiModelUsed    String?       // e.g. "claude-3-5-sonnet-20241022"
+  aiModelUsed    String? // e.g. "claude-3-5-sonnet-20241022"
   contentSource  ContentSource @default(HUMAN)
   assignedToId   String?
   lastEditedById String?
-  isLocked       Boolean       @default(false)  // Prevent concurrent edits
-  lockedById     String?       // Member ID (no relation — simple lock ref)
+  isLocked       Boolean       @default(false) // Prevent concurrent edits
+  lockedById     String? // Member ID (no relation — simple lock ref)
   lockedAt       DateTime?
   createdAt      DateTime      @default(now())
   updatedAt      DateTime      @updatedAt
   deletedAt      DateTime?
 
   // Relations
-  proposal     Proposal         @relation(fields: [proposalId], references: [id], onDelete: Cascade)
-  assignedTo   Member?          @relation("SectionAssignee", fields: [assignedToId], references: [id])
-  lastEditedBy Member?          @relation("SectionEditor", fields: [lastEditedById], references: [id])
+  proposal     Proposal          @relation(fields: [proposalId], references: [id], onDelete: Cascade)
+  assignedTo   Member?           @relation("SectionAssignee", fields: [assignedToId], references: [id])
+  lastEditedBy Member?           @relation("SectionEditor", fields: [lastEditedById], references: [id])
   comments     ProposalComment[]
 
   @@map("proposal_sections")
@@ -484,16 +484,16 @@ model ProposalVersion {
   proposalId      String
   orgId           String
   versionNumber   Int
-  label           String?  // e.g. "v3 - Final Review"
-  snapshot        Json     // Full ProposalSection[] snapshot
+  label           String? // e.g. "v3 - Final Review"
+  snapshot        Json // Full ProposalSection[] snapshot
   changeSummary   String?
   complianceScore Float?
   createdById     String
   createdAt       DateTime @default(now())
 
   // Relations
-  proposal   Proposal @relation(fields: [proposalId], references: [id], onDelete: Cascade)
-  createdBy  Member   @relation(fields: [createdById], references: [id])
+  proposal  Proposal @relation(fields: [proposalId], references: [id], onDelete: Cascade)
+  createdBy Member   @relation(fields: [createdById], references: [id])
 
   @@unique([proposalId, versionNumber])
   @@map("proposal_versions")
@@ -514,11 +514,11 @@ model ContentLibraryItem {
   sectionType   SectionType?
   tags          String[]        @default([])
   language      ContentLanguage @default(EN)
-  isTemplate    Boolean         @default(false)  // Workspace-wide template
+  isTemplate    Boolean         @default(false) // Workspace-wide template
   usageCount    Int             @default(0)
   contentSource ContentSource   @default(HUMAN)
   // Embedding stored as JSON array until pgvector is configured
-  embeddingEn   Json?           // Float[] from OpenAI text-embedding-3-large
+  embeddingEn   Json? // Float[] from OpenAI text-embedding-3-large
   embeddingAr   Json?
   createdById   String
   createdAt     DateTime        @default(now())
@@ -537,24 +537,24 @@ model ContentLibraryItem {
 // Inline comments on proposals and sections. Supports threaded replies.
 // ─────────────────────────────────────────────────────────────────────────────
 model ProposalComment {
-  id          String    @id @default(cuid())
-  proposalId  String
-  sectionId   String?
-  orgId       String
-  parentId    String?   // For threaded replies
-  text        String
-  mentions    String[]  @default([])  // Member IDs mentioned with @
-  isResolved  Boolean   @default(false)
-  resolvedById String?  // Member ID (no relation — simple ref)
-  resolvedAt  DateTime?
-  createdById String
-  createdAt   DateTime  @default(now())
-  updatedAt   DateTime  @updatedAt
-  deletedAt   DateTime?
+  id           String    @id @default(cuid())
+  proposalId   String
+  sectionId    String?
+  orgId        String
+  parentId     String? // For threaded replies
+  text         String
+  mentions     String[]  @default([]) // Member IDs mentioned with @
+  isResolved   Boolean   @default(false)
+  resolvedById String? // Member ID (no relation — simple ref)
+  resolvedAt   DateTime?
+  createdById  String
+  createdAt    DateTime  @default(now())
+  updatedAt    DateTime  @updatedAt
+  deletedAt    DateTime?
 
   // Relations
-  proposal  Proposal         @relation(fields: [proposalId], references: [id], onDelete: Cascade)
-  section   ProposalSection? @relation(fields: [sectionId], references: [id], onDelete: Cascade)
+  proposal  Proposal          @relation(fields: [proposalId], references: [id], onDelete: Cascade)
+  section   ProposalSection?  @relation(fields: [sectionId], references: [id], onDelete: Cascade)
   parent    ProposalComment?  @relation("CommentThread", fields: [parentId], references: [id], onDelete: NoAction, onUpdate: NoAction)
   replies   ProposalComment[] @relation("CommentThread")
   createdBy Member            @relation(fields: [createdById], references: [id])
@@ -574,10 +574,10 @@ model ExportJob {
   format            ExportFormat
   language          ContentLanguage
   status            JobStatus       @default(QUEUED)
-  outputStorageKey  String?         // S3 key
+  outputStorageKey  String? // S3 key
   outputFilename    String?
   outputSizeBytes   BigInt?
-  downloadExpiresAt DateTime?       // Pre-signed URL expiry
+  downloadExpiresAt DateTime? // Pre-signed URL expiry
   errorMessage      String?
   processingMs      Int?
   createdById       String
@@ -601,17 +601,17 @@ model AIJob {
   orgId            String
   memberId         String?
   jobType          AIJobType
-  resourceType     String?   // tender | document | proposal | section
-  resourceId       String?   // ID of the resource being processed
-  modelName        String?   // e.g. "claude-3-5-sonnet-20241022"
+  resourceType     String? // tender | document | proposal | section
+  resourceId       String? // ID of the resource being processed
+  modelName        String? // e.g. "claude-3-5-sonnet-20241022"
   promptTokens     Int?
   completionTokens Int?
   totalTokens      Int?
   costUsd          Decimal?  @db.Decimal(10, 6)
   latencyMs        Int?
   status           JobStatus @default(QUEUED)
-  progress         Int       @default(0)  // 0–100
-  resultRef        String?   // S3 key or inline JSON for small results
+  progress         Int       @default(0) // 0–100
+  resultRef        String? // S3 key or inline JSON for small results
   errorMessage     String?
   retryCount       Int       @default(0)
   maxRetries       Int       @default(3)
@@ -631,26 +631,26 @@ model AIJob {
 // One subscription per organization. Tracks Stripe billing state.
 // ─────────────────────────────────────────────────────────────────────────────
 model Subscription {
-  id                   String    @id @default(cuid())
-  orgId                String    @unique
-  planTier             PlanTier
-  seats                Int       @default(3)
-  billingCycle         String    @default("monthly")  // monthly | annual
-  currentPeriodStart   DateTime
-  currentPeriodEnd     DateTime
-  cancelAtPeriodEnd    Boolean   @default(false)
-  stripeCustomerId     String?
-  stripeSubId          String?   @unique
-  stripePriceId        String?
-  proposalsUsed        Int       @default(0)
-  aiCreditsUsed        Int       @default(0)
-  storageBytesUsed     BigInt    @default(0)
-  isTrial              Boolean   @default(false)
-  trialEndsAt          DateTime?
+  id                 String    @id @default(cuid())
+  orgId              String    @unique
+  planTier           PlanTier
+  seats              Int       @default(3)
+  billingCycle       String    @default("monthly") // monthly | annual
+  currentPeriodStart DateTime
+  currentPeriodEnd   DateTime
+  cancelAtPeriodEnd  Boolean   @default(false)
+  stripeCustomerId   String?
+  stripeSubId        String?   @unique
+  stripePriceId      String?
+  proposalsUsed      Int       @default(0)
+  aiCreditsUsed      Int       @default(0)
+  storageBytesUsed   BigInt    @default(0)
+  isTrial            Boolean   @default(false)
+  trialEndsAt        DateTime?
   // status: trialing | active | past_due | cancelled | unpaid
-  status               String    @default("active")
-  createdAt            DateTime  @default(now())
-  updatedAt            DateTime  @updatedAt
+  status             String    @default("active")
+  createdAt          DateTime  @default(now())
+  updatedAt          DateTime  @updatedAt
 
   // Relations
   organization Organization @relation(fields: [orgId], references: [id], onDelete: Cascade)
@@ -667,12 +667,12 @@ model AuditLog {
   id           String   @id @default(cuid())
   orgId        String?
   memberId     String?
-  action       String   // e.g. "document.upload" | "proposal.export" | "member.role_changed"
-  resourceType String?  // tender | document | proposal | member
+  action       String // e.g. "document.upload" | "proposal.export" | "member.role_changed"
+  resourceType String? // tender | document | proposal | member
   resourceId   String?
-  oldValues    Json?    // Before state (for updates)
-  newValues    Json?    // After state
-  metadata     Json     @default("{}")   // IP, user agent, session
+  oldValues    Json? // Before state (for updates)
+  newValues    Json? // After state
+  metadata     Json     @default("{}") // IP, user agent, session
   ipAddress    String?
   userAgent    String?
   createdAt    DateTime @default(now())
@@ -697,10 +697,10 @@ model FinancialProposal {
   title           String          @default("Financial Proposal")
   currency        String          @default("SAR") @db.Char(3)
   // Assumptions — user-entered percentages applied during calculation
-  overheadPct     Decimal         @default(0) @db.Decimal(7, 4)   // % of direct cost
-  contingencyPct  Decimal         @default(0) @db.Decimal(7, 4)   // % of (direct + overhead)
-  profitMarginPct Decimal         @default(0) @db.Decimal(7, 4)   // markup %
-  vatPct          Decimal         @default(0) @db.Decimal(7, 4)   // tax %
+  overheadPct     Decimal         @default(0) @db.Decimal(7, 4) // % of direct cost
+  contingencyPct  Decimal         @default(0) @db.Decimal(7, 4) // % of (direct + overhead)
+  profitMarginPct Decimal         @default(0) @db.Decimal(7, 4) // markup %
+  vatPct          Decimal         @default(0) @db.Decimal(7, 4) // tax %
   notes           String?
   status          FinancialStatus @default(DRAFT)
   createdById     String
