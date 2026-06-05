@@ -557,18 +557,18 @@ model ProposalVersion {
 // Supports semantic search via embedding (stored externally or future pgvector).
 // ─────────────────────────────────────────────────────────────────────────────
 model ContentLibraryItem {
-  id            String          @id @default(cuid())
+  id            String                       @id @default(cuid())
   orgId         String
   titleEn       String
   titleAr       String?
-  contentEn     String?         @db.Text
-  contentAr     String?         @db.Text
+  contentEn     String?                      @db.Text
+  contentAr     String?                      @db.Text
   sectionType   SectionType?
-  tags          String[]        @default([])
-  language      ContentLanguage @default(EN)
-  isTemplate    Boolean         @default(false) // Workspace-wide template
-  usageCount    Int             @default(0)
-  contentSource ContentSource   @default(HUMAN)
+  tags          String[]                     @default([])
+  language      ContentLanguage              @default(EN)
+  isTemplate    Boolean                      @default(false) // Workspace-wide template
+  usageCount    Int                          @default(0)
+  contentSource ContentSource                @default(HUMAN)
   // Embedding stored as JSON array (legacy in-process cosine path)
   embeddingEn   Json? // Float[] from OpenAI text-embedding-3-large
   embeddingAr   Json?
@@ -576,8 +576,8 @@ model ContentLibraryItem {
   // Backed by Neon `vector` extension; see src/lib/security/rag-search.ts.
   embedding     Unsupported("vector(1536)")?
   createdById   String
-  createdAt     DateTime        @default(now())
-  updatedAt     DateTime        @updatedAt
+  createdAt     DateTime                     @default(now())
+  updatedAt     DateTime                     @updatedAt
   deletedAt     DateTime?
 
   // Relations
@@ -870,17 +870,17 @@ model Vendor {
 }
 
 model ApiKey {
-  id         String    @id @default(cuid())
-  orgId      String
-  name       String // human label, e.g. "SAP Production"
-  prefix     String // first chars shown in UI, e.g. "tk_live_a1b2"
-  hashedKey  String    @unique // sha256 of the full key — the raw key is shown once
-  scopes     String[]  @default([]) // e.g. ["erp:write", "vendors:write"]
-  lastUsedAt DateTime?
-  expiresAt  DateTime?
-  revokedAt  DateTime?
+  id          String    @id @default(cuid())
+  orgId       String
+  name        String // human label, e.g. "SAP Production"
+  prefix      String // first chars shown in UI, e.g. "tk_live_a1b2"
+  hashedKey   String    @unique // sha256 of the full key — the raw key is shown once
+  scopes      String[]  @default([]) // e.g. ["erp:write", "vendors:write"]
+  lastUsedAt  DateTime?
+  expiresAt   DateTime?
+  revokedAt   DateTime?
   createdById String?
-  createdAt  DateTime  @default(now())
+  createdAt   DateTime  @default(now())
 
   organization Organization @relation(fields: [orgId], references: [id], onDelete: Cascade)
 
