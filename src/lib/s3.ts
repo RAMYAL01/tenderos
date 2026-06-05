@@ -24,6 +24,10 @@ export function getS3(): S3Client {
         accessKeyId: process.env.AWS_ACCESS_KEY_ID,
         secretAccessKey: process.env.AWS_SECRET_ACCESS_KEY,
       },
+      // Newer AWS SDK versions auto-add x-amz-checksum-crc32 to signed
+      // requests, which breaks browser presigned PUT (the XHR can't send it).
+      // Only compute checksums when a command explicitly requires one.
+      requestChecksumCalculation: "WHEN_REQUIRED",
     });
   }
   return _s3;
@@ -87,12 +91,14 @@ export async function createPresignedUploadUrl(
   mimeType: string,
   expiresIn = 300
 ): Promise<string> {
+  // NOTE: do NOT sign extra headers (ServerSideEncryption, checksums) here —
+  // the browser upload only sends Content-Type, so any other signed header
+  // causes a SignatureDoesNotMatch 403. The bucket has default SSE-S3
+  // encryption applied automatically at rest.
   const command = new PutObjectCommand({
     Bucket: S3_BUCKET,
     Key: key,
     ContentType: mimeType,
-    // Server-side encryption
-    ServerSideEncryption: "AES256",
   });
   return getSignedUrl(s3, command, { expiresIn });
 }
