@@ -1,3 +1,5 @@
+import Link from "next/link";
+import { ArrowLeft } from "lucide-react";
 import { SignUp } from "@clerk/nextjs";
 import { BrandPanel } from "@/components/auth/brand-panel";
 import { Logo } from "@/components/ui/logo";
@@ -13,11 +15,20 @@ export default function SignUpPage() {
       <BrandPanel />
 
       {/* Right: Auth form */}
-      <div className="flex flex-1 flex-col items-center justify-center px-4 py-10 sm:px-8">
+      <div className="relative flex flex-1 flex-col items-center justify-center px-4 py-10 sm:px-8">
+        {/* Back to landing page */}
+        <Link
+          href="/"
+          className="absolute left-4 top-5 inline-flex items-center gap-1.5 text-sm font-medium text-slate-500 transition-colors hover:text-slate-900 dark:text-slate-400 dark:hover:text-white sm:left-8"
+        >
+          <ArrowLeft className="h-4 w-4" />
+          Back to home
+        </Link>
+
         {/* Mobile-only logo */}
-        <div className="mb-8 lg:hidden">
+        <Link href="/" className="mb-8 lg:hidden">
           <Logo size={34} />
-        </div>
+        </Link>
 
         <div className="w-full max-w-[400px]">
           <SignUp

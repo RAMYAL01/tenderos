@@ -1,6 +1,7 @@
 "use client";
 
 import { useRef, useState, useCallback } from "react";
+import Link from "next/link";
 import { Logo } from "@/components/ui/logo";
 import { BrandMark } from "@/components/ui/brand-mark";
 import {
@@ -113,7 +114,9 @@ export function BrandPanel() {
 
       {/* Top: Logo */}
       <div className="relative z-10" style={layer(8)}>
-        <Logo variant="dark" size={40} />
+        <Link href="/" aria-label="Back to home" className="inline-block transition-opacity hover:opacity-80">
+          <Logo variant="dark" size={40} />
+        </Link>
       </div>
 
       {/* Center: Value Proposition */}
