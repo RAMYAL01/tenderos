@@ -221,6 +221,10 @@ model Organization {
   auditLogs           AuditLog[]
   financialProposals  FinancialProposal[]
   rateCatalogueItems  RateCatalogueItem[]
+  vendors             Vendor[]
+  apiKeys             ApiKey[]
+  webhookEndpoints    WebhookEndpoint[]
+  webhookDeliveries   WebhookDelivery[]
 
   @@map("organizations")
 }
@@ -809,6 +813,8 @@ model RateCatalogueItem {
   id                String         @id @default(cuid())
   orgId             String
   itemCode          String // BOQ reference / catalogue code, e.g. "2.1.4", "L-FM-01"
+  externalId        String? // source ERP id, for idempotent sync
+  vendorId          String? // optional supplier of this material
   description       String?
   unitOfMeasurement String // normalized unit token: m2, m3, hr, no, ls, ton, kg
   unitCost          Decimal        @db.Decimal(18, 4) // major currency units — never AI-set
@@ -821,8 +827,110 @@ model RateCatalogueItem {
   deletedAt         DateTime?
 
   organization Organization @relation(fields: [orgId], references: [id], onDelete: Cascade)
+  vendor       Vendor?      @relation(fields: [vendorId], references: [id], onDelete: SetNull)
 
   @@unique([orgId, itemCode]) // one active rate per code per org
   @@index([orgId, itemCode])
+  @@index([orgId, vendorId])
   @@map("rate_catalogue_items")
+}
+
+// ─────────────────────────────────────────────────────────────────────────────
+// INTEGRATION LAYER — Vendors, API keys, Webhooks
+// ─────────────────────────────────────────────────────────────────────────────
+
+enum VendorStatus {
+  ACTIVE
+  INACTIVE
+  BLACKLISTED
+}
+
+model Vendor {
+  id          String       @id @default(cuid())
+  orgId       String
+  code        String // tenant-unique vendor code (natural key for import/upsert)
+  externalId  String? // source ERP id (e.g. SAP BP number)
+  name        String
+  taxId       String?
+  email       String?
+  phone       String?
+  countryCode String?      @db.Char(2)
+  status      VendorStatus @default(ACTIVE)
+  metadata    Json         @default("{}")
+  createdAt   DateTime     @default(now())
+  updatedAt   DateTime     @updatedAt
+  deletedAt   DateTime?
+
+  organization Organization        @relation(fields: [orgId], references: [id], onDelete: Cascade)
+  materials    RateCatalogueItem[]
+
+  @@unique([orgId, code]) // idempotency key for import + ERP sync
+  @@index([orgId, externalId])
+  @@map("vendors")
+}
+
+model ApiKey {
+  id         String    @id @default(cuid())
+  orgId      String
+  name       String // human label, e.g. "SAP Production"
+  prefix     String // first chars shown in UI, e.g. "tk_live_a1b2"
+  hashedKey  String    @unique // sha256 of the full key — the raw key is shown once
+  scopes     String[]  @default([]) // e.g. ["erp:write", "vendors:write"]
+  lastUsedAt DateTime?
+  expiresAt  DateTime?
+  revokedAt  DateTime?
+  createdById String?
+  createdAt  DateTime  @default(now())
+
+  organization Organization @relation(fields: [orgId], references: [id], onDelete: Cascade)
+
+  @@index([orgId])
+  @@map("api_keys")
+}
+
+enum WebhookDeliveryStatus {
+  PENDING
+  DELIVERED
+  FAILED // exhausted retries — dead-lettered
+}
+
+model WebhookEndpoint {
+  id        String   @id @default(cuid())
+  orgId     String
+  url       String
+  secret    String // HMAC signing secret (generated server-side)
+  events    String[] @default([]) // subscribed event types, e.g. ["tender.won"]
+  active    Boolean  @default(true)
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  organization Organization      @relation(fields: [orgId], references: [id], onDelete: Cascade)
+  deliveries   WebhookDelivery[]
+
+  @@index([orgId])
+  @@map("webhook_endpoints")
+}
+
+model WebhookDelivery {
+  id             String                @id @default(cuid())
+  orgId          String
+  endpointId     String
+  eventType      String
+  payload        Json
+  status         WebhookDeliveryStatus @default(PENDING)
+  attempts       Int                   @default(0)
+  maxAttempts    Int                   @default(6)
+  nextAttemptAt  DateTime              @default(now())
+  lastError      String?
+  responseStatus Int?
+  deliveredAt    DateTime?
+  createdAt      DateTime              @default(now())
+  updatedAt      DateTime              @updatedAt
+
+  organization Organization    @relation(fields: [orgId], references: [id], onDelete: Cascade)
+  endpoint     WebhookEndpoint @relation(fields: [endpointId], references: [id], onDelete: Cascade)
+
+  @@index([status, nextAttemptAt]) // the retry-queue scan
+  @@index([orgId, eventType])
+  @@map("webhook_deliveries")
 }
