@@ -24,13 +24,13 @@ export function PageHeader({
   return (
     <div
       className={cn(
-        "flex flex-col gap-4 border-b border-slate-200 bg-white px-6 py-5 dark:border-slate-800 dark:bg-slate-950 sm:flex-row sm:items-start sm:justify-between",
+        "sticky top-0 z-20 flex flex-col gap-4 border-b border-slate-200/70 bg-white/80 px-6 py-5 backdrop-blur-md supports-[backdrop-filter]:bg-white/70 dark:border-slate-800/70 dark:bg-slate-950/80 dark:supports-[backdrop-filter]:bg-slate-950/70 sm:flex-row sm:items-start sm:justify-between",
         className
       )}
     >
       <div className="min-w-0 flex-1">
         <div className="flex flex-wrap items-baseline gap-3">
-          <h2 className="text-xl font-semibold tracking-tight text-slate-900 dark:text-slate-100">
+          <h2 className="text-2xl font-bold tracking-tight text-slate-900 dark:text-white">
             {title}
           </h2>
           {titleAr && (

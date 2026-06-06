@@ -40,7 +40,7 @@ export function Header({ className }: HeaderProps) {
   return (
     <header
       className={cn(
-        "flex h-16 shrink-0 items-center gap-4 border-b border-slate-200 bg-white px-6 dark:border-slate-800 dark:bg-slate-950",
+        "sticky top-0 z-30 flex h-16 shrink-0 items-center gap-4 border-b border-slate-200/70 bg-white/80 px-6 backdrop-blur-md supports-[backdrop-filter]:bg-white/70 dark:border-slate-800/70 dark:bg-slate-950/80 dark:supports-[backdrop-filter]:bg-slate-950/70",
         className
       )}
     >
@@ -78,18 +78,17 @@ export function Header({ className }: HeaderProps) {
             />
           </div>
         ) : (
-          <Button
-            variant="ghost"
-            size="sm"
-            className="gap-2 text-slate-500 hover:text-slate-700"
+          <button
+            type="button"
             onClick={() => setSearchOpen(true)}
+            className="group flex items-center gap-2 rounded-lg border border-slate-200 bg-slate-50/60 px-3 py-2 text-sm text-slate-500 transition-colors hover:border-slate-300 hover:bg-white hover:text-slate-700 dark:border-slate-800 dark:bg-slate-900/60 dark:text-slate-400 dark:hover:border-slate-700 dark:hover:bg-slate-900"
           >
             <Search className="h-4 w-4" />
-            <span className="text-sm">Search</span>
-            <kbd className="hidden rounded border border-slate-200 bg-slate-50 px-1.5 py-0.5 text-[10px] text-slate-400 xl:block">
+            <span>Search</span>
+            <kbd className="ml-6 hidden rounded border border-slate-200 bg-white px-1.5 py-0.5 text-[10px] font-medium text-slate-400 group-hover:border-slate-300 dark:border-slate-700 dark:bg-slate-800 xl:block">
               ⌘K
             </kbd>
-          </Button>
+          </button>
         )}
       </div>
 
@@ -97,12 +96,11 @@ export function Header({ className }: HeaderProps) {
       <Button
         variant="ghost"
         size="icon"
-        className="relative text-slate-500 hover:text-slate-700"
+        className="relative rounded-lg text-slate-500 hover:text-slate-700"
         aria-label="Notifications"
       >
         <Bell className="h-5 w-5" />
-        {/* Notification dot — show when there are unread notifications */}
-        {/* <span className="absolute right-2 top-2 h-2 w-2 rounded-full bg-blue-600" /> */}
+        <span className="absolute right-2 top-2 h-2 w-2 rounded-full bg-blue-500 ring-2 ring-white dark:ring-slate-950" />
       </Button>
     </header>
   );

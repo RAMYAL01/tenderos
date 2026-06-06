@@ -18,14 +18,21 @@ interface SidebarProps {
  */
 export function Sidebar({ member }: SidebarProps) {
   return (
-    <aside className="flex h-screen w-64 shrink-0 flex-col border-r border-white/10 bg-[#0F172A]">
+    <aside className="relative flex h-screen w-64 shrink-0 flex-col border-r border-white/10 bg-gradient-to-b from-[#101a30] via-[#0c1424] to-[#080d18]">
+      {/* Ambient top glow */}
+      <div
+        aria-hidden="true"
+        className="pointer-events-none absolute -left-10 -top-10 h-48 w-48 rounded-full opacity-40 blur-3xl"
+        style={{ background: "radial-gradient(circle, rgba(59,130,246,0.35), transparent 70%)" }}
+      />
+
       {/* ── Logo ────────────────────────────────────────────────── */}
-      <div className="flex h-16 shrink-0 items-center border-b border-white/10 px-5">
+      <div className="relative flex h-16 shrink-0 items-center border-b border-white/10 px-5">
         <Logo variant="dark" size={30} href="/dashboard" />
       </div>
 
       {/* ── Organization Switcher ──────────────────────────────── */}
-      <div className="border-b border-white/10 px-3 py-3">
+      <div className="relative border-b border-white/10 px-3 py-3">
         <OrganizationSwitcher
           hidePersonal
           appearance={{
@@ -52,12 +59,12 @@ export function Sidebar({ member }: SidebarProps) {
       </div>
 
       {/* ── Navigation ────────────────────────────────────────── */}
-      <div className="flex flex-1 flex-col overflow-y-auto py-4">
+      <div className="relative flex flex-1 flex-col overflow-y-auto py-4">
         <SidebarNav memberRole={member.role} />
       </div>
 
       {/* ── User area ─────────────────────────────────────────── */}
-      <div className="border-t border-white/10 p-3">
+      <div className="relative border-t border-white/10 p-3">
         <div className="flex items-center gap-3 rounded-md px-2 py-1.5">
           <UserButton
             appearance={{
