@@ -11,11 +11,16 @@ import {
   meta as zeroTrustMeta,
   Body as ZeroTrustBody,
 } from "@/components/blog/posts/zero-trust-tenant-isolation";
+import {
+  meta as ocrMeta,
+  Body as OcrBody,
+} from "@/components/blog/posts/ocr-scanned-bilingual-tenders";
 
 export const POSTS: Post[] = [
   { meta: whyLlmsMeta, Body: WhyLlmsBody },
   { meta: bilingualMeta, Body: BilingualBody },
   { meta: zeroTrustMeta, Body: ZeroTrustBody },
+  { meta: ocrMeta, Body: OcrBody },
 ];
 
 export function allPostsSorted(): Post[] {
