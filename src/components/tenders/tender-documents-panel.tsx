@@ -12,6 +12,7 @@ import {
   CheckCircle2,
   Loader2,
   AlertTriangle,
+  ScanLine,
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
@@ -31,6 +32,7 @@ interface DocumentRecord {
   fileSizeBytes: bigint;
   processingStatus: string;
   languageDetected: string | null;
+  extractionMethod: string | null;
   pageCount: number | null;
   isPrimary: boolean;
   errorMessage: string | null;
@@ -269,6 +271,17 @@ export function TenderDocumentsPanel({
                       <span className="flex items-center gap-1 text-xs text-slate-500">
                         <Globe className="h-3.5 w-3.5" />
                         {LANG_LABELS[doc.languageDetected] ?? doc.languageDetected}
+                      </span>
+                    )}
+
+                    {(doc.extractionMethod === "azure-ocr" ||
+                      doc.extractionMethod === "claude-ocr") && (
+                      <span
+                        className="flex items-center gap-1 text-xs font-medium text-violet-600 dark:text-violet-400"
+                        title="Scanned document — text recovered via OCR"
+                      >
+                        <ScanLine className="h-3.5 w-3.5" />
+                        OCR
                       </span>
                     )}
 

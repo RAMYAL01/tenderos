@@ -333,6 +333,7 @@ model Document {
   pageCount          Int?
   languageDetected   DocumentLanguage?
   languageConfidence Float? // 0.0–1.0
+  extractionMethod   String? // pdf-parse | mammoth | plaintext | azure-ocr | claude-ocr
   processingStatus   DocumentStatus    @default(PENDING)
   errorMessage       String?
   retryCount         Int               @default(0)

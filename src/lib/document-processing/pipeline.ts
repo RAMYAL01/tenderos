@@ -225,6 +225,7 @@ export async function processDocument(documentId: string): Promise<void> {
         pageCount: content.pageCount,
         languageDetected: content.language as any,
         languageConfidence: content.languageConfidence,
+        extractionMethod: content.extractionMethod,
         ocrCompletedAt: new Date(),
         indexedAt: new Date(),
         errorMessage: null,
