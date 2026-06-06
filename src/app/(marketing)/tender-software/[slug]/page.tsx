@@ -1,7 +1,7 @@
 import type { Metadata } from "next";
 import { notFound } from "next/navigation";
 import { FileSearch, Languages, Calculator, ShieldCheck, Brain, Workflow } from "lucide-react";
-import { allCombos, getCombo, type Combo } from "@/lib/seo/programmatic-data";
+import { allCombos, getCombo, relatedCombos, comboLabel, comboHref, type Combo } from "@/lib/seo/programmatic-data";
 import {
   SolutionShell,
   SolutionHero,
@@ -9,6 +9,7 @@ import {
   FeatureGrid,
   FaqSection,
   SolutionCta,
+  RelatedLinks,
   JsonLd,
   faqJsonLd,
   type FaqItem,
@@ -102,6 +103,15 @@ export default async function ProgrammaticSolutionPage({ params }: { params: Pro
       />
 
       <FaqSection title={`${industry.name} tendering in ${country.name} — FAQ`} items={faqs} />
+
+      <RelatedLinks
+        title="Explore TenderOS"
+        links={[
+          { label: "BOQ Pricing Engine", href: "/solutions/boq-pricing" },
+          { label: "Tender & BOQ Extraction", href: "/solutions/tender-extraction" },
+          ...relatedCombos(combo).map((c) => ({ label: comboLabel(c), href: comboHref(c) })),
+        ]}
+      />
 
       <SolutionCta
         title={`Win more tenders in ${country.name}`}

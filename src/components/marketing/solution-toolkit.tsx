@@ -193,6 +193,35 @@ export function SolutionCta({ title, subtitle }: { title: string; subtitle: stri
   );
 }
 
+export function RelatedLinks({
+  title,
+  links,
+}: {
+  title: string;
+  links: { label: string; href: string }[];
+}) {
+  if (links.length === 0) return null;
+  return (
+    <section className="border-t border-slate-100 py-14 dark:border-slate-800/60">
+      <div className="mx-auto max-w-6xl px-4 sm:px-6">
+        <h2 className="text-sm font-semibold uppercase tracking-widest text-slate-400">{title}</h2>
+        <div className="mt-5 grid grid-cols-1 gap-2 sm:grid-cols-2 lg:grid-cols-3">
+          {links.map((l) => (
+            <Link
+              key={l.href}
+              href={l.href}
+              className="group flex items-center justify-between rounded-xl border border-slate-200 px-4 py-3 text-sm text-slate-700 transition-colors hover:border-blue-300 hover:bg-blue-50/40 dark:border-slate-800 dark:text-slate-300 dark:hover:border-blue-900 dark:hover:bg-blue-950/20"
+            >
+              <span>{l.label}</span>
+              <ArrowRight className="h-4 w-4 text-slate-300 transition-transform group-hover:translate-x-0.5 group-hover:text-blue-500" />
+            </Link>
+          ))}
+        </div>
+      </div>
+    </section>
+  );
+}
+
 /** Build a FAQPage JSON-LD object from FAQ items. */
 export function faqJsonLd(items: FaqItem[]) {
   return {

@@ -18,6 +18,8 @@ import {
   BookOpen,
   Newspaper,
   Sparkles,
+  Calculator,
+  MapPin,
 } from "lucide-react";
 import { Logo } from "@/components/ui/logo";
 import { ShinyButton } from "./shiny-button";
@@ -32,6 +34,19 @@ const productMenu = [
   { icon: ShieldCheck, title: "Enterprise Security", desc: "Encrypted, isolated workspaces", href: "/#features", color: "text-cyan-600", bg: "bg-cyan-50 dark:bg-cyan-950" },
 ];
 
+const solutionsMenu = [
+  { icon: Calculator, title: "BOQ Pricing Engine", desc: "Deterministic, float-safe pricing", href: "/solutions/boq-pricing", color: "text-teal-600", bg: "bg-teal-50 dark:bg-teal-950" },
+  { icon: FileSearch, title: "Tender & BOQ Extraction", desc: "Structured RFPs in 90 seconds", href: "/solutions/tender-extraction", color: "text-blue-600", bg: "bg-blue-50 dark:bg-blue-950" },
+];
+
+const regionLinks = [
+  { label: "Construction — Saudi Arabia", href: "/tender-software/construction-in-saudi-arabia" },
+  { label: "EPC — UAE", href: "/tender-software/epc-in-uae" },
+  { label: "Facilities Management — Qatar", href: "/tender-software/facilities-management-in-qatar" },
+  { label: "Oil & Gas — Saudi Arabia", href: "/tender-software/oil-and-gas-in-saudi-arabia" },
+  { label: "Construction — Egypt", href: "/tender-software/construction-in-egypt" },
+];
+
 const resourcesMenu = [
   { icon: HelpCircle, title: "FAQ", desc: "Common questions", href: "/#faq" },
   { icon: BookOpen, title: "Documentation", desc: "Guides & API docs", href: "/contact" },
@@ -43,7 +58,7 @@ export function Navbar() {
   const [scrolled, setScrolled] = useState(false);
   const [mobileOpen, setMobileOpen] = useState(false);
   const [showBanner, setShowBanner] = useState(true);
-  const [openMenu, setOpenMenu] = useState<"product" | "resources" | null>(null);
+  const [openMenu, setOpenMenu] = useState<"product" | "solutions" | "resources" | null>(null);
   const [activeSection, setActiveSection] = useState("");
   const closeTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
 
@@ -78,7 +93,7 @@ export function Navbar() {
     };
   }, [mobileOpen]);
 
-  const openDropdown = (menu: "product" | "resources") => {
+  const openDropdown = (menu: "product" | "solutions" | "resources") => {
     if (closeTimer.current) clearTimeout(closeTimer.current);
     setOpenMenu(menu);
   };
@@ -160,6 +175,51 @@ export function Navbar() {
                     </Link>
                   );
                 })}
+              </div>
+            </Dropdown>
+
+            <Dropdown
+              label="Solutions"
+              isOpen={openMenu === "solutions"}
+              onEnter={() => openDropdown("solutions")}
+              onLeave={scheduleClose}
+              panelClassName="w-[540px]"
+            >
+              <div className="grid grid-cols-2 gap-2 p-3">
+                <div className="space-y-1">
+                  {solutionsMenu.map((item) => {
+                    const Icon = item.icon;
+                    return (
+                      <Link
+                        key={item.title}
+                        href={item.href}
+                        className="group/item flex items-start gap-3 rounded-xl p-3 transition-colors hover:bg-slate-50 dark:hover:bg-slate-800"
+                      >
+                        <span className={cn("rounded-lg p-2 transition-transform group-hover/item:scale-110", item.bg)}>
+                          <Icon className={cn("h-4 w-4", item.color)} />
+                        </span>
+                        <span>
+                          <span className="block text-sm font-medium text-slate-900 dark:text-white">{item.title}</span>
+                          <span className="block text-xs text-slate-500">{item.desc}</span>
+                        </span>
+                      </Link>
+                    );
+                  })}
+                </div>
+                <div className="rounded-xl bg-slate-50 p-2.5 dark:bg-slate-800/40">
+                  <p className="flex items-center gap-1.5 px-1.5 pb-1.5 text-[11px] font-semibold uppercase tracking-wide text-slate-400">
+                    <MapPin className="h-3 w-3" /> By region
+                  </p>
+                  {regionLinks.map((l) => (
+                    <Link
+                      key={l.href}
+                      href={l.href}
+                      className="block rounded-lg px-2 py-1.5 text-sm text-slate-600 transition-colors hover:bg-white hover:text-slate-900 dark:text-slate-300 dark:hover:bg-slate-900 dark:hover:text-white"
+                    >
+                      {l.label}
+                    </Link>
+                  ))}
+                </div>
               </div>
             </Dropdown>
 
@@ -250,6 +310,8 @@ export function Navbar() {
           <div className="flex-1 overflow-y-auto px-5 py-6">
             {[
               { label: "Product", href: "/#features" },
+              { label: "BOQ Pricing Engine", href: "/solutions/boq-pricing" },
+              { label: "Tender & BOQ Extraction", href: "/solutions/tender-extraction" },
               { label: "Pricing", href: "/#pricing" },
               { label: "About", href: "/about" },
               { label: "FAQ", href: "/#faq" },

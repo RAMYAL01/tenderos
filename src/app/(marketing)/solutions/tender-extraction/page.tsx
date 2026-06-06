@@ -7,10 +7,12 @@ import {
   FeatureGrid,
   FaqSection,
   SolutionCta,
+  RelatedLinks,
   JsonLd,
   faqJsonLd,
   type FaqItem,
 } from "@/components/marketing/solution-toolkit";
+import { featuredCombos, comboLabel, comboHref } from "@/lib/seo/programmatic-data";
 
 const SITE = process.env.NEXT_PUBLIC_APP_URL ?? "https://www.thetenderos.com";
 
@@ -102,6 +104,14 @@ export default function TenderExtractionPillar() {
       />
 
       <FaqSection title="RFP & BOQ extraction — straight answers" items={FAQS} />
+
+      <RelatedLinks
+        title="Tender software by industry & region"
+        links={[
+          { label: "BOQ Pricing Engine", href: "/solutions/boq-pricing" },
+          ...featuredCombos().map((c) => ({ label: comboLabel(c), href: comboHref(c) })),
+        ]}
+      />
 
       <SolutionCta title="Stop retyping tenders" subtitle="Start a 14-day free trial — no credit card required." />
     </SolutionShell>
