@@ -5,6 +5,7 @@ import { Button } from "@/components/ui/button";
 import { Skeleton } from "@/components/ui/skeleton";
 import { PageHeader } from "@/components/ui/page-header";
 import { StatsCards } from "@/components/dashboard/stats-cards";
+import { DashboardHero } from "@/components/dashboard/dashboard-hero";
 import { RecentTenders } from "@/components/dashboard/recent-tenders";
 import { UpcomingDeadlines } from "@/components/dashboard/upcoming-deadlines";
 import { getAuthContext } from "@/lib/auth";
@@ -31,15 +32,8 @@ async function DashboardContent() {
 
   return (
     <div className="flex flex-col gap-6 p-6">
-      {/* Welcome banner */}
-      <div className="flex flex-col gap-1">
-        <h2 className="text-2xl font-semibold text-slate-900 dark:text-slate-100">
-          Good day, {firstName} 👋
-        </h2>
-        <p className="text-sm text-slate-500">
-          Here&apos;s what&apos;s happening with your tenders today.
-        </p>
-      </div>
+      {/* Premium hero banner */}
+      <DashboardHero firstName={firstName} stats={stats} />
 
       {/* Stats */}
       <StatsCards stats={stats} />
@@ -61,22 +55,20 @@ async function DashboardContent() {
 function DashboardSkeleton() {
   return (
     <div className="flex flex-col gap-6 p-6">
-      <div className="flex flex-col gap-1">
-        <Skeleton className="h-8 w-48" />
-        <Skeleton className="h-4 w-72" />
-      </div>
+      {/* Hero skeleton */}
+      <Skeleton className="h-36 rounded-2xl" />
 
       {/* Stats skeleton */}
       <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 xl:grid-cols-4">
         {Array.from({ length: 4 }).map((_, i) => (
-          <Skeleton key={i} className="h-32 rounded-xl" />
+          <Skeleton key={i} className="h-36 rounded-2xl" />
         ))}
       </div>
 
       {/* Main content skeleton */}
       <div className="grid grid-cols-1 gap-6 xl:grid-cols-3">
-        <Skeleton className="h-80 rounded-xl xl:col-span-2" />
-        <Skeleton className="h-80 rounded-xl" />
+        <Skeleton className="h-80 rounded-2xl xl:col-span-2" />
+        <Skeleton className="h-80 rounded-2xl" />
       </div>
     </div>
   );
