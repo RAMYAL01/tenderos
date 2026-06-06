@@ -50,7 +50,7 @@ const regionLinks = [
 const resourcesMenu = [
   { icon: HelpCircle, title: "FAQ", desc: "Common questions", href: "/#faq" },
   { icon: BookOpen, title: "Documentation", desc: "Guides & API docs", href: "/contact" },
-  { icon: Newspaper, title: "Blog", desc: "Product & industry news", href: "/contact" },
+  { icon: Newspaper, title: "Blog", desc: "Engineering & strategy deep-dives", href: "/blog" },
   { icon: Mail, title: "Contact", desc: "Talk to our team", href: "/contact" },
 ];
 
