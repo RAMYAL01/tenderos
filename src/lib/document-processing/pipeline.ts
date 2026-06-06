@@ -22,8 +22,7 @@ import {
 } from "@/lib/s3";
 import { extractPdfText } from "./extract-pdf";
 import { extractDocxText, extractTxtText } from "./extract-docx";
-import { ocrScannedPdf } from "./extract-scanned-ocr";
-import { isAzureOcrConfigured } from "@/lib/ingestion/ocr-provider";
+import { ocrScannedPdf, isOcrConfigured } from "./extract-scanned-ocr";
 import {
   detectLanguage,
   getLanguageConfidence,
@@ -37,7 +36,7 @@ export interface ProcessedContent {
   languageConfidence: number;
   isScanned: boolean;
   processedAt: string;
-  extractionMethod: "pdf-parse" | "mammoth" | "plaintext" | "azure-ocr";
+  extractionMethod: "pdf-parse" | "mammoth" | "plaintext" | "azure-ocr" | "claude-ocr";
   warnings?: string[];
 }
 
@@ -78,9 +77,9 @@ export async function processDocument(documentId: string): Promise<void> {
       const result = await extractPdfText(fileBuffer);
 
       if (result.isScanned) {
-        // Scanned PDF — no extractable text. Use Azure OCR if configured;
-        // otherwise keep the existing graceful failure.
-        if (!isAzureOcrConfigured()) {
+        // Scanned PDF — no extractable text. OCR it if a provider is
+        // configured (Azure or Claude); otherwise keep the graceful failure.
+        if (!isOcrConfigured()) {
           await db.document.update({
             where: { id: documentId },
             data: {
@@ -93,20 +92,25 @@ export async function processDocument(documentId: string): Promise<void> {
           return;
         }
 
-        console.log(`[Pipeline] Scanned PDF — running Azure Document Intelligence OCR`);
+        console.log(`[Pipeline] Scanned PDF — running OCR`);
         await db.document.update({
           where: { id: documentId },
           data: { processingStatus: "OCR_PROCESSING" },
         });
 
-        // Prefer a presigned URL (Azure pulls it); fall back to raw bytes.
+        // Provide a presigned URL (Azure can pull it) plus raw bytes (Claude
+        // path). The adapter picks the provider that's configured.
         let urlSource: string | undefined;
         try {
           urlSource = await createPresignedDownloadUrl(doc.storageKey, doc.filename, 7200);
         } catch {
           urlSource = undefined;
         }
-        const ocr = await ocrScannedPdf(urlSource ? { urlSource } : { bytes: fileBuffer });
+        const ocr = await ocrScannedPdf({
+          urlSource,
+          bytes: fileBuffer,
+          pageCount: result.pageCount,
+        });
 
         if (!ocr.fullText.trim()) {
           await db.document.update({
@@ -138,7 +142,7 @@ export async function processDocument(documentId: string): Promise<void> {
           languageConfidence: confidence,
           isScanned: true,
           processedAt: new Date().toISOString(),
-          extractionMethod: "azure-ocr",
+          extractionMethod: ocr.provider === "claude-vision" ? "claude-ocr" : "azure-ocr",
           warnings,
         };
       } else {
