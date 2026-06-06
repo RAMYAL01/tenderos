@@ -11,6 +11,7 @@ import {
   FileWarning,
   CheckCircle2,
   Loader2,
+  AlertTriangle,
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
@@ -47,10 +48,12 @@ interface TenderDocumentsPanelProps {
 const STATUS_STYLES: Record<string, { label: string; icon: React.ElementType; color: string }> = {
   PENDING:       { label: "Pending",     icon: Loader2,       color: "text-slate-400" },
   QUEUED:        { label: "Queued",      icon: Loader2,       color: "text-slate-400" },
+  SCANNING:      { label: "Scanning",    icon: Loader2,       color: "text-blue-500" },
   OCR_PROCESSING: { label: "Processing", icon: Loader2,        color: "text-blue-500" },
   PARSING:       { label: "Parsing",     icon: Loader2,       color: "text-blue-500" },
   INDEXING:      { label: "Indexing",    icon: Loader2,       color: "text-violet-500" },
   READY:         { label: "Ready",       icon: CheckCircle2,  color: "text-emerald-600" },
+  NEEDS_REVIEW:  { label: "Needs review", icon: AlertTriangle, color: "text-amber-600" },
   FAILED:        { label: "Failed",      icon: FileWarning,   color: "text-red-500" },
   QUARANTINED:   { label: "Quarantined", icon: FileWarning,   color: "text-red-600" },
 };
@@ -202,7 +205,7 @@ export function TenderDocumentsPanel({
               STATUS_STYLES[doc.processingStatus] ?? STATUS_STYLES.PENDING;
             const StatusIcon = statusConfig.icon;
             const isProcessing =
-              !["READY", "FAILED", "QUARANTINED"].includes(doc.processingStatus);
+              !["READY", "FAILED", "QUARANTINED", "NEEDS_REVIEW"].includes(doc.processingStatus);
 
             return (
               <div
@@ -211,6 +214,8 @@ export function TenderDocumentsPanel({
                   "group flex items-start gap-4 rounded-xl border p-4 transition-colors",
                   doc.processingStatus === "FAILED"
                     ? "border-red-200 bg-red-50/50 dark:border-red-900/50 dark:bg-red-900/10"
+                    : doc.processingStatus === "NEEDS_REVIEW"
+                    ? "border-amber-200 bg-amber-50/50 dark:border-amber-900/50 dark:bg-amber-900/10"
                     : doc.processingStatus === "READY"
                     ? "border-slate-200 bg-white dark:border-slate-800 dark:bg-slate-950"
                     : "border-slate-200 bg-slate-50 dark:border-slate-800 dark:bg-slate-900"
@@ -220,6 +225,8 @@ export function TenderDocumentsPanel({
                 <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-lg bg-slate-100 dark:bg-slate-800">
                   {doc.processingStatus === "FAILED" ? (
                     <FileWarning className="h-5 w-5 text-red-500" />
+                  ) : doc.processingStatus === "NEEDS_REVIEW" ? (
+                    <AlertTriangle className="h-5 w-5 text-amber-500" />
                   ) : (
                     <FileText className="h-5 w-5 text-slate-500" />
                   )}
@@ -281,11 +288,19 @@ export function TenderDocumentsPanel({
                       {doc.errorMessage}
                     </p>
                   )}
+
+                  {doc.processingStatus === "NEEDS_REVIEW" && !doc.errorMessage && (
+                    <p className="mt-1.5 text-xs text-amber-600 dark:text-amber-400">
+                      Some pages were low-confidence and held for review. Verify the
+                      extracted content before relying on it.
+                    </p>
+                  )}
                 </div>
 
                 {/* Actions */}
                 <div className="flex shrink-0 items-center gap-1 opacity-0 transition-opacity group-hover:opacity-100">
-                  {doc.processingStatus === "READY" && (
+                  {(doc.processingStatus === "READY" ||
+                    doc.processingStatus === "NEEDS_REVIEW") && (
                     <Button
                       variant="ghost"
                       size="icon"
