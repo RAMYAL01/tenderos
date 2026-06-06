@@ -4,37 +4,55 @@ import { ThemeProvider } from "next-themes";
 import { Toaster } from "@/components/ui/toaster";
 import "./globals.css";
 
+const SITE_URL = process.env.NEXT_PUBLIC_APP_URL ?? "https://www.thetenderos.com";
+
 export const metadata: Metadata = {
+  metadataBase: new URL(SITE_URL),
   title: {
-    default: "TenderOS — The Operating System for Winning Contracts",
+    default: "TenderOS — AI Tender & BOQ Intelligence for MENA Contractors",
     template: "%s | TenderOS",
   },
   description:
-    "AI-powered proposal intelligence platform for government contractors, construction, engineering, and defense companies in MENA and globally.",
+    "TenderOS extracts requirements and compliance matrices from 100+ page Arabic/English RFPs and BOQs in 90 seconds, then prices bids with a deterministic, float-safe engine — zero AI math hallucination. Built for construction, EPC, and facility-management firms in Saudi Arabia, the UAE, Qatar, and Egypt.",
+  applicationName: "TenderOS",
   keywords: [
-    "proposal management",
-    "tender software",
-    "RFP response",
-    "compliance matrix",
-    "MENA procurement",
-    "Arabic tender",
-    "government contracting",
+    "AI bid management software construction",
+    "automated BOQ extraction",
+    "BOQ pricing software",
+    "tender management software MENA",
+    "RFP compliance matrix automation",
+    "construction estimating software Saudi Arabia",
+    "EPC tender software UAE",
+    "deterministic construction pricing",
+    "Arabic RFP requirement extraction",
+    "برنامج إدارة العطاءات للمقاولات",
+    "أتمتة تسعير المقايسات",
+    "برنامج تسعير المقايسات",
   ],
   authors: [{ name: "TenderOS" }],
   creator: "TenderOS",
+  publisher: "TenderOS",
+  alternates: { canonical: "/" },
   openGraph: {
     type: "website",
     locale: "en_US",
     alternateLocale: "ar_AE",
-    url: process.env.NEXT_PUBLIC_APP_URL,
+    url: SITE_URL,
     title: "TenderOS — The Operating System for Winning Contracts",
     description:
-      "AI-powered bilingual (Arabic/English) proposal intelligence for MENA contractors.",
+      "Extract Arabic/English BOQs in 90 seconds and price bids with a deterministic, zero-hallucination engine. For construction, EPC & FM firms across the Gulf and Egypt.",
     siteName: "TenderOS",
+  },
+  twitter: {
+    card: "summary_large_image",
+    title: "TenderOS — AI Tender & BOQ Intelligence for MENA",
+    description:
+      "Messy Arabic/English RFPs & BOQs to structured requirements + float-safe pricing. Built for Gulf construction, EPC & FM.",
   },
   robots: {
     index: true,
     follow: true,
+    googleBot: { index: true, follow: true, "max-image-preview": "large", "max-snippet": -1 },
   },
 };
 
