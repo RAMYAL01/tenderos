@@ -1,16 +1,22 @@
 import { PageHeader } from "@/components/ui/page-header";
-import { getAuthContext } from "@/lib/auth";
+import { getAuthContext, hasRole } from "@/lib/auth";
 import { db } from "@/lib/prisma";
 import { PLAN_LIMITS } from "@/lib/constants";
 import { formatBytes } from "@/lib/utils";
+import { isBillingEnabled } from "@/lib/billing/stripe";
+import { BillingActions } from "@/components/settings/billing-actions";
 import { Badge } from "@/components/ui/badge";
-import { Button } from "@/components/ui/button";
-import { CreditCard, Zap, HardDrive, Users, ArrowUpRight } from "lucide-react";
+import { CheckCircle2, XCircle, CreditCard, Zap, HardDrive, Users } from "lucide-react";
 
 export const metadata = { title: "Billing" };
 
-export default async function BillingPage() {
-  const { org } = await getAuthContext();
+export default async function BillingPage({
+  searchParams,
+}: {
+  searchParams: Promise<{ success?: string; canceled?: string }>;
+}) {
+  const { org, member } = await getAuthContext();
+  const { success, canceled } = await searchParams;
 
   const subscription = await db.subscription.findUnique({
     where: { orgId: org.id },
@@ -23,6 +29,10 @@ export default async function BillingPage() {
     where: { orgId: org.id, isActive: true, deletedAt: null },
   });
 
+  const canManage = hasRole(member.role, "ADMIN");
+  const hasPaidSub = Boolean(subscription?.stripeCustomerId);
+  const billingEnabled = isBillingEnabled();
+
   return (
     <>
       <PageHeader
@@ -31,6 +41,23 @@ export default async function BillingPage() {
       />
 
       <div className="mx-auto max-w-3xl space-y-6 p-6">
+        {/* Post-checkout banners */}
+        {success && (
+          <div className="flex items-center gap-3 rounded-xl border border-emerald-200 bg-emerald-50 p-4 text-sm text-emerald-800 dark:border-emerald-900/50 dark:bg-emerald-950/30 dark:text-emerald-300">
+            <CheckCircle2 className="h-5 w-5 shrink-0" />
+            <span>
+              Payment successful — your plan is now active. It may take a few
+              seconds to reflect below.
+            </span>
+          </div>
+        )}
+        {canceled && (
+          <div className="flex items-center gap-3 rounded-xl border border-slate-200 bg-slate-50 p-4 text-sm text-slate-600 dark:border-slate-800 dark:bg-slate-900/50 dark:text-slate-400">
+            <XCircle className="h-5 w-5 shrink-0" />
+            <span>Checkout canceled — no changes were made to your plan.</span>
+          </div>
+        )}
+
         {/* Current plan — premium dark hero card */}
         <div className="relative overflow-hidden rounded-2xl bg-gradient-to-br from-slate-900 to-[#0a1730] p-6 shadow-xl shadow-blue-900/20 sm:p-8">
           {/* Grid texture */}
@@ -76,10 +103,15 @@ export default async function BillingPage() {
                 )}
               </p>
             </div>
-            <Button className="gap-2 bg-white text-blue-700 shadow-lg hover:bg-blue-50">
-              <ArrowUpRight className="h-4 w-4" />
-              Upgrade
-            </Button>
+            {subscription?.status && subscription.status !== "active" && (
+              <Badge className="border-0 bg-amber-500/20 text-amber-200">
+                {subscription.status === "past_due"
+                  ? "Past due"
+                  : subscription.status === "cancelled"
+                  ? "Cancelled"
+                  : subscription.status}
+              </Badge>
+            )}
           </div>
 
           {subscription?.currentPeriodEnd && (
@@ -130,20 +162,13 @@ export default async function BillingPage() {
           </div>
         </div>
 
-        {/* Stripe portal placeholder */}
-        <div className="rounded-xl border border-slate-200 bg-slate-50 p-5 dark:border-slate-800 dark:bg-slate-900/50">
-          <p className="text-sm text-slate-600 dark:text-slate-400">
-            <strong>Billing management</strong> via Stripe Customer Portal is
-            configured in Phase 2. Contact{" "}
-            <a
-              href="mailto:support@thetenderos.com"
-              className="text-blue-600 hover:underline"
-            >
-              support@thetenderos.com
-            </a>{" "}
-            to upgrade, cancel, or request an invoice.
-          </p>
-        </div>
+        {/* Plan selection + Stripe customer portal */}
+        <BillingActions
+          currentTier={plan}
+          hasPaidSub={hasPaidSub}
+          canManage={canManage}
+          billingEnabled={billingEnabled}
+        />
       </div>
     </>
   );
