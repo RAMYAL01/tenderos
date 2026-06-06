@@ -14,9 +14,16 @@
  */
 
 import { db } from "@/lib/prisma";
-import { downloadFromS3, uploadToS3, getProcessedContentKey } from "@/lib/s3";
+import {
+  downloadFromS3,
+  uploadToS3,
+  getProcessedContentKey,
+  createPresignedDownloadUrl,
+} from "@/lib/s3";
 import { extractPdfText } from "./extract-pdf";
 import { extractDocxText, extractTxtText } from "./extract-docx";
+import { ocrScannedPdf } from "./extract-scanned-ocr";
+import { isAzureOcrConfigured } from "@/lib/ingestion/ocr-provider";
 import {
   detectLanguage,
   getLanguageConfidence,
@@ -30,7 +37,7 @@ export interface ProcessedContent {
   languageConfidence: number;
   isScanned: boolean;
   processedAt: string;
-  extractionMethod: "pdf-parse" | "mammoth" | "plaintext";
+  extractionMethod: "pdf-parse" | "mammoth" | "plaintext" | "azure-ocr";
   warnings?: string[];
 }
 
@@ -71,32 +78,84 @@ export async function processDocument(documentId: string): Promise<void> {
       const result = await extractPdfText(fileBuffer);
 
       if (result.isScanned) {
-        // Scanned PDF — text extraction not possible without OCR
+        // Scanned PDF — no extractable text. Use Azure OCR if configured;
+        // otherwise keep the existing graceful failure.
+        if (!isAzureOcrConfigured()) {
+          await db.document.update({
+            where: { id: documentId },
+            data: {
+              processingStatus: "FAILED",
+              errorMessage:
+                "This appears to be a scanned PDF. Please upload a text-based PDF or DOCX file. " +
+                "OCR processing for scanned documents is available on Enterprise plans.",
+            },
+          });
+          return;
+        }
+
+        console.log(`[Pipeline] Scanned PDF — running Azure Document Intelligence OCR`);
         await db.document.update({
           where: { id: documentId },
-          data: {
-            processingStatus: "FAILED",
-            errorMessage:
-              "This appears to be a scanned PDF. Please upload a text-based PDF or DOCX file. " +
-              "OCR processing for scanned documents is available on Enterprise plans.",
-          },
+          data: { processingStatus: "OCR_PROCESSING" },
         });
-        return;
+
+        // Prefer a presigned URL (Azure pulls it); fall back to raw bytes.
+        let urlSource: string | undefined;
+        try {
+          urlSource = await createPresignedDownloadUrl(doc.storageKey, doc.filename, 7200);
+        } catch {
+          urlSource = undefined;
+        }
+        const ocr = await ocrScannedPdf(urlSource ? { urlSource } : { bytes: fileBuffer });
+
+        if (!ocr.fullText.trim()) {
+          await db.document.update({
+            where: { id: documentId },
+            data: {
+              processingStatus: "FAILED",
+              errorMessage:
+                "OCR completed but produced no readable text. The scan may be too low-quality.",
+            },
+          });
+          return;
+        }
+
+        const language = detectLanguage(ocr.fullText);
+        const confidence = getLanguageConfidence(ocr.fullText, language);
+        const warnings =
+          ocr.meanConfidence < 0.7
+            ? [
+                `Low OCR confidence (${Math.round(ocr.meanConfidence * 100)}%). ` +
+                  `Review extracted content before relying on it.`,
+              ]
+            : undefined;
+
+        content = {
+          fullText: ocr.fullText,
+          pages: ocr.pages,
+          pageCount: ocr.pageCount,
+          language,
+          languageConfidence: confidence,
+          isScanned: true,
+          processedAt: new Date().toISOString(),
+          extractionMethod: "azure-ocr",
+          warnings,
+        };
+      } else {
+        const language = detectLanguage(result.fullText);
+        const confidence = getLanguageConfidence(result.fullText, language);
+
+        content = {
+          fullText: result.fullText,
+          pages: result.pages,
+          pageCount: result.pageCount,
+          language,
+          languageConfidence: confidence,
+          isScanned: false,
+          processedAt: new Date().toISOString(),
+          extractionMethod: "pdf-parse",
+        };
       }
-
-      const language = detectLanguage(result.fullText);
-      const confidence = getLanguageConfidence(result.fullText, language);
-
-      content = {
-        fullText: result.fullText,
-        pages: result.pages,
-        pageCount: result.pageCount,
-        language,
-        languageConfidence: confidence,
-        isScanned: false,
-        processedAt: new Date().toISOString(),
-        extractionMethod: "pdf-parse",
-      };
     } else if (
       doc.mimeType ===
         "application/vnd.openxmlformats-officedocument.wordprocessingml.document" ||

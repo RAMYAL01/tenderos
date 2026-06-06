@@ -59,6 +59,11 @@ export class OcrError extends Error {
   }
 }
 
+/** True when Azure Document Intelligence credentials are present in the env. */
+export function isAzureOcrConfigured(): boolean {
+  return Boolean(process.env.AZURE_DOCINTEL_ENDPOINT && process.env.AZURE_DOCINTEL_KEY);
+}
+
 // ── Azure Document Intelligence REST adapter ──────────────────────────────────
 
 const API_VERSION = "2024-11-30"; // v4.0 GA
