@@ -85,7 +85,7 @@ export function PricingTable() {
             Plans that scale with your bid volume
           </h2>
           <p className="mt-4 text-lg text-slate-600 dark:text-slate-400">
-            Start free for 14 days. No credit card required.
+            Start your 14-day free trial. Cancel anytime.
           </p>
 
           {/* Billing toggle */}
@@ -185,6 +185,7 @@ function PriceCard({ tier, annual }: { tier: PricingTier; annual: boolean }) {
 
   const price = annual ? Math.round(tier.monthly * 0.8) : tier.monthly;
   const Icon = tier.icon;
+  const checkoutHref = `/checkout?tier=${tier.name.toUpperCase()}&cycle=${annual ? "annual" : "monthly"}`;
 
   if (tier.highlighted) {
     // Premium dark card with rotating glow border
@@ -264,7 +265,7 @@ function PriceCard({ tier, annual }: { tier: PricingTier; annual: boolean }) {
             ))}
           </ul>
 
-          <ShinyButton href="/sign-up" variant="primary" size="lg" className="relative mt-8 w-full">
+          <ShinyButton href={checkoutHref} variant="primary" size="lg" className="relative mt-8 w-full">
             Start Free Trial
           </ShinyButton>
         </div>
@@ -323,7 +324,7 @@ function PriceCard({ tier, annual }: { tier: PricingTier; annual: boolean }) {
         ))}
       </ul>
 
-      <ShinyButton href="/sign-up" variant="ghost" size="lg" className="relative mt-8 w-full">
+      <ShinyButton href={checkoutHref} variant="ghost" size="lg" className="relative mt-8 w-full">
         Start Free Trial
       </ShinyButton>
     </div>
