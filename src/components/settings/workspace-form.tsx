@@ -17,7 +17,6 @@ import {
 } from "@/components/ui/select";
 import { updateWorkspace } from "@/lib/actions/workspace";
 import { SECTORS } from "@/lib/constants";
-import type { Organization } from "@prisma/client";
 
 const schema = z.object({
   name: z.string().min(2, "At least 2 characters").max(100),
@@ -52,8 +51,22 @@ const LANGUAGE_OPTIONS = [
   { value: "BILINGUAL", label: "Bilingual (Arabic + English)" },
 ];
 
+/**
+ * Only the serializable string fields the form needs. Passing the full
+ * Organization (which has BigInt storage columns) across the server→client
+ * boundary throws a serialization error.
+ */
+export interface WorkspaceFormOrg {
+  name: string;
+  nameAr: string | null;
+  industry: string | null;
+  website: string | null;
+  defaultLanguage: string;
+  countryCode: string | null;
+}
+
 interface WorkspaceFormProps {
-  org: Organization;
+  org: WorkspaceFormOrg;
   canEdit: boolean;
 }
 

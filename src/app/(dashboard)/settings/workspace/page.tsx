@@ -108,7 +108,17 @@ export default async function WorkspaceSettingsPage() {
           <h3 className="mb-6 font-semibold text-slate-900 dark:text-slate-100">
             Organization Profile
           </h3>
-          <WorkspaceForm org={org} canEdit={canEdit} />
+          <WorkspaceForm
+            org={{
+              name: org.name,
+              nameAr: org.nameAr,
+              industry: org.industry,
+              website: org.website,
+              defaultLanguage: org.defaultLanguage,
+              countryCode: org.countryCode,
+            }}
+            canEdit={canEdit}
+          />
         </div>
 
         {/* Danger zone — delete org, only shown to OWNER */}

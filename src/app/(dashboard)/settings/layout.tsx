@@ -1,38 +1,36 @@
-import Link from "next/link";
-import { redirect } from "next/navigation";
-import { Building2, Users, CreditCard, Bell, Shield } from "lucide-react";
 import { getAuthContext } from "@/lib/auth";
-import { cn } from "@/lib/utils";
 
+// Icons are referenced by NAME (string) and resolved inside the client
+// SettingsTabLink — components can't cross the server→client boundary.
 const settingsTabs = [
   {
     label: "Workspace",
     href: "/settings/workspace",
-    icon: Building2,
+    icon: "Building2",
     roles: ["OWNER", "ADMIN", "MANAGER", "SENIOR_WRITER", "WRITER", "REVIEWER", "VIEWER"],
   },
   {
     label: "Members",
     href: "/settings/members",
-    icon: Users,
+    icon: "Users",
     roles: ["OWNER", "ADMIN"],
   },
   {
     label: "Billing",
     href: "/settings/billing",
-    icon: CreditCard,
+    icon: "CreditCard",
     roles: ["OWNER", "ADMIN"],
   },
   {
     label: "Notifications",
     href: "/settings/notifications",
-    icon: Bell,
+    icon: "Bell",
     roles: ["OWNER", "ADMIN", "MANAGER", "SENIOR_WRITER", "WRITER", "REVIEWER", "VIEWER"],
   },
   {
     label: "Security",
     href: "/settings/security",
-    icon: Shield,
+    icon: "Shield",
     roles: ["OWNER", "ADMIN"],
   },
 ];

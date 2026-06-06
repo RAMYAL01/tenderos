@@ -2,19 +2,32 @@
 
 import Link from "next/link";
 import { usePathname } from "next/navigation";
+import { Building2, Users, CreditCard, Bell, Shield, type LucideIcon } from "lucide-react";
 import { cn } from "@/lib/utils";
-import type { LucideIcon } from "lucide-react";
+
+/**
+ * Icon components can't be passed as props from a Server Component to a Client
+ * Component (React can't serialize a function). So tabs carry an icon *name*
+ * and we resolve it to a component here, on the client.
+ */
+const ICONS: Record<string, LucideIcon> = {
+  Building2,
+  Users,
+  CreditCard,
+  Bell,
+  Shield,
+};
 
 interface Tab {
   label: string;
   href: string;
-  icon: LucideIcon;
+  icon: string;
 }
 
 export function SettingsTabLink({ tab }: { tab: Tab }) {
   const pathname = usePathname();
   const isActive = pathname === tab.href || pathname.startsWith(tab.href + "/");
-  const Icon = tab.icon;
+  const Icon = ICONS[tab.icon] ?? Building2;
 
   return (
     <Link
