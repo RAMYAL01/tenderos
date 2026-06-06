@@ -8,12 +8,17 @@ import { rateLimit, RATE_LIMITS, tooManyRequests } from "@/lib/rate-limit";
  */
 const isPublicRoute = createRouteMatcher([
   "/",
-  "/about(.*)",          // Marketing — public
-  "/contact(.*)",        // Marketing — public
+  "/about(.*)",            // Marketing — public
+  "/contact(.*)",          // Marketing — public
+  "/blog(.*)",             // Blog — public
+  "/solutions(.*)",        // SEO pillar pages — public
+  "/tender-software(.*)",  // Programmatic SEO pages — public
+  "/sitemap.xml",          // SEO — public
+  "/robots.txt",           // SEO — public
   "/sign-in(.*)",
   "/sign-up(.*)",
-  "/api/webhooks(.*)",   // Clerk webhook — verified via svix signature
-  "/api/health",         // Health check — always public
+  "/api/webhooks(.*)",     // Clerk webhook — verified via svix signature
+  "/api/health",           // Health check — always public
 ]);
 
 /**
@@ -93,7 +98,7 @@ export default clerkMiddleware(async (auth, req: NextRequest) => {
 
 export const config = {
   matcher: [
-    "/((?!_next|[^?]*\\.(?:html?|css|js(?!on)|jpe?g|webp|png|gif|svg|ttf|woff2?|ico|csv|docx?|xlsx?|zip|webmanifest)).*)",
+    "/((?!_next|[^?]*\\.(?:html?|css|js(?!on)|jpe?g|webp|png|gif|svg|ttf|woff2?|ico|csv|docx?|xlsx?|zip|webmanifest|xml|txt)).*)",
     "/(api|trpc)(.*)",
   ],
 };
