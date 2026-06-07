@@ -217,6 +217,7 @@ model Organization {
   tenders             Tender[]
   contentLibraryItems ContentLibraryItem[]
   knowledgeChunks     KnowledgeChunk[]
+  boqWorkflows        BoqWorkflow[]
   aiJobs              AIJob[]
   subscription        Subscription?
   auditLogs           AuditLog[]
@@ -613,6 +614,49 @@ model KnowledgeChunk {
   @@unique([sourceId, chunkIndex])
   @@index([orgId])
   @@map("knowledge_chunks")
+}
+
+/// Persisted state for the multi-agent BOQ/RFP workflow (Step 2).
+/// Each step transition is committed here, so a serverless function can run one
+/// step per invocation and the run is resumable after a timeout/crash. Every
+/// query is org-scoped — a workflow can only be advanced by its own tenant.
+enum BoqWorkflowStatus {
+  DRAFT
+  EXTRACTING
+  EXTRACTED
+  COMPLIANCE_CHECKING
+  COMPLIANCE_CHECKED
+  PRICING
+  PRICED
+  FAILED
+}
+
+model BoqWorkflow {
+  id          String            @id @default(cuid())
+  orgId       String // TENANT BINDING
+  tenderId    String?
+  createdById String?
+  status      BoqWorkflowStatus @default(DRAFT)
+
+  // Routed data between steps — each is a validated payload, not free text.
+  sourceText   String? @db.Text // raw BOQ/RFP text (input)
+  requirements Json? // string[] technical requirements (input to compliance)
+  config       Json? // PricingConfig (overhead %, profit %, currency)
+  extraction   Json? // BoqExtraction (validated extractor output)
+  compliance   Json? // compliance matrix (compliance agent output)
+  pricing      Json? // BoqPricingResult (deterministic financial output)
+
+  error       String?
+  failedStep  String?
+  attempts    Int       @default(0)
+  startedAt   DateTime  @default(now())
+  updatedAt   DateTime  @updatedAt
+  completedAt DateTime?
+
+  organization Organization @relation(fields: [orgId], references: [id], onDelete: Cascade)
+
+  @@index([orgId, status])
+  @@map("boq_workflows")
 }
 
 // ─────────────────────────────────────────────────────────────────────────────
