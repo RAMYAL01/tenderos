@@ -22,9 +22,20 @@ def norm_text(s: Any) -> str:
     return re.sub(r"\s+", " ", s)
 
 
+_UNIT_ALIASES = {
+    # latin
+    "sqm": "m2", "sq.m": "m2", "cum": "m3", "cu.m": "m3", "nos": "no", "nr": "no",
+    "each": "no", "ea": "no", "ls.": "ls", "lumpsum": "ls", "hrs": "hr", "hour": "hr",
+    "tonne": "ton", "mt": "ton",
+    # arabic (digits already ASCII-folded by norm_text; ² ³ folded below)
+    "م2": "m2", "م3": "m3", "عدد": "no", "طن": "ton", "ساعة": "hr", "ساعه": "hr",
+    "كجم": "kg", "كغ": "kg", "لتر": "l", "متر": "m", "م": "m", "م.ط": "m", "مقطوعية": "ls",
+}
+
+
 def norm_unit(u: Any) -> str:
     u = norm_text(u).replace("²", "2").replace("³", "3").replace(" ", "")
-    return {"sqm": "m2", "cum": "m3", "nos": "no", "nr": "no", "each": "no", "ls.": "ls"}.get(u, u)
+    return _UNIT_ALIASES.get(u, u)
 
 
 def _qty(v: Any) -> float | None:

@@ -1,0 +1,70 @@
+name: TenderEval
+
+# Two purposes:
+#  - metrics-selftest: runs on every change to training/** so the eval harness
+#    can't silently rot (pure, no model needed).
+#  - gate: MANUAL (workflow_dispatch). Points TenderEval at a running vLLM
+#    endpoint serving a candidate model and FAILS the run if any KPI misses its
+#    acceptance threshold — the promotion gate from the Phase-3 strategy doc.
+
+on:
+  push:
+    paths:
+      - "training/**"
+  pull_request:
+    paths:
+      - "training/**"
+  workflow_dispatch:
+    inputs:
+      endpoint:
+        description: "OpenAI-compatible model endpoint (vLLM), e.g. https://host/v1"
+        required: true
+      model:
+        description: "served model name"
+        required: false
+        default: "tenderos"
+      gold:
+        description: "gold test JSONL (relative to training/)"
+        required: false
+        default: "eval/datasets/tendereval.test.jsonl"
+
+defaults:
+  run:
+    working-directory: training
+
+jobs:
+  metrics-selftest:
+    name: Metrics self-test
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+      - name: Syntax check all modules
+        run: python -m py_compile src/*.py eval/*.py
+      - name: Metric unit tests
+        run: python -m unittest eval.test_metrics -v
+
+  gate:
+    name: TenderEval acceptance gate
+    needs: metrics-selftest
+    if: github.event_name == 'workflow_dispatch'
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+      - name: Install eval client
+        run: pip install "openai>=1.40"
+      - name: Run TenderEval (fails the job on any KPI miss)
+        env:
+          EVAL_API_KEY: ${{ secrets.TENDEREVAL_API_KEY }}
+        run: |
+          python -m eval.run_eval \
+            --endpoint "${{ inputs.endpoint }}" \
+            --model "${{ inputs.model }}" \
+            --gold "${{ inputs.gold }}" \
+            --api-key "${EVAL_API_KEY:-not-needed}" \
+            --json
