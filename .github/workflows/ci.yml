@@ -55,6 +55,9 @@ jobs:
       - name: ESLint
         run: npm run lint
 
+      - name: Deterministic BOQ engine test (BigInt-exact)
+        run: npm run test:boq
+
   # ── Job 2: Build ──────────────────────────────────────────────────────────
   build:
     name: Build

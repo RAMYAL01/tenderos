@@ -2,10 +2,17 @@
 
 import { useState } from "react";
 import { CheckCircle2, Circle, AlertCircle, MinusCircle, Flag } from "lucide-react";
-import { Badge } from "@/components/ui/badge";
 import { cn } from "@/lib/utils";
 import { toast } from "@/hooks/use-toast";
+import { FeedbackButtons } from "@/components/feedback/feedback-buttons";
+import { recordAIFeedback } from "@/lib/actions/feedback";
 import type { ComplianceStatus, RequirementPriority, RequirementType } from "@prisma/client";
+
+function rowLang(r: { textEn: string | null; textAr: string | null }): "en" | "ar" | "mixed" {
+  if (r.textEn && r.textAr) return "mixed";
+  if (r.textAr) return "ar";
+  return "en";
+}
 
 const STATUS_CONFIG: Record<ComplianceStatus, { label: string; icon: React.ElementType; color: string; bg: string }> = {
   NOT_STARTED:   { label: "Not Started", icon: Circle,       color: "text-slate-400", bg: "bg-slate-50 dark:bg-slate-900" },
@@ -45,9 +52,13 @@ interface ComplianceMatrixProps {
   tenderId: string;
 }
 
-export function ComplianceMatrix({ rows, canEdit, tenderId }: ComplianceMatrixProps) {
-  const [editingId, setEditingId] = useState<string | null>(null);
+export function ComplianceMatrix({ rows, canEdit }: ComplianceMatrixProps) {
   const [localRows, setLocalRows] = useState(rows);
+  // The AI's original verdict per row, captured at mount. Overriding it later
+  // is an EDIT training signal (chosen = human, rejected = AI).
+  const [aiStatus] = useState<Record<string, ComplianceStatus>>(() =>
+    Object.fromEntries(rows.map((r) => [r.id, r.status]))
+  );
 
   const total = localRows.length;
   const completed = localRows.filter((r) => r.status === "COMPLETED").length;
@@ -67,9 +78,22 @@ export function ComplianceMatrix({ rows, canEdit, tenderId }: ComplianceMatrixPr
         body: JSON.stringify({ status }),
       });
       if (!res.ok) throw new Error("Update failed");
-      setLocalRows((prev) =>
-        prev.map((r) => (r.id === rowId ? { ...r, status } : r))
-      );
+      setLocalRows((prev) => prev.map((r) => (r.id === rowId ? { ...r, status } : r)));
+
+      // Training signal: overriding the AI's original verdict is an EDIT.
+      const row = localRows.find((r) => r.id === rowId);
+      const original = aiStatus[rowId];
+      if (row && original && original !== status) {
+        void recordAIFeedback({
+          task: "compliance_analysis",
+          action: "EDIT",
+          inputRef: row.requirement.id,
+          inputText: row.requirement.textEn ?? row.requirement.textAr ?? undefined,
+          lang: rowLang(row.requirement),
+          aiOutput: { status: original },
+          humanOutput: { status },
+        });
+      }
     } catch {
       toast({ title: "Failed to update status", variant: "destructive" });
     }
@@ -123,6 +147,9 @@ export function ComplianceMatrix({ rows, canEdit, tenderId }: ComplianceMatrixPr
               <th className="hidden px-4 py-3 text-left text-xs font-medium uppercase tracking-wide text-slate-500 lg:table-cell w-28">Priority</th>
               <th className="px-4 py-3 text-left text-xs font-medium uppercase tracking-wide text-slate-500 w-32">Status</th>
               <th className="hidden px-4 py-3 text-left text-xs font-medium uppercase tracking-wide text-slate-500 xl:table-cell">Response Preview</th>
+              {canEdit && (
+                <th className="px-4 py-3 text-left text-xs font-medium uppercase tracking-wide text-slate-500 w-20">AI</th>
+              )}
             </tr>
           </thead>
           <tbody className="divide-y divide-slate-100 bg-white dark:divide-slate-800 dark:bg-slate-950">
@@ -180,6 +207,21 @@ export function ComplianceMatrix({ rows, canEdit, tenderId }: ComplianceMatrixPr
                       <span className="text-xs text-slate-300">No response yet</span>
                     )}
                   </td>
+                  {canEdit && (
+                    <td className="px-4 py-3">
+                      <div className="opacity-0 transition-opacity group-hover:opacity-100">
+                        <FeedbackButtons
+                          base={{
+                            task: "compliance_analysis",
+                            inputRef: row.requirement.id,
+                            inputText: row.requirement.textEn ?? row.requirement.textAr ?? undefined,
+                            lang: rowLang(row.requirement),
+                            aiOutput: { status: aiStatus[row.id] ?? row.status },
+                          }}
+                        />
+                      </div>
+                    </td>
+                  )}
                 </tr>
               );
             })}

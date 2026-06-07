@@ -14,6 +14,7 @@ import {
   SelectValue,
 } from "@/components/ui/select";
 import { toast } from "@/hooks/use-toast";
+import { FeedbackButtons } from "@/components/feedback/feedback-buttons";
 import {
   computeBreakdown,
   lineTotal,
@@ -284,7 +285,19 @@ export function FinancialBuilder({ financialId, currency, assumptions, lines }: 
 
         {/* Breakdown */}
         <div className="rounded-xl border border-slate-200 bg-white p-5 shadow-sm dark:border-slate-800 dark:bg-slate-900">
-          <h3 className="mb-3 text-sm font-semibold text-slate-900 dark:text-white">Cost Breakdown</h3>
+          <div className="mb-3 flex items-center justify-between gap-2">
+            <h3 className="text-sm font-semibold text-slate-900 dark:text-white">Cost Breakdown</h3>
+            <div className="flex items-center gap-1.5 text-[11px] text-slate-400">
+              <span>BOQ extraction accurate?</span>
+              <FeedbackButtons
+                base={{
+                  task: "boq_classification",
+                  inputRef: financialId,
+                  aiOutput: { lineCount: lines.length },
+                }}
+              />
+            </div>
+          </div>
 
           <div className="space-y-1.5 text-sm">
             {breakdown.byCategory.map((c) => (
