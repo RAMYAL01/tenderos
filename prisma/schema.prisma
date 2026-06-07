@@ -218,6 +218,7 @@ model Organization {
   contentLibraryItems ContentLibraryItem[]
   knowledgeChunks     KnowledgeChunk[]
   boqWorkflows        BoqWorkflow[]
+  aiFeedback          AIFeedback[]
   aiJobs              AIJob[]
   subscription        Subscription?
   auditLogs           AuditLog[]
@@ -657,6 +658,43 @@ model BoqWorkflow {
 
   @@index([orgId, status])
   @@map("boq_workflows")
+}
+
+/// Phase-3 feedback flywheel. Every time a domain expert reviews an AI output
+/// (extraction, compliance, risk, proposal, scope, BOQ classification) the
+/// action + the before/after is captured here. The training-export pipeline
+/// (lib/training/export.ts) turns these into de-identified SFT/DPO datasets:
+///   ACCEPT/EDIT -> SFT gold (input -> human-approved output)
+///   EDIT        -> DPO pair (chosen = human, rejected = ai)
+///   REJECT      -> hard negative
+enum AIFeedbackAction {
+  ACCEPT
+  EDIT
+  REJECT
+}
+
+model AIFeedback {
+  id           String           @id @default(cuid())
+  orgId        String // TENANT BINDING
+  memberId     String?
+  task         String // requirement_extraction | compliance_analysis | risk_identification | proposal_generation | scope_interpretation | boq_classification
+  action       AIFeedbackAction
+  reviewerRole String? // estimator | procurement_manager | proposal_manager
+  modelVersion String? // which model produced aiOutput (provenance / regression tracking)
+  lang         String? // ar | en | mixed
+  inputRef     String? // id of the reviewed resource (requirementId / boqWorkflowId / proposalSectionId)
+  inputText    String?          @db.Text // the input shown to the model (for SFT reconstruction)
+  aiOutput     Json // what the model produced
+  humanOutput  Json? // the corrected/approved version (for EDIT/ACCEPT)
+  reason       String? // free-text rejection/edit reason -> hard-negative signal
+  exportedAt   DateTime? // set when this row has been materialized into a dataset version
+  createdAt    DateTime         @default(now())
+
+  organization Organization @relation(fields: [orgId], references: [id], onDelete: Cascade)
+
+  @@index([orgId, task])
+  @@index([exportedAt])
+  @@map("ai_feedback")
 }
 
 // ─────────────────────────────────────────────────────────────────────────────
