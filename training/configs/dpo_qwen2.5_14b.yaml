@@ -1,0 +1,34 @@
+# DPO — refine the SFT adapter on (chosen, rejected) preference pairs.
+# Use after enough EDIT signals accumulate in the app's feedback flywheel.
+base_model: Qwen/Qwen2.5-14B-Instruct
+sft_adapter: outputs/sft-adapter            # policy starting point (required)
+output_dir: outputs/dpo-adapter
+
+train_file: data/dpo.train.jsonl
+eval_file: data/dpo.val.jsonl
+max_seq_len: 4096
+max_prompt_len: 2048
+
+load_in_4bit: true
+bnb_4bit_quant_type: nf4
+bnb_4bit_compute_dtype: bfloat16
+bnb_4bit_use_double_quant: true
+
+lora_r: 32
+lora_alpha: 64
+lora_dropout: 0.05
+lora_target_modules: [q_proj, k_proj, v_proj, o_proj, gate_proj, up_proj, down_proj]
+
+beta: 0.1                                    # DPO temperature
+num_train_epochs: 1
+per_device_train_batch_size: 1
+gradient_accumulation_steps: 16
+learning_rate: 5.0e-6                        # much lower than SFT
+lr_scheduler_type: cosine
+warmup_ratio: 0.1
+logging_steps: 10
+save_strategy: epoch
+eval_strategy: epoch
+bf16: true
+gradient_checkpointing: true
+seed: 42

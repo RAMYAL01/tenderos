@@ -1,0 +1,13 @@
+# never commit data (de-identified, but still your corpus) or weights
+data/
+outputs/
+*.jsonl
+# ...but DO keep the small synthetic eval fixtures
+!eval/datasets/
+!eval/datasets/*.jsonl
+*.safetensors
+*.bin
+.venv/
+__pycache__/
+*.pyc
+wandb/

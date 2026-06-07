@@ -1,0 +1,13 @@
+# Core fine-tuning stack (CUDA / Linux). Qwen2.5 needs transformers >= 4.45.
+torch>=2.3
+transformers>=4.45
+peft>=0.13
+trl>=0.11
+bitsandbytes>=0.44
+accelerate>=0.34
+datasets>=3.0
+sentencepiece
+pyyaml
+# eval
+scikit-learn
+openai>=1.40            # OpenAI-compatible client for vLLM eval endpoint
