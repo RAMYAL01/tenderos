@@ -2,9 +2,10 @@
 
 import { useState } from "react";
 import { usePathname } from "next/navigation";
-import { Menu, Bell, Search } from "lucide-react";
+import { Menu, Search } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
+import { NotificationsBell } from "./notifications-bell";
 import { cn } from "@/lib/utils";
 
 const PAGE_TITLES: Record<string, string> = {
@@ -93,15 +94,7 @@ export function Header({ className }: HeaderProps) {
       </div>
 
       {/* Notifications */}
-      <Button
-        variant="ghost"
-        size="icon"
-        className="relative rounded-lg text-slate-500 hover:text-slate-700"
-        aria-label="Notifications"
-      >
-        <Bell className="h-5 w-5" />
-        <span className="absolute right-2 top-2 h-2 w-2 rounded-full bg-blue-500 ring-2 ring-white dark:ring-slate-950" />
-      </Button>
+      <NotificationsBell />
     </header>
   );
 }

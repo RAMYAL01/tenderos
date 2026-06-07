@@ -41,10 +41,12 @@ export function KnowledgeList({ items }: { items: Item[] }) {
 
   if (items.length === 0) {
     return (
-      <div className="rounded-xl border border-dashed border-slate-300 bg-slate-50 py-14 text-center dark:border-slate-700 dark:bg-slate-900/40">
-        <FileText className="mx-auto mb-3 h-8 w-8 text-slate-300" />
-        <p className="font-medium text-slate-600 dark:text-slate-400">No documents yet</p>
-        <p className="mt-1 text-sm text-slate-400">
+      <div className="rounded-2xl border border-dashed border-slate-300 bg-slate-50 py-16 text-center dark:border-slate-700 dark:bg-slate-900/40">
+        <div className="mx-auto mb-4 flex h-14 w-14 items-center justify-center rounded-2xl bg-gradient-to-br from-cyan-500 to-blue-600 text-white shadow-lg shadow-cyan-600/25">
+          <FileText className="h-7 w-7" />
+        </div>
+        <p className="font-semibold text-slate-700 dark:text-slate-200">No documents yet</p>
+        <p className="mx-auto mt-1 max-w-sm text-sm text-slate-400">
           Add case studies, certifications, CVs, and past performance to build your knowledge base.
         </p>
       </div>
@@ -52,17 +54,17 @@ export function KnowledgeList({ items }: { items: Item[] }) {
   }
 
   return (
-    <div className="grid grid-cols-1 gap-3 sm:grid-cols-2 xl:grid-cols-3">
+    <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 xl:grid-cols-3">
       {items.map((it) => {
         const meta = TYPE_META[it.type] ?? TYPE_META.other;
         const Icon = meta.icon;
         return (
           <div
             key={it.id}
-            className="group relative flex flex-col rounded-xl border border-slate-200 bg-white p-4 shadow-sm transition-all hover:border-slate-300 hover:shadow-md dark:border-slate-800 dark:bg-slate-900"
+            className="group relative flex flex-col overflow-hidden rounded-2xl border border-slate-200/80 bg-white p-5 shadow-sm transition-all duration-200 hover:-translate-y-0.5 hover:border-blue-200 hover:shadow-lg hover:shadow-slate-200/60 dark:border-slate-800 dark:bg-slate-900 dark:hover:border-slate-700 dark:hover:shadow-none"
           >
-            <div className="mb-2 flex items-center justify-between">
-              <span className={`inline-flex items-center gap-1.5 rounded-md px-2 py-0.5 text-[11px] font-medium ${meta.color}`}>
+            <div className="mb-3 flex items-center justify-between">
+              <span className={`inline-flex items-center gap-1.5 rounded-full px-2.5 py-1 text-[11px] font-semibold ${meta.color}`}>
                 <Icon className="h-3 w-3" />
                 {meta.label}
               </span>
@@ -75,9 +77,9 @@ export function KnowledgeList({ items }: { items: Item[] }) {
                 <Trash2 className="h-4 w-4" />
               </button>
             </div>
-            <h4 className="line-clamp-1 font-medium text-slate-900 dark:text-slate-100">{it.title}</h4>
-            <p className="mt-1 line-clamp-2 text-xs leading-relaxed text-slate-500">{it.snippet}</p>
-            <div className="mt-3 flex items-center gap-1.5 text-[11px] text-slate-400">
+            <h4 className="line-clamp-1 font-semibold text-slate-900 dark:text-white">{it.title}</h4>
+            <p className="mt-1.5 line-clamp-2 flex-1 text-xs leading-relaxed text-slate-500">{it.snippet}</p>
+            <div className="mt-4 flex items-center gap-1.5 border-t border-slate-100 pt-3 text-[11px] font-medium text-slate-400 dark:border-slate-800">
               <span className={`h-1.5 w-1.5 rounded-full ${it.embedded ? "bg-emerald-500" : "bg-amber-500"}`} />
               {it.embedded ? "Embedded · searchable" : "Not embedded"}
             </div>
