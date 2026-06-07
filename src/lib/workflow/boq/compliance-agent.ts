@@ -10,8 +10,7 @@
  */
 
 import { generateObject } from "ai";
-import { anthropic } from "@ai-sdk/anthropic";
-import { MODELS } from "@/lib/ai/client";
+import { getChatModel } from "@/lib/ai/llm-provider";
 import { embedQuery } from "@/lib/ai/embedding-provider";
 import { tenantChunkSearch } from "@/lib/security/rag-search";
 import { ComplianceMatrixSchema, type ComplianceItem } from "./schemas";
@@ -83,7 +82,7 @@ async function classifyBatch(batch: RetrievedReq[]): Promise<ComplianceItem[]> {
 
   try {
     const { object } = await generateObject({
-      model: anthropic(MODELS.CLAUDE_SONNET),
+      model: getChatModel(),
       schema: ComplianceMatrixSchema,
       schemaName: "compliance_matrix",
       temperature: 0,

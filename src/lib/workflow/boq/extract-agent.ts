@@ -13,8 +13,7 @@
  */
 
 import { generateObject } from "ai";
-import { anthropic } from "@ai-sdk/anthropic";
-import { MODELS } from "@/lib/ai/client";
+import { getChatModel } from "@/lib/ai/llm-provider";
 import { BOQ_EXTRACTION_SYSTEM_PROMPT } from "@/lib/financial/boq/extraction-prompt";
 import type { BoqExtraction } from "@/lib/financial/boq/types";
 import { BoqExtractionSchema } from "./schemas";
@@ -25,7 +24,7 @@ export async function extractBoq(rawBoqContent: string): Promise<BoqExtraction> 
   if (!rawBoqContent || !rawBoqContent.trim()) return { line_items: [] };
 
   const { object } = await generateObject({
-    model: anthropic(MODELS.CLAUDE_SONNET), // reads ANTHROPIC_API_KEY
+    model: getChatModel(), // Claude (cloud) or local vLLM — see LLM_PROVIDER
     schema: BoqExtractionSchema,
     schemaName: "boq_line_items",
     schemaDescription: "Extracted BOQ line items. Contains NO prices and NO calculations.",

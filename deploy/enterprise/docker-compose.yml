@@ -1,0 +1,148 @@
+# TenderOS Enterprise — fully on-premise / air-gapped stack.
+#
+# Nothing in this compose makes an external AI call. The app talks ONLY to
+# in-network services: vLLM (chat), Ollama (embeddings), Postgres+pgvector
+# (data + vectors), Keycloak (SSO), MinIO (object storage), Caddy (TLS).
+#
+# Air-gapped install: pre-pull all images into a private registry and
+# pre-stage model weights into the `models`/`ollama` volumes on a connected
+# box, then transfer. No service has egress.
+#
+# GPU: the `vllm` service needs NVIDIA GPUs (see the deployment tiers in
+# docs/phase4-enterprise-self-hosted.md). Requires nvidia-container-toolkit.
+
+name: tenderos-enterprise
+
+x-no-egress: &no-egress
+  networks: [tenderos]
+  restart: unless-stopped
+
+services:
+  # ── Data + vectors ──────────────────────────────────────────────────────────
+  db:
+    <<: *no-egress
+    image: pgvector/pgvector:pg16
+    environment:
+      POSTGRES_USER: ${PG_USER:-tenderos}
+      POSTGRES_PASSWORD: ${PG_PASSWORD:?set in .env}
+      POSTGRES_DB: ${PG_DB:-tenderos}
+    volumes:
+      - pgdata:/var/lib/postgresql/data
+      - ./initdb:/docker-entrypoint-initdb.d:ro   # 01-extensions.sql -> CREATE EXTENSION vector
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U ${PG_USER:-tenderos}"]
+      interval: 10s
+      retries: 6
+
+  # ── Private LLM inference (chat agents) ─────────────────────────────────────
+  vllm:
+    <<: *no-egress
+    image: vllm/vllm-openai:latest
+    command: >
+      --model ${LLM_MODEL_PATH:-/models/Qwen2.5-14B-Instruct}
+      --served-model-name tenderos
+      --max-model-len 32768
+      --gpu-memory-utilization 0.92
+      --tensor-parallel-size ${TP_SIZE:-1}
+    volumes:
+      - models:/models
+    ipc: host
+    deploy:
+      resources:
+        reservations:
+          devices:
+            - { driver: nvidia, count: all, capabilities: [gpu] }
+    healthcheck:
+      test: ["CMD", "python", "-c", "import urllib.request,sys; urllib.request.urlopen('http://localhost:8000/health'); sys.exit(0)"]
+      interval: 20s
+      retries: 10
+      start_period: 120s
+
+  # ── Local embeddings (1536-dim, must match the pgvector column) ─────────────
+  ollama:
+    <<: *no-egress
+    image: ollama/ollama:latest
+    volumes:
+      - ollama:/root/.ollama
+    deploy:
+      resources:
+        reservations:
+          devices:
+            - { driver: nvidia, count: 1, capabilities: [gpu] }
+
+  # ── Enterprise SSO (OIDC / SAML, Azure AD federation) ───────────────────────
+  keycloak:
+    <<: *no-egress
+    image: quay.io/keycloak/keycloak:26.0
+    command: ["start", "--hostname-strict=false", "--http-enabled=true", "--proxy-headers=xforwarded"]
+    environment:
+      KC_DB: postgres
+      KC_DB_URL: jdbc:postgresql://db:5432/${PG_DB:-tenderos}
+      KC_DB_USERNAME: ${PG_USER:-tenderos}
+      KC_DB_PASSWORD: ${PG_PASSWORD:?}
+      KC_BOOTSTRAP_ADMIN_USERNAME: ${KC_ADMIN:-admin}
+      KC_BOOTSTRAP_ADMIN_PASSWORD: ${KC_ADMIN_PASSWORD:?}
+    depends_on:
+      db: { condition: service_healthy }
+
+  # ── Object storage (documents, exports) — S3 API, on-prem ───────────────────
+  minio:
+    <<: *no-egress
+    image: minio/minio:latest
+    command: server /data --console-address ":9001"
+    environment:
+      MINIO_ROOT_USER: ${MINIO_USER:?}
+      MINIO_ROOT_PASSWORD: ${MINIO_PASSWORD:?}
+    volumes:
+      - minio:/data
+
+  # ── The TenderOS app (Next.js, self-hosted server target) ───────────────────
+  app:
+    <<: *no-egress
+    image: ${APP_IMAGE:-registry.internal/tenderos:enterprise}
+    environment:
+      # AI fully local — no egress
+      LLM_PROVIDER: local
+      LLM_BASE_URL: http://vllm:8000/v1
+      LLM_MODEL: tenderos
+      EMBEDDING_PROVIDER: ollama
+      OLLAMA_HOST: http://ollama:11434
+      OLLAMA_EMBED_MODEL: ${OLLAMA_EMBED_MODEL:-bge-m3}
+      OLLAMA_EMBED_DIMS: "1536"
+      # Data
+      DATABASE_URL: postgres://${PG_USER:-tenderos}:${PG_PASSWORD}@db:5432/${PG_DB:-tenderos}
+      DIRECT_URL: postgres://${PG_USER:-tenderos}:${PG_PASSWORD}@db:5432/${PG_DB:-tenderos}
+      # Auth (OIDC via Keycloak; Azure AD federates INTO Keycloak)
+      AUTH_PROVIDER: oidc
+      OIDC_ISSUER: ${OIDC_ISSUER:-http://keycloak:8080/realms/tenderos}
+      OIDC_CLIENT_ID: ${OIDC_CLIENT_ID:-tenderos}
+      OIDC_CLIENT_SECRET: ${OIDC_CLIENT_SECRET:?}
+      # Object storage
+      S3_ENDPOINT: http://minio:9000
+      AWS_S3_BUCKET_NAME: ${S3_BUCKET:-tenderos}
+      NEXT_PUBLIC_APP_URL: ${APP_URL:?}
+    depends_on:
+      db: { condition: service_healthy }
+      vllm: { condition: service_healthy }
+
+  # ── TLS termination + reverse proxy (internal CA) ───────────────────────────
+  proxy:
+    <<: *no-egress
+    image: caddy:2
+    ports: ["443:443", "80:80"]
+    volumes:
+      - ./Caddyfile:/etc/caddy/Caddyfile:ro
+      - caddydata:/data
+    depends_on: [app, keycloak]
+
+networks:
+  tenderos:
+    driver: bridge
+    internal: false   # set true + a separate egress-less net for strict air-gap
+
+volumes:
+  pgdata:
+  models:
+  ollama:
+  minio:
+  caddydata:

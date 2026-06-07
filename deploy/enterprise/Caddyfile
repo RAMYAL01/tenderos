@@ -1,0 +1,22 @@
+# TLS termination + reverse proxy. In a gov/air-gapped install, replace the
+# auto-HTTPS with your internal CA cert via the `tls` directive.
+{
+	# Use an internal CA instead of public ACME in air-gapped sites:
+	# tls /etc/caddy/certs/tenderos.crt /etc/caddy/certs/tenderos.key
+	auto_https disable_redirects
+}
+
+:443 {
+	encode gzip
+	header {
+		Strict-Transport-Security "max-age=63072000; includeSubDomains; preload"
+		X-Content-Type-Options "nosniff"
+		X-Frame-Options "DENY"
+		Referrer-Policy "strict-origin-when-cross-origin"
+	}
+	# SSO under /auth, the app everywhere else.
+	handle_path /auth/* {
+		reverse_proxy keycloak:8080
+	}
+	reverse_proxy app:3000
+}
