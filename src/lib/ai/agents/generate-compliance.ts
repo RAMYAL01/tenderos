@@ -7,9 +7,23 @@
  * 3. Updates compliance matrix rows in the DB
  */
 
+import { generateObject } from "ai";
+import { z } from "zod";
 import { db } from "@/lib/prisma";
-import { anthropic, MODELS, calculateCost, withRetry } from "@/lib/ai/client";
+import { MODELS, calculateCost, withRetry } from "@/lib/ai/client";
+import { getChatModel } from "@/lib/ai/llm-provider";
 import type { SectionType } from "@prisma/client";
+
+const ComplianceMappingSchema = z.object({
+  mappings: z.array(
+    z.object({
+      requirement_id: z.string(),
+      section: z.string(),
+      response_template_en: z.string(),
+      response_template_ar: z.string().nullable(),
+    })
+  ),
+});
 
 const COMPLIANCE_SYSTEM_PROMPT = `You are a senior technical proposal writer mapping tender requirements to proposal sections.
 
@@ -129,32 +143,22 @@ ${reqList}
 
 Return JSON: { "mappings": [{ "requirement_id": "...", "section": "SECTION_TYPE", "response_template_en": "...", "response_template_ar": null }] }`;
 
-      const response = await withRetry(() =>
-        anthropic.messages.create({
-          model: MODELS.CLAUDE_HAIKU,
-          max_tokens: 4000,
-          system: COMPLIANCE_SYSTEM_PROMPT,
-          messages: [{ role: "user", content: userMessage }],
-        })
-      );
-
-      totalPromptTokens += response.usage.input_tokens;
-      totalCompletionTokens += response.usage.output_tokens;
-
-      // Parse response
-      const text = response.content
-        .filter((c) => c.type === "text")
-        .map((c) => (c as { type: "text"; text: string }).text)
-        .join("");
-
       try {
-        // Extract JSON from the response (handle markdown code fences)
-        const jsonMatch =
-          text.match(/```(?:json)?\s*([\s\S]*?)\s*```/) ??
-          text.match(/(\{[\s\S]*\})/);
+        const response = await withRetry(() =>
+          generateObject({
+            model: getChatModel(MODELS.CLAUDE_HAIKU), // cloud Haiku or local vLLM
+            schema: ComplianceMappingSchema,
+            schemaName: "compliance_mappings",
+            temperature: 0,
+            maxOutputTokens: 4000,
+            system: COMPLIANCE_SYSTEM_PROMPT,
+            prompt: userMessage,
+          })
+        );
 
-        const jsonStr = jsonMatch ? jsonMatch[1] : text;
-        const parsed: ComplianceMappingResult = JSON.parse(jsonStr);
+        totalPromptTokens += response.usage.inputTokens ?? 0;
+        totalCompletionTokens += response.usage.outputTokens ?? 0;
+        const parsed: ComplianceMappingResult = response.object;
 
         // Update compliance matrix rows in DB
         await Promise.all(

@@ -1,10 +1,11 @@
 import { auth } from "@clerk/nextjs/server";
 import { NextResponse } from "next/server";
 import { z } from "zod";
+import { generateText } from "ai";
 import { db } from "@/lib/prisma";
 import { embedQuery } from "@/lib/ai/embedding-provider";
 import { tenantChunkSearch } from "@/lib/security/rag-search";
-import { anthropic, MODELS } from "@/lib/ai/client";
+import { getChatModel } from "@/lib/ai/llm-provider";
 
 export const runtime = "nodejs";
 export const maxDuration = 60;
@@ -82,18 +83,16 @@ ${context}`;
 
   let answer = "";
   try {
-    const res = await anthropic.messages.create({
-      model: MODELS.CLAUDE_SONNET,
-      max_tokens: 1024,
+    // Provider-agnostic — Claude (cloud) or local vLLM via LLM_PROVIDER.
+    const res = await generateText({
+      model: getChatModel(),
+      maxOutputTokens: 1024,
       system,
-      messages: [{ role: "user", content: question }],
+      prompt: question,
     });
-    answer = res.content
-      .filter((c) => c.type === "text")
-      .map((c) => (c as { text: string }).text)
-      .join("\n");
+    answer = res.text;
   } catch (e) {
-    console.error("[ask] claude failed:", e);
+    console.error("[ask] generation failed:", e);
     return NextResponse.json({ error: "AI service unavailable" }, { status: 503 });
   }
 

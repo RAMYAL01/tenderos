@@ -6,8 +6,9 @@
  * Uses RAG from the content library for context.
  */
 
+import { streamText } from "ai";
 import { db } from "@/lib/prisma";
-import { anthropic, MODELS } from "@/lib/ai/client";
+import { getChatModel, activeModelId } from "@/lib/ai/llm-provider";
 import {
   getDraftSectionSystemPrompt,
   getExecutiveSummarySystemPrompt,
@@ -134,31 +135,23 @@ export async function streamSectionDraft(
   const stream = new ReadableStream<Uint8Array>({
     async start(controller) {
       try {
-        const claudeStream = anthropic.messages.stream({
-          model: MODELS.CLAUDE_SONNET,
-          max_tokens: 3000,
+        // Provider-agnostic streaming — Claude (cloud) or local vLLM.
+        const result = streamText({
+          model: getChatModel(),
+          maxOutputTokens: 3000,
           system: systemPrompt,
-          messages: [{ role: "user", content: userMessage }],
+          prompt: userMessage,
         });
 
         // Stream text deltas as SSE events
-        for await (const event of claudeStream) {
-          if (
-            event.type === "content_block_delta" &&
-            event.delta.type === "text_delta"
-          ) {
-            const data = JSON.stringify({ text: event.delta.text });
-            controller.enqueue(encoder.encode(`data: ${data}\n\n`));
-          }
+        for await (const delta of result.textStream) {
+          const data = JSON.stringify({ text: delta });
+          controller.enqueue(encoder.encode(`data: ${data}\n\n`));
         }
 
         // Track usage for cost accounting
-        const final = await claudeStream.finalMessage();
-        const usageData = JSON.stringify({
-          done: true,
-          model: MODELS.CLAUDE_SONNET,
-          usage: final.usage,
-        });
+        const usage = await result.usage;
+        const usageData = JSON.stringify({ done: true, model: activeModelId(), usage });
         controller.enqueue(encoder.encode(`data: ${usageData}\n\n`));
         controller.enqueue(encoder.encode("data: [DONE]\n\n"));
       } catch (err) {

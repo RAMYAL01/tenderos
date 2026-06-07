@@ -6,13 +6,28 @@
  * questions for submission to the client.
  */
 
+import { generateObject } from "ai";
+import { z } from "zod";
 import { db } from "@/lib/prisma";
 import { downloadFromS3, getProcessedContentKey } from "@/lib/s3";
-import { anthropic, MODELS, calculateCost, withRetry } from "@/lib/ai/client";
+import { MODELS, calculateCost, withRetry } from "@/lib/ai/client";
+import { getChatModel } from "@/lib/ai/llm-provider";
 import {
   getClarificationQuestionsSystemPrompt,
 } from "@/lib/ai/prompts/draft-section";
 import type { ContentLanguage } from "@prisma/client";
+
+const ClarificationResultSchema = z.object({
+  questions: z.array(
+    z.object({
+      number: z.number(),
+      section_ref: z.string(),
+      question_en: z.string(),
+      question_ar: z.string().nullable(),
+      reason: z.string(),
+    })
+  ),
+});
 
 interface ClarificationQuestion {
   number: number;
@@ -118,11 +133,14 @@ Generate up to 15 clarification questions. Return ONLY valid JSON: { "questions"
     });
 
     const response = await withRetry(() =>
-      anthropic.messages.create({
-        model: MODELS.CLAUDE_SONNET,
-        max_tokens: 4000,
+      generateObject({
+        model: getChatModel(), // Claude (cloud) or local vLLM
+        schema: ClarificationResultSchema,
+        schemaName: "clarification_questions",
+        temperature: 0,
+        maxOutputTokens: 4000,
         system: systemPrompt,
-        messages: [{ role: "user", content: userMessage }],
+        prompt: userMessage,
       })
     );
 
@@ -131,40 +149,21 @@ Generate up to 15 clarification questions. Return ONLY valid JSON: { "questions"
       data: { progress: 80 },
     });
 
-    // Parse response
-    const text = response.content
-      .filter((c) => c.type === "text")
-      .map((c) => (c as { type: "text"; text: string }).text)
-      .join("");
+    const questions: ClarificationQuestion[] = (response.object.questions ??
+      []) as ClarificationQuestion[];
+    const inTok = response.usage.inputTokens ?? 0;
+    const outTok = response.usage.outputTokens ?? 0;
 
-    const jsonMatch =
-      text.match(/```(?:json)?\s*([\s\S]*?)\s*```/) ??
-      text.match(/(\{[\s\S]*\})/);
-
-    let questions: ClarificationQuestion[] = [];
-    try {
-      const parsed: ClarificationResult = JSON.parse(
-        jsonMatch ? jsonMatch[1] : text
-      );
-      questions = parsed.questions ?? [];
-    } catch {
-      console.warn("[clarification] Failed to parse response JSON");
-    }
-
-    const cost = calculateCost(
-      MODELS.CLAUDE_SONNET,
-      response.usage.input_tokens,
-      response.usage.output_tokens
-    );
+    const cost = calculateCost(MODELS.CLAUDE_SONNET, inTok, outTok);
 
     await db.aIJob.update({
       where: { id: jobId },
       data: {
         status: "COMPLETED",
         progress: 100,
-        promptTokens: response.usage.input_tokens,
-        completionTokens: response.usage.output_tokens,
-        totalTokens: response.usage.input_tokens + response.usage.output_tokens,
+        promptTokens: inTok,
+        completionTokens: outTok,
+        totalTokens: inTok + outTok,
         costUsd: cost,
         latencyMs: Date.now() - startTime,
         resultRef: JSON.stringify({ questions }),

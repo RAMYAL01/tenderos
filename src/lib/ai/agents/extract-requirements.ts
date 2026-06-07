@@ -6,15 +6,32 @@
  * saves requirements to DB, and creates compliance matrix rows.
  */
 
+import { generateObject } from "ai";
+import { z } from "zod";
 import { db } from "@/lib/prisma";
 import { downloadFromS3, getProcessedContentKey } from "@/lib/s3";
-import { anthropic, MODELS, calculateCost, withRetry } from "@/lib/ai/client";
+import { MODELS, calculateCost, withRetry } from "@/lib/ai/client";
+import { getChatModel } from "@/lib/ai/llm-provider";
 import {
   getExtractionSystemPrompt,
   getExtractionUserMessage,
-  EXTRACTION_OUTPUT_SCHEMA,
 } from "@/lib/ai/prompts/extract-requirements";
 import type { ProcessedContent } from "@/lib/document-processing/pipeline";
+
+const ExtractionResultSchema = z.object({
+  requirements: z.array(
+    z.object({
+      text_en: z.string(),
+      text_ar: z.string().nullable(),
+      section_ref: z.string().nullable(),
+      page_ref: z.number().nullable(),
+      requirement_type: z.string(),
+      priority: z.string(),
+      confidence_score: z.number(),
+      tags: z.array(z.string()),
+    })
+  ),
+});
 
 interface ExtractedRequirement {
   text_en: string;
@@ -139,25 +156,20 @@ export async function runExtractionAgent(
         );
 
         const result = await withRetry(() =>
-          anthropic.messages.create({
-            model: MODELS.CLAUDE_HAIKU,  // Fast extraction
-            max_tokens: 8000,
+          generateObject({
+            model: getChatModel(MODELS.CLAUDE_HAIKU), // cloud Haiku or local vLLM
+            schema: ExtractionResultSchema,
+            schemaName: "extracted_requirements",
+            temperature: 0,
+            maxOutputTokens: 8000,
             system: systemPrompt,
-            tools: [EXTRACTION_OUTPUT_SCHEMA as any],
-            tool_choice: { type: "any" },
-            messages: [{ role: "user", content: userMessage }],
+            prompt: userMessage,
           })
         );
 
-        totalPromptTokens += result.usage.input_tokens;
-        totalCompletionTokens += result.usage.output_tokens;
-
-        // Parse tool use result
-        const toolUse = result.content.find((c) => c.type === "tool_use");
-        if (toolUse && toolUse.type === "tool_use") {
-          const parsed = toolUse.input as ExtractionResult;
-          allRequirements.push(...(parsed.requirements ?? []));
-        }
+        totalPromptTokens += result.usage.inputTokens ?? 0;
+        totalCompletionTokens += result.usage.outputTokens ?? 0;
+        allRequirements.push(...((result.object.requirements ?? []) as ExtractedRequirement[]));
 
         // Update progress
         const overallProgress = Math.round(
