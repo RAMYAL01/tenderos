@@ -33,6 +33,12 @@ const settingsTabs = [
     icon: "Shield",
     roles: ["OWNER", "ADMIN"],
   },
+  {
+    label: "Training Data",
+    href: "/settings/training",
+    icon: "Brain",
+    roles: ["OWNER", "ADMIN"],
+  },
 ];
 
 export default async function SettingsLayout({

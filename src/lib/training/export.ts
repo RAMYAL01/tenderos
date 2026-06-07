@@ -148,6 +148,40 @@ export async function buildTrainingExport(opts: ExportOptions = {}): Promise<Tra
   };
 }
 
+export interface TrainingStats {
+  total: number;
+  exportable: number; // ACCEPT + EDIT (have a supervised target)
+  pending: number; // exportable AND not yet exported
+  dpoPairs: number; // EDIT rows (chosen/rejected)
+  byTask: Array<{ task: string; count: number }>;
+  byLang: Array<{ lang: string; count: number }>;
+  byAction: Array<{ action: string; count: number }>;
+}
+
+/** Corpus stats for the admin "Training Data" view. Tenant-scoped when orgId given. */
+export async function getTrainingStats(orgId?: string): Promise<TrainingStats> {
+  const where = orgId ? { orgId } : {};
+  const [total, exportable, pending, dpoPairs, byTask, byLang, byAction] = await Promise.all([
+    db.aIFeedback.count({ where }),
+    db.aIFeedback.count({ where: { ...where, action: { in: ["ACCEPT", "EDIT"] } } }),
+    db.aIFeedback.count({ where: { ...where, action: { in: ["ACCEPT", "EDIT"] }, exportedAt: null } }),
+    db.aIFeedback.count({ where: { ...where, action: "EDIT" } }),
+    db.aIFeedback.groupBy({ by: ["task"], where, _count: { _all: true } }),
+    db.aIFeedback.groupBy({ by: ["lang"], where, _count: { _all: true } }),
+    db.aIFeedback.groupBy({ by: ["action"], where, _count: { _all: true } }),
+  ]);
+
+  return {
+    total,
+    exportable,
+    pending,
+    dpoPairs,
+    byTask: byTask.map((t) => ({ task: t.task, count: t._count._all })).sort((a, b) => b.count - a.count),
+    byLang: byLang.map((l) => ({ lang: l.lang ?? "unknown", count: l._count._all })).sort((a, b) => b.count - a.count),
+    byAction: byAction.map((a) => ({ action: a.action, count: a._count._all })),
+  };
+}
+
 /** Mark rows as exported so the next dataset version doesn't double-count them. */
 export async function markExported(rowIds: string[]): Promise<number> {
   if (rowIds.length === 0) return 0;
