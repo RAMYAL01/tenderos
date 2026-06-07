@@ -59,7 +59,7 @@ export function Sidebar({ member }: SidebarProps) {
       </div>
 
       {/* ── Navigation ────────────────────────────────────────── */}
-      <div className="relative flex flex-1 flex-col overflow-y-auto py-4">
+      <div className="sidebar-scroll relative flex flex-1 flex-col overflow-y-auto py-4">
         <SidebarNav memberRole={member.role} />
       </div>
 
