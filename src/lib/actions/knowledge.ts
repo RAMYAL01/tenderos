@@ -4,7 +4,7 @@ import { revalidatePath } from "next/cache";
 import { z } from "zod";
 import { db } from "@/lib/prisma";
 import { getAuthContext, requireRole } from "@/lib/auth";
-import { embedText } from "@/lib/ai/embeddings";
+import { ingestKnowledgeDocument } from "@/lib/knowledge/ingest";
 import { KNOWLEDGE_TYPES } from "@/lib/knowledge-types";
 
 interface ActionResult {
@@ -48,30 +48,19 @@ export async function addKnowledgeItem(
 
     const { title, content, knowledgeType, tags } = parsed.data;
 
-    // Embed the title + content for semantic retrieval.
-    let embedding: number[] | null = null;
-    try {
-      embedding = await embedText(`${title}\n\n${content}`);
-    } catch (e) {
-      console.error("[knowledge] embedding failed:", e);
-      // Still store the item — it just won't be semantically searchable.
-    }
-
-    const item = await db.contentLibraryItem.create({
-      data: {
-        orgId: org.id,
-        titleEn: title,
-        contentEn: content,
-        tags: [knowledgeType, ...(tags ?? [])],
-        contentSource: "IMPORTED",
-        createdById: member.id,
-        // eslint-disable-next-line @typescript-eslint/no-explicit-any
-        embeddingEn: embedding as any,
-      },
+    // Chunk + embed + persist (source document and per-chunk pgvectors) inside a
+    // single tenant-bound transaction. Embeddings populate the secure pgvector
+    // path queried by tenantChunkSearch — strictly isolated to this org.
+    const result = await ingestKnowledgeDocument({
+      orgId: org.id,
+      memberId: member.id,
+      title,
+      content,
+      tags: [knowledgeType, ...(tags ?? [])],
     });
 
     revalidatePath("/library");
-    return { success: true, id: item.id };
+    return { success: true, id: result.sourceId };
   } catch (err) {
     if (isRedirect(err)) throw err;
     console.error("addKnowledgeItem error:", err);

@@ -216,6 +216,7 @@ model Organization {
   members             Member[]
   tenders             Tender[]
   contentLibraryItems ContentLibraryItem[]
+  knowledgeChunks     KnowledgeChunk[]
   aiJobs              AIJob[]
   subscription        Subscription?
   auditLogs           AuditLog[]
@@ -582,10 +583,36 @@ model ContentLibraryItem {
   deletedAt     DateTime?
 
   // Relations
-  organization Organization @relation(fields: [orgId], references: [id], onDelete: Cascade)
-  createdBy    Member       @relation(fields: [createdById], references: [id])
+  organization Organization     @relation(fields: [orgId], references: [id], onDelete: Cascade)
+  createdBy    Member           @relation(fields: [createdById], references: [id])
+  chunks       KnowledgeChunk[]
 
   @@map("content_library_items")
+}
+
+/// Chunk-level corporate memory for tenant-isolated RAG.
+/// Every row is bound to a single tenant (`orgId`) — the retrieval query
+/// pre-filters on `orgId` BEFORE the vector distance calc, so a chunk from
+/// another tenant can never be ranked or returned. The `embedding` column is a
+/// real pgvector(1536); it is written and queried ONLY via raw SQL
+/// ($executeRaw / $queryRaw), never the typed client.
+model KnowledgeChunk {
+  id         String                       @id @default(cuid())
+  orgId      String // TENANT BINDING — present on every chunk for pre-rank isolation
+  sourceId   String // -> ContentLibraryItem (the parent document)
+  chunkIndex Int // 0-based position within the source document
+  content    String                       @db.Text
+  tokenCount Int                          @default(0)
+  model      String? // embedding model id, for provenance / re-embed on model swap
+  embedding  Unsupported("vector(1536)")?
+  createdAt  DateTime                     @default(now())
+
+  organization Organization       @relation(fields: [orgId], references: [id], onDelete: Cascade)
+  source       ContentLibraryItem @relation(fields: [sourceId], references: [id], onDelete: Cascade)
+
+  @@unique([sourceId, chunkIndex])
+  @@index([orgId])
+  @@map("knowledge_chunks")
 }
 
 // ─────────────────────────────────────────────────────────────────────────────

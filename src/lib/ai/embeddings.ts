@@ -8,20 +8,17 @@
  * For large libraries (>5,000 items), replace with pgvector or Pinecone.
  */
 
-import { openai, MODELS } from "@/lib/ai/client";
 import { db } from "@/lib/prisma";
 import type { SectionType } from "@prisma/client";
+import { embedQuery } from "@/lib/ai/embedding-provider";
+import { tenantChunkSearch } from "@/lib/security/rag-search";
 
 /**
- * Generate an embedding vector for a text string.
+ * Generate an embedding vector for a text string, via the configured provider
+ * (OpenAI by default, Ollama when EMBEDDING_PROVIDER=ollama).
  */
 export async function embedText(text: string): Promise<number[]> {
-  const response = await openai.embeddings.create({
-    model: MODELS.EMBEDDING,
-    input: text.slice(0, 8000), // Truncate to stay within token limit
-    dimensions: MODELS.EMBEDDING_DIMS,
-  });
-  return response.data[0].embedding;
+  return embedQuery(text);
 }
 
 /**
@@ -51,47 +48,35 @@ export function cosineSimilarity(a: number[], b: number[]): number {
 export async function getContentLibraryContext(
   orgId: string,
   query: string,
-  sectionType?: SectionType,
+  _sectionType?: SectionType,
   limit = 3
 ): Promise<string[]> {
-  // Get library items with embeddings
-  const items = await db.contentLibraryItem.findMany({
-    where: {
-      orgId,
-      deletedAt: null,
-      // eslint-disable-next-line @typescript-eslint/no-explicit-any
-      embeddingEn: { not: null as any },
-      ...(sectionType ? { sectionType } : {}),
-    },
-    select: {
-      id: true,
-      titleEn: true,
-      contentEn: true,
-      embeddingEn: true,
-    },
-    take: 200, // Limit to avoid loading huge datasets into memory
+  if (!orgId || !query?.trim()) return [];
+
+  let queryEmbedding: number[];
+  try {
+    queryEmbedding = await embedText(query);
+  } catch {
+    return [];
+  }
+
+  // Tenant-bound pgvector search (pre-filtered by orgId in SQL).
+  const hits = await tenantChunkSearch(orgId, queryEmbedding, {
+    limit: Math.max(1, Math.min(10, limit * 2)),
+    minSimilarity: 0.3,
   });
 
-  if (items.length === 0) return [];
-
-  // Generate query embedding
-  const queryEmbedding = await embedText(query);
-
-  // Score each item
-  const scored = items
-    .filter((item) => item.embeddingEn && item.contentEn)
-    .map((item) => {
-      const embedding = item.embeddingEn as number[];
-      const score = cosineSimilarity(queryEmbedding, embedding);
-      return { item, score };
-    })
-    .sort((a, b) => b.score - a.score)
-    .slice(0, limit)
-    .filter((s) => s.score > 0.5); // Only include reasonably similar items
-
-  return scored.map(({ item }) =>
-    `TITLE: ${item.titleEn}\n\n${item.contentEn}`
-  );
+  // Collapse to the top `limit` distinct source documents, preserving the
+  // best-ranked chunk's text for each.
+  const seen = new Set<string>();
+  const out: string[] = [];
+  for (const h of hits) {
+    if (seen.has(h.sourceId)) continue;
+    seen.add(h.sourceId);
+    out.push(`TITLE: ${h.title}\n\n${h.content}`);
+    if (out.length >= limit) break;
+  }
+  return out;
 }
 
 /**

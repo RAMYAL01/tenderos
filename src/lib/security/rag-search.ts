@@ -83,6 +83,80 @@ export async function tenantVectorSearch(
   }));
 }
 
+export interface RagChunkHit {
+  chunkId: string;
+  sourceId: string;
+  title: string;
+  content: string;
+  chunkIndex: number;
+  similarity: number; // cosine similarity 0..1
+}
+
+/**
+ * Chunk-level cosine search confined to `orgId` — the primary retrieval path
+ * for Corporate Memory.
+ *
+ * SECURITY: `kc."orgId" = ${orgId}` is a BOUND parameter in the WHERE clause,
+ * evaluated BEFORE the `<=>` distance ranking and the LIMIT. Postgres prunes to
+ * the tenant's chunks first, so a nearest neighbour from another tenant is never
+ * a candidate — it cannot be ranked, returned, or reach the LLM. The query
+ * embedding is validated (dims + finite) and passed as a single literal cast
+ * `::vector`; there is no string interpolation of untrusted input.
+ */
+export async function tenantChunkSearch(
+  orgId: string,
+  queryEmbedding: number[],
+  opts: RagSearchOptions = {}
+): Promise<RagChunkHit[]> {
+  if (!orgId) throw new Error("tenantChunkSearch: orgId is required.");
+  if (!Array.isArray(queryEmbedding) || queryEmbedding.length !== EMBEDDING_DIMS) {
+    throw new Error(`tenantChunkSearch: embedding must have exactly ${EMBEDDING_DIMS} dims.`);
+  }
+  if (queryEmbedding.some((n) => typeof n !== "number" || !Number.isFinite(n))) {
+    throw new Error("tenantChunkSearch: embedding contains non-finite values.");
+  }
+
+  const limit = clampInt(opts.limit ?? 6, 1, 50);
+  const minSimilarity = clampNum(opts.minSimilarity ?? 0.2, 0, 1);
+  const vectorLiteral = `[${queryEmbedding.join(",")}]`;
+
+  const rows = await db.$queryRaw<
+    Array<{
+      chunkId: string;
+      sourceId: string;
+      title: string;
+      content: string;
+      chunkIndex: number;
+      similarity: number;
+    }>
+  >(Prisma.sql`
+    SELECT
+      kc.id              AS "chunkId",
+      kc."sourceId"      AS "sourceId",
+      cli."titleEn"      AS title,
+      kc.content         AS content,
+      kc."chunkIndex"    AS "chunkIndex",
+      1 - (kc.embedding <=> ${vectorLiteral}::vector) AS similarity
+    FROM knowledge_chunks kc
+    JOIN content_library_items cli ON cli.id = kc."sourceId"
+    WHERE kc."orgId" = ${orgId}              -- TENANT ISOLATION (bound param, pre-rank)
+      AND cli."deletedAt" IS NULL
+      AND kc.embedding IS NOT NULL
+      AND 1 - (kc.embedding <=> ${vectorLiteral}::vector) >= ${minSimilarity}
+    ORDER BY kc.embedding <=> ${vectorLiteral}::vector ASC
+    LIMIT ${limit}
+  `);
+
+  return rows.map((r) => ({
+    chunkId: r.chunkId,
+    sourceId: r.sourceId,
+    title: r.title,
+    content: r.content,
+    chunkIndex: r.chunkIndex,
+    similarity: Number(r.similarity),
+  }));
+}
+
 function clampInt(n: number, lo: number, hi: number): number {
   return Math.max(lo, Math.min(hi, Math.trunc(n)));
 }
