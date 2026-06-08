@@ -2,7 +2,12 @@
 
 Fully on-prem deployment. Nothing here makes an external AI call — the app
 reaches only in-network services (vLLM, Ollama, Postgres+pgvector, Keycloak,
-MinIO). Full design: [`docs/phase4-enterprise-self-hosted.md`](../../docs/phase4-enterprise-self-hosted.md).
+MinIO).
+
+- **Step-by-step deploy:** [`RUNBOOK.md`](./RUNBOOK.md) — pre-flight → offline
+  bundle → deploy (Compose **or** Helm) → config → verification → day-2 ops.
+- **Architecture (8 deliverables):** [`docs/phase4-enterprise-self-hosted.md`](../../docs/phase4-enterprise-self-hosted.md).
+- **Kubernetes:** [`helm/tenderos`](./helm/tenderos).
 
 ## Bring-up (connected staging, to build the offline bundle)
 
