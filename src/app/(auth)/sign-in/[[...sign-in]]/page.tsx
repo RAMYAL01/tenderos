@@ -2,6 +2,8 @@ import Link from "next/link";
 import { ArrowLeft } from "lucide-react";
 import { SignIn } from "@clerk/nextjs";
 import { BrandPanel } from "@/components/auth/brand-panel";
+import { SsoSignIn } from "@/components/auth/sso-sign-in";
+import { isOidcAuth } from "@/lib/auth/mode";
 import { Logo } from "@/components/ui/logo";
 
 export const metadata = {
@@ -31,6 +33,9 @@ export default function SignInPage() {
         </Link>
 
         <div className="w-full max-w-[400px]">
+          {isOidcAuth() ? (
+            <SsoSignIn />
+          ) : (
           <SignIn
             appearance={{
               elements: {
@@ -69,6 +74,7 @@ export default function SignInPage() {
               },
             }}
           />
+          )}
         </div>
       </div>
     </div>

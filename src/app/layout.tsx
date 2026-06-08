@@ -2,6 +2,7 @@ import type { Metadata, Viewport } from "next";
 import { ClerkProvider } from "@clerk/nextjs";
 import { ThemeProvider } from "next-themes";
 import { Toaster } from "@/components/ui/toaster";
+import { isOidcAuth } from "@/lib/auth/mode";
 import "./globals.css";
 
 const SITE_URL = process.env.NEXT_PUBLIC_APP_URL ?? "https://www.thetenderos.com";
@@ -70,11 +71,39 @@ export default function RootLayout({
 }: {
   children: React.ReactNode;
 }) {
+  const tree = (
+    <html lang="en" suppressHydrationWarning>
+      <head>
+        {/* Preconnect to Google Fonts */}
+        <link rel="preconnect" href="https://fonts.googleapis.com" />
+        <link
+          rel="preconnect"
+          href="https://fonts.gstatic.com"
+          crossOrigin="anonymous"
+        />
+      </head>
+      <body className="min-h-screen bg-background antialiased">
+        <ThemeProvider
+          attribute="class"
+          defaultTheme="light"
+          enableSystem
+          disableTransitionOnChange
+        >
+          {children}
+          <Toaster />
+        </ThemeProvider>
+      </body>
+    </html>
+  );
+
+  // On-prem (OIDC): no Clerk context at all — auth is Keycloak/OIDC.
+  if (isOidcAuth()) return tree;
+
   return (
     <ClerkProvider
       appearance={{
         variables: {
-          colorPrimary: "#2563eb",         // brand blue
+          colorPrimary: "#2563eb", // brand blue
           colorBackground: "#ffffff",
           colorText: "#0F172A",
           colorInputBackground: "#f8fafc",
@@ -82,38 +111,15 @@ export default function RootLayout({
           fontFamily: "Inter, system-ui, sans-serif",
         },
         elements: {
-          // Consistent card style for auth pages
           card: "shadow-xl border border-slate-200",
           headerTitle: "text-2xl font-bold text-slate-900",
           headerSubtitle: "text-slate-500",
-          formButtonPrimary:
-            "bg-blue-600 hover:bg-blue-700 text-white font-medium",
+          formButtonPrimary: "bg-blue-600 hover:bg-blue-700 text-white font-medium",
           footerActionLink: "text-blue-600 hover:text-blue-700",
         },
       }}
     >
-      <html lang="en" suppressHydrationWarning>
-        <head>
-          {/* Preconnect to Google Fonts */}
-          <link rel="preconnect" href="https://fonts.googleapis.com" />
-          <link
-            rel="preconnect"
-            href="https://fonts.gstatic.com"
-            crossOrigin="anonymous"
-          />
-        </head>
-        <body className="min-h-screen bg-background antialiased">
-          <ThemeProvider
-            attribute="class"
-            defaultTheme="light"
-            enableSystem
-            disableTransitionOnChange
-          >
-            {children}
-            <Toaster />
-          </ThemeProvider>
-        </body>
-      </html>
+      {tree}
     </ClerkProvider>
   );
 }

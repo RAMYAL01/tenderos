@@ -281,10 +281,11 @@ and a verifiable cutover.
   session cookie, IdP-role → MemberRole RBAC, Org/Member upsert into the same
   schema. `getAuthContext()` delegates, so every existing server data path works
   unchanged on-prem.
-- ⏳ Client-UI finishing for on-prem auth: the root `<ClerkProvider>` and the
-  sidebar `<OrganizationSwitcher>/<UserButton>` must render conditionally when
-  `AUTH_PROVIDER=oidc` (a small SSO "Sign in" button → `/api/auth/oidc/login`
-  and a user menu → `/api/auth/oidc/logout`). Needs a running IdP to verify.
+- ✅ Client-UI auth swap: gated by `AUTH_PROVIDER=oidc` — root `<ClerkProvider>`
+  is dropped, sign-in/up render an SSO card (→ `/api/auth/oidc/login`), the
+  sidebar shows the org name + a logout link (→ `/api/auth/oidc/logout`) instead
+  of `<OrganizationSwitcher>/<UserButton>`, and the Clerk-only invite dialog is
+  replaced by an "members come from your IdP" note. Cloud (Clerk) UI unchanged.
 - ⏳ Last minor raw-Anthropic sites (`denoise-prompt`, `claude-secure`, legacy
   BOQ `extraction-prompt` — has a seam twin).
 

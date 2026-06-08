@@ -23,7 +23,7 @@ export default async function DashboardLayout({
     <WorkspaceProvider org={org} member={member}>
       <div className="flex h-screen overflow-hidden bg-slate-50 dark:bg-slate-950">
         {/* Sidebar — fixed left panel */}
-        <Sidebar member={member} />
+        <Sidebar member={member} org={org} />
 
         {/* Main content area */}
         <div className="flex flex-1 flex-col overflow-hidden">
