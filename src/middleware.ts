@@ -19,6 +19,7 @@ const isPublicRoute = createRouteMatcher([
   "/sign-in(.*)",
   "/sign-up(.*)",
   "/api/webhooks(.*)",     // Clerk webhook — verified via svix signature
+  "/api/auth/oidc(.*)",    // On-prem OIDC login/callback/logout — pre-session
   "/api/health",           // Health check — always public
 ]);
 
@@ -35,67 +36,66 @@ const isAuthRoute = createRouteMatcher(["/api/auth(.*)", "/sign-in(.*)", "/sign-
 // returns an HTML 404 page instead, which breaks client-side fetch().json().
 const isApiRoute = createRouteMatcher(["/api(.*)"]);
 
-export default clerkMiddleware(async (auth, req: NextRequest) => {
-  // ── Rate limiting ──────────────────────────────────────────────────────────
-  // Apply BEFORE auth check to protect against unauthenticated attacks.
+const IS_OIDC = process.env.AUTH_PROVIDER === "oidc";
 
-  // Skip rate limiting for webhooks (signature-verified) and health checks
+/** Rate-limit guard shared by both auth providers. Returns a 429 response or null. */
+async function rateGuard(req: NextRequest): Promise<NextResponse | null> {
   const pathname = req.nextUrl.pathname;
-  const isWebhook = pathname.startsWith("/api/webhooks");
-  const isHealth = pathname === "/api/health";
+  if (pathname.startsWith("/api/webhooks") || pathname === "/api/health") return null;
 
-  if (!isWebhook && !isHealth) {
-    // Choose rate limit profile
-    const rateLimitOptions = isAIRoute(req)
-      ? RATE_LIMITS.aiGeneration
-      : isUploadRoute(req)
-      ? RATE_LIMITS.upload
-      : isExportRoute(req)
-      ? RATE_LIMITS.export
-      : isAuthRoute(req)
-      ? RATE_LIMITS.auth
-      : RATE_LIMITS.api;
+  const opts = isAIRoute(req)
+    ? RATE_LIMITS.aiGeneration
+    : isUploadRoute(req)
+    ? RATE_LIMITS.upload
+    : isExportRoute(req)
+    ? RATE_LIMITS.export
+    : isAuthRoute(req)
+    ? RATE_LIMITS.auth
+    : RATE_LIMITS.api;
 
-    const rateLimitResult = await rateLimit(req, rateLimitOptions);
+  const result = await rateLimit(req, opts);
+  return result.success ? null : tooManyRequests(result.resetIn);
+}
 
-    if (!rateLimitResult.success) {
-      return tooManyRequests(rateLimitResult.resetIn);
-    }
+/** Security response headers shared by both auth providers. */
+function withSecurityHeaders(res: NextResponse): NextResponse {
+  if (process.env.NODE_ENV === "production") {
+    res.headers.set("Strict-Transport-Security", "max-age=63072000; includeSubDomains; preload");
   }
+  res.headers.set("X-Frame-Options", "DENY");
+  res.headers.set("X-Content-Type-Options", "nosniff");
+  res.headers.set("Referrer-Policy", "strict-origin-when-cross-origin");
+  res.headers.set("X-Request-ID", crypto.randomUUID());
+  return res;
+}
 
-  // ── Auth protection ────────────────────────────────────────────────────────
-  // Protect pages (redirects to sign-in). API routes self-authenticate via
-  // their own auth() check, so we don't auth.protect() them here.
+// ── Cloud: Clerk middleware ─────────────────────────────────────────────────────
+const clerkHandler = clerkMiddleware(async (auth, req: NextRequest) => {
+  const limited = await rateGuard(req);
+  if (limited) return limited;
+  // Pages redirect to sign-in; API routes self-authenticate.
   if (!isPublicRoute(req) && !isApiRoute(req)) {
     await auth.protect();
   }
-
-  // ── Security response headers ──────────────────────────────────────────────
-  const res = NextResponse.next();
-
-  // HSTS — force HTTPS (skip in development)
-  if (process.env.NODE_ENV === "production") {
-    res.headers.set(
-      "Strict-Transport-Security",
-      "max-age=63072000; includeSubDomains; preload"
-    );
-  }
-
-  // Prevent clickjacking
-  res.headers.set("X-Frame-Options", "DENY");
-
-  // Prevent MIME sniffing
-  res.headers.set("X-Content-Type-Options", "nosniff");
-
-  // Referrer policy
-  res.headers.set("Referrer-Policy", "strict-origin-when-cross-origin");
-
-  // Add request ID for tracing (useful in Sentry and logs)
-  const requestId = crypto.randomUUID();
-  res.headers.set("X-Request-ID", requestId);
-
-  return res;
+  return withSecurityHeaders(NextResponse.next());
 });
+
+// ── On-prem: OIDC cookie gate (full JWT verify happens in getOidcAuthContext) ───
+async function oidcHandler(req: NextRequest): Promise<NextResponse> {
+  const limited = await rateGuard(req);
+  if (limited) return limited;
+  if (!isPublicRoute(req) && !isApiRoute(req)) {
+    if (!req.cookies.get("tos_session")) {
+      const url = req.nextUrl.clone();
+      url.pathname = "/api/auth/oidc/login";
+      url.search = "";
+      return NextResponse.redirect(url);
+    }
+  }
+  return withSecurityHeaders(NextResponse.next());
+}
+
+export default IS_OIDC ? oidcHandler : clerkHandler;
 
 export const config = {
   matcher: [

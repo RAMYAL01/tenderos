@@ -23,6 +23,12 @@ export interface AuthContext {
  * - Auto-creates org/member in DB if webhook hasn't fired yet (race condition).
  */
 export const getAuthContext = cache(async (): Promise<AuthContext> => {
+  // On-prem: delegate to the OIDC adapter (Keycloak), bypassing Clerk entirely.
+  if (process.env.AUTH_PROVIDER === "oidc") {
+    const { getOidcAuthContext } = await import("@/lib/auth/oidc");
+    return getOidcAuthContext();
+  }
+
   const { userId: clerkUserId, orgId: clerkOrgId } = await auth();
 
   if (!clerkUserId) {

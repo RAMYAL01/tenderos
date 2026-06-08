@@ -146,6 +146,8 @@ services:
       OIDC_ISSUER: ${OIDC_ISSUER:-http://keycloak:8080/realms/tenderos}
       OIDC_CLIENT_ID: ${OIDC_CLIENT_ID:-tenderos}
       OIDC_CLIENT_SECRET: ${OIDC_CLIENT_SECRET:?}
+      OIDC_SESSION_SECRET: ${OIDC_SESSION_SECRET:?}
+      OIDC_DEFAULT_ORG: ${OIDC_DEFAULT_ORG:-default}
       # Object storage
       S3_ENDPOINT: http://minio:9000
       AWS_S3_BUCKET_NAME: ${S3_BUCKET:-tenderos}
