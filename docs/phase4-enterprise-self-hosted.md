@@ -286,9 +286,12 @@ and a verifiable cutover.
   sidebar shows the org name + a logout link (→ `/api/auth/oidc/logout`) instead
   of `<OrganizationSwitcher>/<UserButton>`, and the Clerk-only invite dialog is
   replaced by an "members come from your IdP" note. Cloud (Clerk) UI unchanged.
-- ⏳ Last minor raw-Anthropic sites (`denoise-prompt`, `claude-secure`, legacy
-  BOQ `extraction-prompt` — has a seam twin).
+- ✅ 100% chat-provider coverage: every chat call now routes through
+  `getChatModel()` — including the previously-raw `denoise-prompt` (OCR clause
+  structuring), `extraction-prompt` (BOQ extraction), and `claude-secure`. The
+  only remaining direct-Anthropic code is the *cloud-only* Claude OCR `fetch`,
+  which is never invoked when `OCR_PROVIDER=local-vision`.
 
 > With `LLM_PROVIDER=local` + `EMBEDDING_PROVIDER=ollama` + `OCR_PROVIDER=local-vision`,
-> the **core pipeline makes zero external AI calls** — chat, embeddings, and OCR
-> are all in-network.
+> the **entire pipeline makes zero external AI calls** — chat, embeddings, and OCR
+> are all in-network. No code path reaches an external AI provider.

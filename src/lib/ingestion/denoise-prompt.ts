@@ -11,8 +11,10 @@
  * and merge — de-duplicating clause_ids.
  */
 
-import Anthropic from "@anthropic-ai/sdk";
-import { getAnthropic, MODELS, withRetry } from "@/lib/ai/client";
+import { generateObject } from "ai";
+import { z } from "zod";
+import { MODELS, withRetry } from "@/lib/ai/client";
+import { getChatModel } from "@/lib/ai/llm-provider";
 
 export interface StructuredClause {
   clause_id: string;
@@ -20,6 +22,17 @@ export interface StructuredClause {
   english_translation_or_equivalent: string;
   is_mandatory_compliance_item: boolean;
 }
+
+const ClausesSchema = z.object({
+  clauses: z.array(
+    z.object({
+      clause_id: z.string(),
+      original_arabic_text: z.string(),
+      english_translation_or_equivalent: z.string(),
+      is_mandatory_compliance_item: z.boolean(),
+    })
+  ),
+});
 
 // ── The advanced system prompt ────────────────────────────────────────────────
 
@@ -51,39 +64,6 @@ Your job is to CLEAN and STRUCTURE this into discrete tender clauses. You are a 
   - english_translation_or_equivalent: a faithful English translation (or, if the source is English, the cleaned English text).
   - is_mandatory_compliance_item: boolean per the rules above.
 - Output ONLY the tool call. No prose, no markdown, no commentary. If the input contains no substantive clauses, return an empty array.`;
-
-// ── Forced-structure tool ─────────────────────────────────────────────────────
-
-const STRUCTURE_TOOL: Anthropic.Tool = {
-  name: "emit_clauses",
-  description: "Return the cleaned, structured tender clauses extracted from the noisy OCR text.",
-  input_schema: {
-    type: "object",
-    properties: {
-      clauses: {
-        type: "array",
-        items: {
-          type: "object",
-          properties: {
-            clause_id: { type: "string" },
-            original_arabic_text: { type: "string" },
-            english_translation_or_equivalent: { type: "string" },
-            is_mandatory_compliance_item: { type: "boolean" },
-          },
-          required: [
-            "clause_id",
-            "original_arabic_text",
-            "english_translation_or_equivalent",
-            "is_mandatory_compliance_item",
-          ],
-          additionalProperties: false,
-        },
-      },
-    },
-    required: ["clauses"],
-    additionalProperties: false,
-  },
-};
 
 export interface StructureOptions {
   model?: string;
@@ -131,29 +111,18 @@ export async function structureClauses(
 }
 
 async function structureOneShard(text: string, model?: string): Promise<StructuredClause[]> {
-  const client = getAnthropic();
-  const response = await client.messages.create({
-    model: model ?? MODELS.CLAUDE_SONNET, // Sonnet: Arabic + compliance reasoning need the headroom
-    max_tokens: 8000,
+  // Sonnet (cloud) or local vLLM — Arabic + compliance reasoning need headroom.
+  const { object } = await generateObject({
+    model: getChatModel(model ?? MODELS.CLAUDE_SONNET),
+    schema: ClausesSchema,
+    schemaName: "emit_clauses",
     temperature: 0,
+    maxOutputTokens: 8000,
     system: DENOISE_STRUCTURE_SYSTEM_PROMPT,
-    tools: [STRUCTURE_TOOL],
-    tool_choice: { type: "tool", name: "emit_clauses" },
-    messages: [
-      {
-        role: "user",
-        content: `Clean and structure the following raw OCR text from a tender document.\n\n<ocr_text>\n${text}\n</ocr_text>`,
-      },
-    ],
+    prompt: `Clean and structure the following raw OCR text from a tender document.\n\n<ocr_text>\n${text}\n</ocr_text>`,
   });
 
-  const toolUse = response.content.find(
-    (b): b is Anthropic.ToolUseBlock => b.type === "tool_use"
-  );
-  if (!toolUse) throw new Error("structuring: model returned no tool output");
-
-  const raw = (toolUse.input ?? {}) as { clauses?: Array<Partial<StructuredClause>> };
-  return (raw.clauses ?? [])
+  return (object.clauses ?? [])
     .filter((c) => c && typeof c.clause_id === "string")
     .map((c) => ({
       clause_id: String(c.clause_id).trim(),

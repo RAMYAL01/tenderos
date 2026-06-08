@@ -7,9 +7,22 @@
  * Structured output is forced via Claude tool-use (a schema the model MUST fill).
  */
 
-import Anthropic from "@anthropic-ai/sdk";
-import { getAnthropic, MODELS, withRetry } from "@/lib/ai/client";
+import { generateObject } from "ai";
+import { z } from "zod";
+import { MODELS, withRetry } from "@/lib/ai/client";
+import { getChatModel } from "@/lib/ai/llm-provider";
 import type { BoqExtraction, ExtractedBoqLineItem } from "./types";
+
+const BoqExtractionSchema = z.object({
+  line_items: z.array(
+    z.object({
+      item_code: z.string(),
+      description: z.string(),
+      unit_of_measurement: z.string(),
+      quantity: z.number().finite().nullable(),
+    })
+  ),
+});
 
 // ── The strict system prompt ──────────────────────────────────────────────────
 
@@ -33,46 +46,6 @@ Extract every BOQ line item as structured data with EXACTLY these four fields:
 # OUTPUT
 Call the tool \`emit_boq_line_items\` exactly once with the full array. Output nothing else — no prose, no markdown, no commentary. Pricing is handled by a separate deterministic engine; your numbers (other than quantity) would be discarded anyway.`;
 
-// ── Forced-structure tool (Claude must fill this schema) ──────────────────────
-
-const EXTRACTION_TOOL: Anthropic.Tool = {
-  name: "emit_boq_line_items",
-  description:
-    "Return the BOQ line items extracted from the document. Contains NO prices and NO calculations.",
-  input_schema: {
-    type: "object",
-    properties: {
-      line_items: {
-        type: "array",
-        description: "Every BOQ line item, in document order.",
-        items: {
-          type: "object",
-          properties: {
-            item_code: { type: "string", description: "BOQ reference as printed, e.g. '2.1.4'." },
-            description: { type: "string", description: "Single-line work/material description." },
-            unit_of_measurement: { type: "string", description: "Unit token, e.g. 'm2', 'no', 'hr', 'ls'. '' if absent." },
-            quantity: {
-              type: ["number", "null"],
-              description: "Numeric quantity, or null if not explicitly stated. NEVER invented.",
-            },
-          },
-          required: ["item_code", "description", "unit_of_measurement", "quantity"],
-          additionalProperties: false,
-        },
-      },
-    },
-    required: ["line_items"],
-    additionalProperties: false,
-  },
-};
-
-interface RawExtractedItem {
-  item_code?: unknown;
-  description?: unknown;
-  unit_of_measurement?: unknown;
-  quantity?: unknown;
-}
-
 /**
  * Run Part 1: extract structured BOQ line items from raw text using Claude.
  *
@@ -89,34 +62,21 @@ export async function extractBoqLineItems(
     return { line_items: [] };
   }
 
-  const client = getAnthropic();
-  const response = await withRetry(() =>
-    client.messages.create({
-      model: opts.model ?? MODELS.CLAUDE_HAIKU, // fast + cheap; extraction needs no reasoning headroom
-      max_tokens: opts.maxTokens ?? 8000,
+  // Schema-forced extraction via the provider seam (Claude cloud or local vLLM).
+  const { object } = await withRetry(() =>
+    generateObject({
+      model: getChatModel(opts.model ?? MODELS.CLAUDE_HAIKU),
+      schema: BoqExtractionSchema,
+      schemaName: "emit_boq_line_items",
       temperature: 0, // deterministic extraction
+      maxOutputTokens: opts.maxTokens ?? 8000,
       system: BOQ_EXTRACTION_SYSTEM_PROMPT,
-      tools: [EXTRACTION_TOOL],
-      tool_choice: { type: "tool", name: "emit_boq_line_items" },
-      messages: [
-        {
-          role: "user",
-          content: `Extract the BOQ line items from the document below. Remember: no prices, no math.\n\n<boq_document>\n${rawBoqContent}\n</boq_document>`,
-        },
-      ],
+      prompt: `Extract the BOQ line items from the document below. Remember: no prices, no math.\n\n<boq_document>\n${rawBoqContent}\n</boq_document>`,
     })
   );
 
-  const toolUse = response.content.find(
-    (block): block is Anthropic.ToolUseBlock => block.type === "tool_use"
-  );
-  if (!toolUse) {
-    throw new Error("BOQ extraction failed: model did not return structured tool output.");
-  }
-
-  const raw = (toolUse.input ?? {}) as { line_items?: RawExtractedItem[] };
-  const line_items: ExtractedBoqLineItem[] = (raw.line_items ?? [])
-    .filter((li): li is RawExtractedItem => !!li && typeof li.item_code === "string")
+  const line_items: ExtractedBoqLineItem[] = (object.line_items ?? [])
+    .filter((li) => typeof li.item_code === "string" && li.item_code.trim().length > 0)
     .map((li) => ({
       item_code: String(li.item_code).trim(),
       description: typeof li.description === "string" ? li.description.trim() : "",

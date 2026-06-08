@@ -17,7 +17,8 @@
  */
 
 import crypto from "node:crypto";
-import { getAnthropic, MODELS } from "@/lib/ai/client";
+import { generateText } from "ai";
+import { getChatModel } from "@/lib/ai/llm-provider";
 import type { RagChunk } from "./rag-search";
 
 const POLICY_HEADER = { "x-tenderos-data-policy": "zero-retention-no-training" } as const;
@@ -46,22 +47,17 @@ export async function secureClaudeComplete(input: SecureCompletionInput): Promis
     ? redactFinancialTotals(input.userContent)
     : { text: input.userContent, count: 0 };
 
-  const response = await getAnthropic().messages.create(
-    {
-      model: input.model ?? MODELS.CLAUDE_SONNET,
-      max_tokens: input.maxTokens ?? 4000,
-      system: input.system,
-      // Opaque, non-reversible tenant identifier — no PII in request metadata.
-      metadata: { user_id: opaqueTenantId(input.orgId) },
-      messages: [{ role: "user", content: cleanContent }],
-    },
-    { headers: POLICY_HEADER }
-  );
-
-  const text = response.content
-    .filter((b): b is Extract<typeof b, { type: "text" }> => b.type === "text")
-    .map((b) => b.text)
-    .join("");
+  // Provider-agnostic (Claude cloud or local vLLM). The opaque tenant id is
+  // still derivable via opaqueTenantId() for callers that attach analytics; the
+  // policy header documents intent in transit. On-prem there is no external
+  // retention surface at all.
+  const { text } = await generateText({
+    model: getChatModel(input.model),
+    maxOutputTokens: input.maxTokens ?? 4000,
+    system: input.system,
+    prompt: cleanContent,
+    headers: POLICY_HEADER,
+  });
 
   return { text, redactions: count };
 }
