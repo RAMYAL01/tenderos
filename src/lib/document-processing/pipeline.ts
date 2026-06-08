@@ -36,7 +36,7 @@ export interface ProcessedContent {
   languageConfidence: number;
   isScanned: boolean;
   processedAt: string;
-  extractionMethod: "pdf-parse" | "mammoth" | "plaintext" | "azure-ocr" | "claude-ocr";
+  extractionMethod: "pdf-parse" | "mammoth" | "plaintext" | "azure-ocr" | "claude-ocr" | "vlm-ocr";
   warnings?: string[];
 }
 
@@ -142,7 +142,12 @@ export async function processDocument(documentId: string): Promise<void> {
           languageConfidence: confidence,
           isScanned: true,
           processedAt: new Date().toISOString(),
-          extractionMethod: ocr.provider === "claude-vision" ? "claude-ocr" : "azure-ocr",
+          extractionMethod:
+            ocr.provider === "claude-vision"
+              ? "claude-ocr"
+              : ocr.provider === "local-vision"
+              ? "vlm-ocr"
+              : "azure-ocr",
           warnings,
         };
       } else {

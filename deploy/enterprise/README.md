@@ -29,9 +29,22 @@ docker compose up -d
 4. Verify egress is DENY-ALL and run the readiness checklist (design doc §8).
 
 ## The app's local-AI switches (already in code)
-| Var | Value |
-|---|---|
-| `LLM_PROVIDER` | `local` → vLLM via `LLM_BASE_URL` |
-| `EMBEDDING_PROVIDER` | `ollama` → `OLLAMA_HOST`, 1536-dim model |
+| Var | Value | Local service |
+|---|---|---|
+| `LLM_PROVIDER` | `local` → vLLM via `LLM_BASE_URL` | `vllm` (Qwen2.5) |
+| `EMBEDDING_PROVIDER` | `ollama` → `OLLAMA_HOST`, 1536-dim | `ollama` (bge-m3) |
+| `OCR_PROVIDER` | `local-vision` → `OCR_VISION_BASE_URL` | `vllm-vl` (Qwen2.5-VL) |
 
-No code change between cloud and on-prem — only env.
+No code change between cloud and on-prem — only env. With all three set, **every
+AI call is in-network** (chat, embeddings, and scanned-PDF OCR).
+
+## Build the app image
+The app image is built from the repo root with the bundled Dockerfile, which
+installs **poppler-utils** (`pdftoppm`) — required by the local-vision OCR path:
+
+```bash
+docker build -f deploy/enterprise/Dockerfile -t registry.internal/tenderos:enterprise .
+```
+
+Pre-stage three model weights into the `models` volume: `Qwen2.5-14B-Instruct`
+(chat), `Qwen2.5-VL-7B-Instruct` (OCR), and pull `bge-m3` into Ollama (embeddings).

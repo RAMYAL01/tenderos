@@ -58,6 +58,30 @@ services:
       retries: 10
       start_period: 120s
 
+  # ── On-prem vision OCR (Qwen2.5-VL, served as "tenderos-vl") ─────────────────
+  vllm-vl:
+    <<: *no-egress
+    image: vllm/vllm-openai:latest
+    command: >
+      --model ${VL_MODEL_PATH:-/models/Qwen2.5-VL-7B-Instruct}
+      --served-model-name tenderos-vl
+      --max-model-len 16384
+      --gpu-memory-utilization 0.90
+      --limit-mm-per-prompt image=1
+    volumes:
+      - models:/models
+    ipc: host
+    deploy:
+      resources:
+        reservations:
+          devices:
+            - { driver: nvidia, count: 1, capabilities: [gpu] }
+    healthcheck:
+      test: ["CMD", "python", "-c", "import urllib.request,sys; urllib.request.urlopen('http://localhost:8000/health'); sys.exit(0)"]
+      interval: 20s
+      retries: 10
+      start_period: 120s
+
   # ── Local embeddings (1536-dim, must match the pgvector column) ─────────────
   ollama:
     <<: *no-egress
@@ -109,6 +133,11 @@ services:
       OLLAMA_HOST: http://ollama:11434
       OLLAMA_EMBED_MODEL: ${OLLAMA_EMBED_MODEL:-bge-m3}
       OLLAMA_EMBED_DIMS: "1536"
+      # On-prem OCR (scanned PDFs) via Qwen2.5-VL — no external call
+      OCR_PROVIDER: local-vision
+      OCR_VISION_BASE_URL: http://vllm-vl:8000/v1
+      OCR_VISION_MODEL: tenderos-vl
+      OCR_VISION_DPI: "150"
       # Data
       DATABASE_URL: postgres://${PG_USER:-tenderos}:${PG_PASSWORD}@db:5432/${PG_DB:-tenderos}
       DIRECT_URL: postgres://${PG_USER:-tenderos}:${PG_PASSWORD}@db:5432/${PG_DB:-tenderos}

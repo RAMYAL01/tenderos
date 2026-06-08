@@ -2,47 +2,159 @@
  * Scanned-PDF OCR for the live document-processing pipeline.
  *
  * Bridges an OCR provider into the simple `ProcessedContent` shape the rest of
- * the app consumes. Two providers, selected by what's configured:
+ * the app consumes. Three providers, selected by what's configured:
  *
  *   1. Azure Document Intelligence  — if AZURE_DOCINTEL_* is set (best fidelity).
- *   2. Claude vision (PDF)          — else if ANTHROPIC_API_KEY is set. Reuses
- *      the key the app already has; no extra account. Handles Arabic/English.
+ *   2. Local vision VLM (Qwen2.5-VL via vLLM) — if OCR_PROVIDER=local-vision.
+ *      Air-gapped: rasterize with poppler (`pdftoppm`) then transcribe each page
+ *      on the on-prem OpenAI-compatible endpoint. NO external call.
+ *   3. Claude vision (PDF)          — else if ANTHROPIC_API_KEY is set (cloud).
  *
  * Used only for scanned PDFs (no extractable text). Text-based documents and
  * unconfigured environments are completely unaffected.
  */
 
+import { execFile } from "node:child_process";
+import { promisify } from "node:util";
+import { mkdtemp, writeFile, readFile, readdir, rm } from "node:fs/promises";
+import { tmpdir } from "node:os";
+import { join } from "node:path";
 import { PDFDocument } from "pdf-lib";
 import { AzureDocumentIntelligenceProvider, isAzureOcrConfigured } from "@/lib/ingestion/ocr-provider";
 import { withRetry } from "@/lib/ai/client";
+
+const execFileP = promisify(execFile);
 
 export interface ScannedOcrResult {
   fullText: string;
   pages: Array<{ page: number; text: string }>;
   pageCount: number;
-  /** Mean OCR word confidence (0..1). Claude has no confidence signal → 1. */
+  /** Mean OCR word confidence (0..1). VLM/Claude have no confidence signal → 1. */
   meanConfidence: number;
-  provider: "azure-document-intelligence" | "claude-vision";
+  provider: "azure-document-intelligence" | "claude-vision" | "local-vision";
 }
 
 export interface OcrInput {
   /** Presigned URL (Azure can pull it directly). */
   urlSource?: string;
-  /** Raw PDF bytes (required for the Claude path). */
+  /** Raw PDF bytes (required for the Claude + local-vision paths). */
   bytes: Buffer;
   /** Page-count hint, if known. */
   pageCount?: number;
 }
 
-/** True when any OCR provider (Azure or Claude) is available. */
+/** True when the air-gapped local vision OCR path is selected. */
+export function isLocalVisionOcr(): boolean {
+  return process.env.OCR_PROVIDER === "local-vision";
+}
+
+/** True when any OCR provider (Azure, local vision, or Claude) is available. */
 export function isOcrConfigured(): boolean {
-  return isAzureOcrConfigured() || Boolean(process.env.ANTHROPIC_API_KEY);
+  return isAzureOcrConfigured() || isLocalVisionOcr() || Boolean(process.env.ANTHROPIC_API_KEY);
 }
 
 export async function ocrScannedPdf(input: OcrInput): Promise<ScannedOcrResult> {
   if (isAzureOcrConfigured()) return ocrViaAzure(input);
+  if (isLocalVisionOcr()) return ocrViaLocalVision(input.bytes);
   if (process.env.ANTHROPIC_API_KEY) return ocrViaClaude(input.bytes);
-  throw new Error("No OCR provider is configured (set AZURE_DOCINTEL_* or ANTHROPIC_API_KEY).");
+  throw new Error("No OCR provider is configured (set AZURE_DOCINTEL_*, OCR_PROVIDER=local-vision, or ANTHROPIC_API_KEY).");
+}
+
+// ── Local vision (Qwen2.5-VL via on-prem vLLM) — air-gapped path ───────────────
+
+const VLM_OCR_PROMPT =
+  "You are an OCR engine. Transcribe EVERY piece of text visible in this page image, " +
+  "exactly as written. Preserve the original languages (Arabic and English both appear) " +
+  "and table structure (tab-separated cells, one row per line). Output ONLY the transcription " +
+  "— no commentary, no translation. If the page is blank, output nothing.";
+
+const VLM_OCR_CONCURRENCY = 3;
+
+function pageNum(filename: string): number {
+  const m = filename.match(/(\d+)\.png$/);
+  return m ? parseInt(m[1], 10) : 0;
+}
+
+async function callVlm(base: string, model: string, apiKey: string, pngBase64: string): Promise<string> {
+  const res = await fetch(`${base}/chat/completions`, {
+    method: "POST",
+    headers: { "content-type": "application/json", authorization: `Bearer ${apiKey}` },
+    body: JSON.stringify({
+      model,
+      temperature: 0,
+      max_tokens: 4096,
+      messages: [
+        {
+          role: "user",
+          content: [
+            { type: "text", text: VLM_OCR_PROMPT },
+            { type: "image_url", image_url: { url: `data:image/png;base64,${pngBase64}` } },
+          ],
+        },
+      ],
+    }),
+  });
+  if (!res.ok) {
+    throw new Error(`local-vision OCR failed (${res.status}): ${(await res.text().catch(() => "")).slice(0, 300)}`);
+  }
+  const json = (await res.json()) as { choices?: Array<{ message?: { content?: string } }> };
+  return json.choices?.[0]?.message?.content ?? "";
+}
+
+async function ocrViaLocalVision(bytes: Buffer): Promise<ScannedOcrResult> {
+  const base = (process.env.OCR_VISION_BASE_URL ?? process.env.LLM_BASE_URL ?? "http://127.0.0.1:8000/v1").replace(/\/+$/, "");
+  const model = process.env.OCR_VISION_MODEL ?? "tenderos-vl";
+  const apiKey = process.env.LLM_API_KEY ?? "not-needed";
+  const dpi = Number(process.env.OCR_VISION_DPI ?? "150");
+
+  const dir = await mkdtemp(join(tmpdir(), "tenderos-ocr-"));
+  try {
+    const pdfPath = join(dir, "in.pdf");
+    await writeFile(pdfPath, bytes);
+
+    // Rasterize with poppler (must be installed in the enterprise app image).
+    try {
+      await execFileP("pdftoppm", ["-png", "-r", String(dpi), pdfPath, join(dir, "page")], {
+        maxBuffer: 256 * 1024 * 1024,
+      });
+    } catch (err) {
+      throw new Error(
+        `local-vision OCR: PDF rasterization failed (is poppler-utils installed?): ${
+          err instanceof Error ? err.message : String(err)
+        }`
+      );
+    }
+
+    const files = (await readdir(dir))
+      .filter((f) => f.startsWith("page") && f.endsWith(".png"))
+      .sort((a, b) => pageNum(a) - pageNum(b));
+    if (files.length === 0) throw new Error("local-vision OCR: rasterization produced no pages");
+
+    // Transcribe each page on the local VLM, bounded concurrency, preserving order.
+    const pages: Array<{ page: number; text: string }> = new Array(files.length);
+    let next = 0;
+    async function worker() {
+      while (true) {
+        const i = next++;
+        if (i >= files.length) return;
+        const b64 = (await readFile(join(dir, files[i]))).toString("base64");
+        const text = await withRetry(() => callVlm(base, model, apiKey, b64), 3, 1500);
+        pages[i] = { page: i + 1, text: text.trim() };
+      }
+    }
+    await Promise.all(Array.from({ length: Math.min(VLM_OCR_CONCURRENCY, files.length) }, worker));
+
+    const kept = pages.filter((p) => p.text.length > 0);
+    return {
+      fullText: kept.map((p) => p.text).join("\n\n"),
+      pages: kept,
+      pageCount: kept.length,
+      meanConfidence: 1,
+      provider: "local-vision",
+    };
+  } finally {
+    await rm(dir, { recursive: true, force: true }).catch(() => {});
+  }
 }
 
 // ── Azure path ────────────────────────────────────────────────────────────────

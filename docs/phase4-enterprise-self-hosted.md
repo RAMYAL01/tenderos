@@ -266,8 +266,16 @@ and a verifiable cutover.
 ### Implementation status in this repo
 - ✅ LLM provider seam (`src/lib/ai/llm-provider.ts`) — `LLM_PROVIDER=local`.
 - ✅ Embedding provider seam (`src/lib/ai/embedding-provider.ts`) — Ollama.
+- ✅ All chat agents on the seam — extraction, compliance, clarification,
+  proposal drafting (streaming), and RAG Q&A run on cloud Claude **or** local vLLM.
+- ✅ Local-vision OCR (`OCR_PROVIDER=local-vision`) — poppler rasterize +
+  Qwen2.5-VL via on-prem vLLM. Scanned PDFs no longer require Claude/Azure.
 - ✅ Deterministic pricing + tenant-isolated pgvector RAG (cloud-agnostic).
-- ✅ Reference air-gapped stack (`deploy/enterprise/`).
-- ⏳ Follow-ups: migrate the remaining raw-Anthropic call sites (OCR, ask route,
-  legacy extract/compliance) onto `getChatModel()`; OIDC/Keycloak auth adapter
-  to replace Clerk on-prem; Helm chart for k8s installs.
+- ✅ Reference air-gapped stack + Dockerfile (`deploy/enterprise/`).
+- ⏳ Follow-ups: migrate the last minor raw-Anthropic sites (`denoise-prompt`,
+  `claude-secure`, legacy BOQ `extraction-prompt` — has a seam twin); OIDC/
+  Keycloak auth adapter to replace Clerk on-prem; Helm chart for k8s installs.
+
+> With `LLM_PROVIDER=local` + `EMBEDDING_PROVIDER=ollama` + `OCR_PROVIDER=local-vision`,
+> the **core pipeline makes zero external AI calls** — chat, embeddings, and OCR
+> are all in-network.
