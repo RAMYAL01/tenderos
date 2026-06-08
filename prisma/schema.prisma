@@ -34,6 +34,25 @@ enum MemberRole {
   VIEWER
 }
 
+/// What kind of company the workspace belongs to (onboarding Step 1).
+enum OrganizationType {
+  GENERAL_CONTRACTOR
+  EPC_CONTRACTOR
+  CONSTRUCTION_COMPANY
+  ENGINEERING_CONSULTANT
+  FACILITIES_MANAGEMENT
+  GOVERNMENT_AGENCY
+  SUPPLIER_VENDOR
+  OTHER
+}
+
+enum InvitationStatus {
+  PENDING
+  ACCEPTED
+  REVOKED
+  EXPIRED
+}
+
 enum TenderStatus {
   DRAFT
   ACTIVE
@@ -189,28 +208,32 @@ enum FinancialStatus {
 // clerkOrgId links to Clerk's organization system.
 // ─────────────────────────────────────────────────────────────────────────────
 model Organization {
-  id                String          @id @default(cuid())
-  clerkOrgId        String          @unique // Clerk org ID e.g. "org_xxxx"
-  name              String
-  nameAr            String? // Arabic organization name
-  slug              String          @unique
-  planTier          PlanTier        @default(STARTER)
-  maxSeats          Int             @default(3)
-  maxProposalsMonth Int             @default(5)
-  aiCreditsMonth    Int             @default(50)
-  storageBytesLimit BigInt          @default(2147483648) // 2 GB
-  storageBytesUsed  BigInt          @default(0)
-  defaultLanguage   ContentLanguage @default(EN)
-  industry          String? // construction | defense | facilities | oil_gas
-  countryCode       String?         @db.Char(2) // ISO 3166-1: AE, SA, EG, QA
-  settings          Json            @default("{}")
-  logoUrl           String?
-  website           String?
-  isActive          Boolean         @default(true)
-  trialEndsAt       DateTime?
-  createdAt         DateTime        @default(now())
-  updatedAt         DateTime        @updatedAt
-  deletedAt         DateTime?
+  id                    String            @id @default(cuid())
+  clerkOrgId            String            @unique // Clerk org ID e.g. "org_xxxx"
+  name                  String
+  nameAr                String? // Arabic organization name
+  slug                  String            @unique
+  planTier              PlanTier          @default(STARTER)
+  maxSeats              Int               @default(3)
+  maxProposalsMonth     Int               @default(5)
+  aiCreditsMonth        Int               @default(50)
+  storageBytesLimit     BigInt            @default(2147483648) // 2 GB
+  storageBytesUsed      BigInt            @default(0)
+  defaultLanguage       ContentLanguage   @default(EN)
+  industry              String? // construction | defense | facilities | oil_gas
+  organizationType      OrganizationType? // onboarding Step 1
+  employeeCount         String? // banded: "1-10" | "11-50" | "51-200" | "201-500" | "500+"
+  countryCode           String?           @db.Char(2) // ISO 3166-1: AE, SA, EG, QA
+  settings              Json              @default("{}")
+  logoUrl               String?
+  website               String?
+  isActive              Boolean           @default(true)
+  trialEndsAt           DateTime?
+  // Org-first onboarding: null until the workspace wizard is completed.
+  onboardingCompletedAt DateTime?
+  createdAt             DateTime          @default(now())
+  updatedAt             DateTime          @updatedAt
+  deletedAt             DateTime?
 
   // Relations
   members             Member[]
@@ -219,6 +242,7 @@ model Organization {
   knowledgeChunks     KnowledgeChunk[]
   boqWorkflows        BoqWorkflow[]
   aiFeedback          AIFeedback[]
+  invitations         Invitation[]
   aiJobs              AIJob[]
   subscription        Subscription?
   auditLogs           AuditLog[]
@@ -695,6 +719,30 @@ model AIFeedback {
   @@index([orgId, task])
   @@index([exportedAt])
   @@map("ai_feedback")
+}
+
+/// Workspace team invitation (org-first, link-based — works cloud + air-gapped,
+/// no external email dependency). An OWNER/ADMIN invites a work email at a role;
+/// the invitee accepts via /invite/<token> and joins THIS workspace (never a new
+/// org). Tenant-scoped: an invitation only ever grants access to its own org.
+model Invitation {
+  id           String           @id @default(cuid())
+  orgId        String // the workspace being joined
+  email        String // invited work email (lowercased)
+  role         MemberRole       @default(WRITER)
+  token        String           @unique
+  status       InvitationStatus @default(PENDING)
+  invitedById  String? // member who sent it
+  acceptedById String? // member created on accept
+  expiresAt    DateTime
+  acceptedAt   DateTime?
+  createdAt    DateTime         @default(now())
+
+  organization Organization @relation(fields: [orgId], references: [id], onDelete: Cascade)
+
+  @@unique([orgId, email]) // one active invite per email per workspace
+  @@index([orgId, status])
+  @@map("invitations")
 }
 
 // ─────────────────────────────────────────────────────────────────────────────

@@ -18,6 +18,7 @@ const isPublicRoute = createRouteMatcher([
   "/robots.txt",           // SEO — public
   "/sign-in(.*)",
   "/sign-up(.*)",
+  "/invite(.*)",           // Team invite links — self-gate (show sign-in CTA when logged out)
   "/api/webhooks(.*)",     // Clerk webhook — verified via svix signature
   "/api/auth/oidc(.*)",    // On-prem OIDC login/callback/logout — pre-session
   "/api/health",           // Health check — always public
