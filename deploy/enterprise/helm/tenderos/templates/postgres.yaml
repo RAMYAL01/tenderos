@@ -1,0 +1,70 @@
+{{- if .Values.postgres.enabled }}
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: {{ .Release.Name }}-pg-init
+  labels: {{- include "tenderos.labels" . | nindent 4 }}
+data:
+  01-extensions.sql: |
+    CREATE EXTENSION IF NOT EXISTS vector;
+    CREATE EXTENSION IF NOT EXISTS pgcrypto;
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: {{ .Release.Name }}-postgres
+  labels: {{- include "tenderos.labels" . | nindent 4 }}
+spec:
+  ports:
+    - { port: 5432, targetPort: 5432 }
+  selector:
+    app: {{ .Release.Name }}-postgres
+---
+apiVersion: apps/v1
+kind: StatefulSet
+metadata:
+  name: {{ .Release.Name }}-postgres
+  labels: {{- include "tenderos.labels" . | nindent 4 }}
+spec:
+  serviceName: {{ .Release.Name }}-postgres
+  replicas: 1
+  selector:
+    matchLabels:
+      app: {{ .Release.Name }}-postgres
+  template:
+    metadata:
+      labels:
+        app: {{ .Release.Name }}-postgres
+    spec:
+      {{- include "tenderos.imagePullSecrets" . | nindent 6 }}
+      containers:
+        - name: postgres
+          image: {{ .Values.postgres.image }}
+          env:
+            - { name: POSTGRES_USER, value: {{ .Values.postgres.user | quote }} }
+            - { name: POSTGRES_DB, value: {{ .Values.postgres.db | quote }} }
+            - name: POSTGRES_PASSWORD
+              valueFrom:
+                secretKeyRef: { name: {{ .Values.secrets.name }}, key: PG_PASSWORD }
+          ports:
+            - containerPort: 5432
+          volumeMounts:
+            - { name: data, mountPath: /var/lib/postgresql/data }
+            - { name: initdb, mountPath: /docker-entrypoint-initdb.d, readOnly: true }
+          readinessProbe:
+            exec: { command: ["pg_isready", "-U", "{{ .Values.postgres.user }}"] }
+            initialDelaySeconds: 10
+            periodSeconds: 10
+      volumes:
+        - name: initdb
+          configMap: { name: {{ .Release.Name }}-pg-init }
+  volumeClaimTemplates:
+    - metadata: { name: data }
+      spec:
+        accessModes: [ReadWriteOnce]
+        {{- if .Values.global.storageClass }}
+        storageClassName: {{ .Values.global.storageClass }}
+        {{- end }}
+        resources:
+          requests: { storage: {{ .Values.postgres.storage }} }
+{{- end }}

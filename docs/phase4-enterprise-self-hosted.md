@@ -272,6 +272,9 @@ and a verifiable cutover.
   Qwen2.5-VL via on-prem vLLM. Scanned PDFs no longer require Claude/Azure.
 - ✅ Deterministic pricing + tenant-isolated pgvector RAG (cloud-agnostic).
 - ✅ Reference air-gapped stack + Dockerfile (`deploy/enterprise/`).
+- ✅ Helm chart (`deploy/enterprise/helm/tenderos`) — full k8s install: app,
+  vLLM (chat), vLLM-VL (OCR), Ollama, Postgres+pgvector, Keycloak, MinIO,
+  ingress; GPU scheduling, PVCs, secret strategy, all local-AI + OIDC env wired.
 - ✅ OIDC auth adapter (`src/lib/auth/oidc.ts` + `/api/auth/oidc/*` + provider-
   aware middleware) — `AUTH_PROVIDER=oidc` federates Keycloak (→ Azure AD/ADFS).
   Server side is complete: login/callback/logout, JWKS-verified id_token, HS256

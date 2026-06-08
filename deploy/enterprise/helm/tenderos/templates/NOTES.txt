@@ -1,0 +1,39 @@
+TenderOS Enterprise ({{ .Release.Name }}) is installing.
+
+URL:  {{ .Values.global.appUrl }}
+
+Services:
+  app        {{ .Release.Name }}-app:80
+  chat LLM   {{ .Release.Name }}-vllm:8000        ({{ .Values.vllm.servedName }})
+{{- if .Values.vllmVl.enabled }}
+  OCR VLM    {{ .Release.Name }}-vllm-vl:8000      ({{ .Values.vllmVl.servedName }})
+{{- end }}
+  embeddings {{ .Release.Name }}-ollama:11434      ({{ .Values.ollama.embedModel }})
+  postgres   {{ .Release.Name }}-postgres:5432
+{{- if .Values.keycloak.enabled }}
+  keycloak   {{ .Release.Name }}-keycloak:8080
+{{- end }}
+{{- if .Values.minio.enabled }}
+  minio      {{ .Release.Name }}-minio:9000
+{{- end }}
+
+Before first use:
+  1. Pre-stage model weights into the `{{ .Release.Name }}-models` PVC:
+       Qwen2.5-14B-Instruct  ({{ .Values.vllm.servedName }})
+       Qwen2.5-VL-7B-Instruct ({{ .Values.vllmVl.servedName }})
+     and pull the embedding model into Ollama:
+       kubectl exec deploy/{{ .Release.Name }}-ollama -- ollama pull {{ .Values.ollama.embedModel }}
+  2. Configure the Keycloak realm "{{ .Values.keycloak.realm }}": create the
+     `{{ .Values.keycloak.realm }}` OIDC client, set the redirect URI to
+       {{ .Values.global.appUrl }}/api/auth/oidc/callback
+     map IdP groups -> roles (owner/admin/manager/writer/reviewer/viewer), and
+     federate Azure AD / ADFS if required. Set OIDC_ISSUER (keycloak.issuerUrl)
+     to a BROWSER-REACHABLE URL.
+  3. The app runs `prisma migrate deploy` on start; the pgvector + pgcrypto
+     extensions are created by the postgres init ConfigMap. Apply the HNSW
+     index from prisma/sql/knowledge_chunks_index.sql once.
+  4. Verify DENY-ALL egress and run the readiness checklist
+     (docs/phase4-enterprise-self-hosted.md §8).
+
+PROD secrets: set `secrets.create=false` and provide an externally-managed
+Secret named "{{ .Values.secrets.name }}" (Vault / External Secrets Operator).

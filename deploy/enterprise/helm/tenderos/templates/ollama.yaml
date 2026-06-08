@@ -1,0 +1,54 @@
+apiVersion: v1
+kind: PersistentVolumeClaim
+metadata:
+  name: {{ .Release.Name }}-ollama
+  labels: {{- include "tenderos.labels" . | nindent 4 }}
+spec:
+  accessModes: [ReadWriteOnce]
+  {{- if .Values.global.storageClass }}
+  storageClassName: {{ .Values.global.storageClass }}
+  {{- end }}
+  resources:
+    requests: { storage: {{ .Values.ollama.storage }} }
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: {{ .Release.Name }}-ollama
+  labels: {{- include "tenderos.labels" . | nindent 4 }}
+spec:
+  ports: [{ port: 11434, targetPort: 11434 }]
+  selector: { app: {{ .Release.Name }}-ollama }
+---
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: {{ .Release.Name }}-ollama
+  labels: {{- include "tenderos.labels" . | nindent 4 }}
+spec:
+  replicas: 1
+  selector:
+    matchLabels: { app: {{ .Release.Name }}-ollama }
+  template:
+    metadata:
+      labels: { app: {{ .Release.Name }}-ollama }
+    spec:
+      {{- include "tenderos.imagePullSecrets" . | nindent 6 }}
+      {{- with .Values.global.gpuNodeSelector }}
+      nodeSelector: {{- toYaml . | nindent 8 }}
+      {{- end }}
+      containers:
+        - name: ollama
+          image: {{ .Values.ollama.image }}
+          ports: [{ containerPort: 11434 }]
+          resources:
+            limits:
+              {{ .Values.global.gpuResourceKey }}: {{ .Values.ollama.gpu }}
+          volumeMounts: [{ name: data, mountPath: /root/.ollama }]
+          readinessProbe:
+            httpGet: { path: /, port: 11434 }
+            initialDelaySeconds: 15
+            periodSeconds: 15
+      volumes:
+        - name: data
+          persistentVolumeClaim: { claimName: {{ .Release.Name }}-ollama }

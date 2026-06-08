@@ -1,0 +1,9 @@
+apiVersion: v2
+name: tenderos
+description: TenderOS Enterprise — fully on-prem / air-gapped tender intelligence (app + private LLM + embeddings + OCR + pgvector + SSO + object storage)
+type: application
+version: 0.1.0
+appVersion: "enterprise"
+keywords: [tender, boq, procurement, air-gapped, on-prem, llm, rag]
+maintainers:
+  - name: TenderOS

@@ -1,0 +1,97 @@
+# TenderOS Enterprise — Helm values.
+# Air-gapped: point every image at your internal registry and pre-stage model
+# weights into the `models` PVC. No service has egress.
+
+global:
+  appUrl: https://tenderos.gov.local
+  imagePullSecrets: []        # e.g. [{ name: regcred }]
+  storageClass: ""            # "" = cluster default
+  # GPU scheduling — set to your accelerator resource key + node selector.
+  gpuResourceKey: nvidia.com/gpu
+  gpuNodeSelector: {}         # e.g. { node.kubernetes.io/gpu: "true" }
+
+app:
+  image: registry.internal/tenderos:enterprise
+  replicas: 2
+  service: { port: 3000 }
+  resources:
+    requests: { cpu: "500m", memory: 1Gi }
+    limits: { cpu: "2", memory: 2Gi }
+
+# ── Private chat LLM (vLLM serving Qwen2.5) ────────────────────────────────────
+vllm:
+  image: vllm/vllm-openai:latest
+  servedName: tenderos
+  modelPath: /models/Qwen2.5-14B-Instruct
+  gpu: 1
+  tensorParallelSize: 1
+  maxModelLen: 32768
+  gpuMemoryUtilization: "0.92"
+
+# ── On-prem OCR vision model (Qwen2.5-VL) ──────────────────────────────────────
+vllmVl:
+  enabled: true
+  image: vllm/vllm-openai:latest
+  servedName: tenderos-vl
+  modelPath: /models/Qwen2.5-VL-7B-Instruct
+  gpu: 1
+  maxModelLen: 16384
+
+# Shared model-weights volume (pre-staged offline).
+models:
+  pvc: { size: 200Gi }
+
+# ── Local embeddings (Ollama, bge-m3 @ 1536) ───────────────────────────────────
+ollama:
+  image: ollama/ollama:latest
+  embedModel: bge-m3
+  gpu: 1
+  storage: 30Gi
+
+# ── Postgres + pgvector ────────────────────────────────────────────────────────
+postgres:
+  enabled: true               # false -> use external DB (set externalUrl)
+  image: pgvector/pgvector:pg16
+  user: tenderos
+  db: tenderos
+  storage: 50Gi
+  externalUrl: ""             # postgres://... when enabled=false
+
+# ── SSO (Keycloak; federates Azure AD/ADFS) ────────────────────────────────────
+keycloak:
+  enabled: true
+  image: quay.io/keycloak/keycloak:26.0
+  realm: tenderos
+  admin: admin
+
+# ── Object storage (MinIO) ─────────────────────────────────────────────────────
+minio:
+  enabled: true
+  image: minio/minio:latest
+  bucket: tenderos
+  storage: 200Gi
+
+# ── Ingress / TLS ──────────────────────────────────────────────────────────────
+ingress:
+  enabled: true
+  className: nginx
+  host: tenderos.gov.local
+  tls:
+    enabled: true
+    secretName: tenderos-tls   # internal-CA cert
+
+# ── Secrets ────────────────────────────────────────────────────────────────────
+# Dev/test: create=true renders a Secret from these values. PROD: create=false
+# and provide an externally-managed Secret named `name` (Vault/External Secrets).
+secrets:
+  create: true
+  name: tenderos-secrets
+  data:
+    PG_PASSWORD: ""
+    OIDC_CLIENT_SECRET: ""
+    OIDC_SESSION_SECRET: ""
+    MINIO_PASSWORD: ""
+    KC_ADMIN_PASSWORD: ""
+    INTERNAL_API_KEY: ""
+    CRON_SECRET: ""
+    TRAINING_HMAC_KEY: ""

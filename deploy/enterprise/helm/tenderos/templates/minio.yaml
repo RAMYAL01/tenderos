@@ -1,0 +1,59 @@
+{{- if .Values.minio.enabled }}
+apiVersion: v1
+kind: PersistentVolumeClaim
+metadata:
+  name: {{ .Release.Name }}-minio
+  labels: {{- include "tenderos.labels" . | nindent 4 }}
+spec:
+  accessModes: [ReadWriteOnce]
+  {{- if .Values.global.storageClass }}
+  storageClassName: {{ .Values.global.storageClass }}
+  {{- end }}
+  resources:
+    requests: { storage: {{ .Values.minio.storage }} }
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: {{ .Release.Name }}-minio
+  labels: {{- include "tenderos.labels" . | nindent 4 }}
+spec:
+  ports:
+    - { name: api, port: 9000, targetPort: 9000 }
+    - { name: console, port: 9001, targetPort: 9001 }
+  selector: { app: {{ .Release.Name }}-minio }
+---
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: {{ .Release.Name }}-minio
+  labels: {{- include "tenderos.labels" . | nindent 4 }}
+spec:
+  replicas: 1
+  selector:
+    matchLabels: { app: {{ .Release.Name }}-minio }
+  template:
+    metadata:
+      labels: { app: {{ .Release.Name }}-minio }
+    spec:
+      {{- include "tenderos.imagePullSecrets" . | nindent 6 }}
+      containers:
+        - name: minio
+          image: {{ .Values.minio.image }}
+          args: ["server", "/data", "--console-address", ":9001"]
+          env:
+            - { name: MINIO_ROOT_USER, value: "tenderos" }
+            - name: MINIO_ROOT_PASSWORD
+              valueFrom: { secretKeyRef: { name: {{ .Values.secrets.name }}, key: MINIO_PASSWORD } }
+          ports:
+            - { containerPort: 9000 }
+            - { containerPort: 9001 }
+          volumeMounts: [{ name: data, mountPath: /data }]
+          readinessProbe:
+            httpGet: { path: /minio/health/ready, port: 9000 }
+            initialDelaySeconds: 15
+            periodSeconds: 15
+      volumes:
+        - name: data
+          persistentVolumeClaim: { claimName: {{ .Release.Name }}-minio }
+{{- end }}
