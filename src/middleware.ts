@@ -13,6 +13,9 @@ const isPublicRoute = createRouteMatcher([
   "/blog(.*)",             // Blog — public
   "/solutions(.*)",        // SEO pillar pages — public
   "/tender-software(.*)",  // Programmatic SEO pages — public
+  "/terms(.*)",            // Legal — public
+  "/privacy(.*)",          // Legal — public
+  "/refund(.*)",           // Legal — public
   "/checkout(.*)",         // Checkout funnel — self-gates auth, preserves plan
   "/sitemap.xml",          // SEO — public
   "/robots.txt",           // SEO — public
