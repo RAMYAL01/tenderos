@@ -102,10 +102,10 @@ export function LegalShell({
             <p className="text-sm text-slate-500">
               Questions about these terms? Email{" "}
               <a
-                href="mailto:legal@thetenderos.com"
+                href="mailto:support@thetenderos.com"
                 className="font-medium text-blue-600 hover:underline dark:text-blue-400"
               >
-                legal@thetenderos.com
+                support@thetenderos.com
               </a>
             </p>
             <div className="flex flex-wrap gap-x-6 gap-y-2 text-sm">

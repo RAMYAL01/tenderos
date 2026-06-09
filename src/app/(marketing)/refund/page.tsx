@@ -110,7 +110,7 @@ export default function RefundPage() {
 
       <h2 id="how">9. How to Request a Refund</h2>
       <p>
-        Email <a href="mailto:billing@thetenderos.com">billing@thetenderos.com</a> from the workspace
+        Email <a href="mailto:support@thetenderos.com">support@thetenderos.com</a> from the workspace
         Owner or Admin account with:
       </p>
       <ol>
@@ -143,7 +143,7 @@ export default function RefundPage() {
       <h2 id="contact">12. Contact</h2>
       <p>
         Billing or refund questions? Email{" "}
-        <a href="mailto:billing@thetenderos.com">billing@thetenderos.com</a> and we&rsquo;ll be glad to
+        <a href="mailto:support@thetenderos.com">support@thetenderos.com</a> and we&rsquo;ll be glad to
         help.
       </p>
     </LegalShell>

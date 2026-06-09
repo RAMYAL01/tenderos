@@ -202,7 +202,7 @@ export default function PrivacyPage() {
         Depending on your location, you may have rights to access, correct, delete, restrict, or port
         your personal data, and to object to certain processing or withdraw consent. For{" "}
         <strong>account data</strong>, contact us at{" "}
-        <a href="mailto:privacy@thetenderos.com">privacy@thetenderos.com</a>. For{" "}
+        <a href="mailto:support@thetenderos.com">support@thetenderos.com</a>. For{" "}
         <strong>Customer Data</strong> held in a workspace, we act on the Customer&rsquo;s instructions —
         if you are a member, please contact your workspace Owner/Admin, or we will refer your request to
         them. You may also lodge a complaint with your local data-protection authority.
@@ -231,10 +231,9 @@ export default function PrivacyPage() {
 
       <h2 id="contact">15. Contact Us</h2>
       <p>
-        For privacy questions or to exercise your rights, contact{" "}
-        <a href="mailto:privacy@thetenderos.com">privacy@thetenderos.com</a>. For a Data Processing
-        Addendum or our current sub-processor list, contact{" "}
-        <a href="mailto:legal@thetenderos.com">legal@thetenderos.com</a>.
+        For privacy questions, to exercise your rights, or to request a Data Processing Addendum or our
+        current sub-processor list, contact{" "}
+        <a href="mailto:support@thetenderos.com">support@thetenderos.com</a>.
       </p>
     </LegalShell>
   );

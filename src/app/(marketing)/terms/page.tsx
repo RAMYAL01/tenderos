@@ -276,10 +276,9 @@ export default function TermsPage() {
 
       <h2 id="contact">17. Contact</h2>
       <p>
-        Questions about these Terms? Contact us at{" "}
-        <a href="mailto:legal@thetenderos.com">legal@thetenderos.com</a>. For an enterprise agreement,
-        Data Processing Addendum, or security review, contact{" "}
-        <a href="mailto:sales@thetenderos.com">sales@thetenderos.com</a>.
+        Questions about these Terms — including enterprise agreements, a Data Processing Addendum, or a
+        security review? Contact us at{" "}
+        <a href="mailto:support@thetenderos.com">support@thetenderos.com</a>.
       </p>
     </LegalShell>
   );
