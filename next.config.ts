@@ -8,12 +8,13 @@ const isDev = process.env.NODE_ENV === "development";
  */
 const ContentSecurityPolicy = `
   default-src 'self';
-  script-src 'self' 'unsafe-eval' 'unsafe-inline' https://clerk.tenderos.ai https://*.clerk.accounts.dev https://*.sentry.io;
+  script-src 'self' 'unsafe-eval' 'unsafe-inline' https://*.clerk.accounts.dev https://clerk.thetenderos.com https://challenges.cloudflare.com https://*.sentry.io;
   style-src 'self' 'unsafe-inline' https://fonts.googleapis.com;
   font-src 'self' https://fonts.gstatic.com;
   img-src 'self' data: blob: https://img.clerk.com https://*.amazonaws.com https://*.cloudfront.net;
-  connect-src 'self' https://*.clerk.accounts.dev https://clerk.tenderos.ai https://*.sentry.io wss://*.clerk.accounts.dev https://*.amazonaws.com ${isDev ? "ws://localhost:* http://localhost:*" : ""};
-  frame-src https://*.clerk.accounts.dev https://accounts.clerk.dev;
+  connect-src 'self' https://*.clerk.accounts.dev https://clerk.thetenderos.com https://challenges.cloudflare.com https://*.sentry.io wss://*.clerk.accounts.dev https://*.amazonaws.com ${isDev ? "ws://localhost:* http://localhost:*" : ""};
+  frame-src 'self' https://*.clerk.accounts.dev https://challenges.cloudflare.com;
+  worker-src 'self' blob:;
   object-src 'none';
   base-uri 'self';
   form-action 'self';
