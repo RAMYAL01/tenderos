@@ -36,8 +36,12 @@ export const getAuthContext = cache(async (): Promise<AuthContext> => {
   }
 
   if (!clerkOrgId) {
-    // Authenticated but no company workspace yet. The company is the customer,
-    // so route them into org-first onboarding to create their workspace.
+    // Authenticated but no company workspace yet. Middleware already forces this
+    // case to /onboarding at the edge; this is the server-side safety net for
+    // any protected Server Component / Server Action / route handler that reads
+    // the auth context directly. `redirect()` issues a clean 307 (handled by
+    // Next) — it does NOT throw an unhandled 500. This runs BEFORE any DB call,
+    // so a missing org can never error out.
     // (The /onboarding page uses auth() directly — not this helper — so there
     // is no redirect loop.)
     redirect("/onboarding");
@@ -63,14 +67,21 @@ export const getAuthContext = cache(async (): Promise<AuthContext> => {
 
     if (!clerkOrg) redirect("/sign-in");
 
-    org = await db.organization.create({
-      data: {
-        clerkOrgId,
-        name: clerkOrg.name,
-        slug: clerkOrg.slug ?? clerkOrgId,
-        logoUrl: clerkOrg.imageUrl ?? null,
-      },
-    });
+    try {
+      org = await db.organization.create({
+        data: {
+          clerkOrgId,
+          name: clerkOrg.name,
+          slug: clerkOrg.slug ?? clerkOrgId,
+          logoUrl: clerkOrg.imageUrl ?? null,
+        },
+      });
+    } catch {
+      // Race with the Clerk `organization.created` webhook (or a parallel
+      // request) that already inserted this org → re-read instead of 500ing.
+      org = await db.organization.findUnique({ where: { clerkOrgId } });
+      if (!org) redirect("/onboarding");
+    }
   }
 
   if (!org.isActive || org.deletedAt) {
@@ -108,16 +119,25 @@ export const getAuthContext = cache(async (): Promise<AuthContext> => {
       where: { orgId: org.id },
     });
 
-    member = await db.member.create({
-      data: {
-        clerkUserId,
-        orgId: org.id,
-        email,
-        name,
-        avatarUrl: clerkUser.imageUrl ?? null,
-        role: existingMemberCount === 0 ? "OWNER" : "WRITER",
-      },
-    });
+    try {
+      member = await db.member.create({
+        data: {
+          clerkUserId,
+          orgId: org.id,
+          email,
+          name,
+          avatarUrl: clerkUser.imageUrl ?? null,
+          role: existingMemberCount === 0 ? "OWNER" : "WRITER",
+        },
+      });
+    } catch {
+      // Race with the Clerk `organizationMembership.created` webhook (unique
+      // on (orgId, clerkUserId)) → re-read instead of surfacing a 500.
+      member = await db.member.findFirst({
+        where: { clerkUserId, orgId: org.id, isActive: true, deletedAt: null },
+      });
+      if (!member) redirect("/onboarding");
+    }
   }
 
   return { clerkUserId, clerkOrgId, org, member };

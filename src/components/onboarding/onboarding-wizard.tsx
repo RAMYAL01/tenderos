@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useTransition } from "react";
+import { useEffect, useState, useTransition } from "react";
 import { useRouter } from "next/navigation";
 import { useOrganizationList } from "@clerk/nextjs";
 import Link from "next/link";
@@ -84,8 +84,14 @@ const PLANS = [
 ];
 
 type Props = {
-  /** Whether a company workspace (Clerk org) already exists. If false, Step 1 creates it. */
+  /** Whether a company workspace (Clerk org) is ACTIVE in the session. If false, Step 1 creates it. */
   hasOrg: boolean;
+  /**
+   * Set when the user has NO active org but DOES already belong to a company
+   * (e.g. a returning invited member). The wizard adopts it via setActive()
+   * instead of creating a duplicate — closing that escape route.
+   */
+  existingOrgId?: string | null;
   member: { name: string };
   org: {
     name: string;
@@ -106,12 +112,33 @@ type Props = {
 
 const STEPS = ["Company Workspace", "Choose Plan", "Get Started"];
 
-export function OnboardingWizard({ hasOrg, member, org, setup }: Props) {
+export function OnboardingWizard({ hasOrg, existingOrgId, member, org, setup }: Props) {
   const router = useRouter();
   const { isLoaded, createOrganization, setActive } = useOrganizationList();
   const [step, setStep] = useState(setup.profileDone ? 1 : 0);
   const [pending, startTransition] = useTransition();
   const [error, setError] = useState<string | null>(null);
+
+  // Adoption guard: user already belongs to a company but has no active org.
+  // Activate it (no duplicate creation), then re-run the server page, which will
+  // route them onward (to /dashboard if onboarding is done, else the profile step).
+  const [adopting, setAdopting] = useState(Boolean(existingOrgId) && !hasOrg);
+  useEffect(() => {
+    if (!adopting) return;
+    if (!isLoaded || !setActive || !existingOrgId) return;
+    let cancelled = false;
+    (async () => {
+      try {
+        await setActive({ organization: existingOrgId });
+        if (!cancelled) router.refresh();
+      } catch {
+        if (!cancelled) setAdopting(false); // fall back to the create-company form
+      }
+    })();
+    return () => {
+      cancelled = true;
+    };
+  }, [adopting, isLoaded, setActive, existingOrgId, router]);
 
   // Step 1 form state
   const [form, setForm] = useState({
@@ -174,6 +201,17 @@ export function OnboardingWizard({ hasOrg, member, org, setup }: Props) {
       router.push("/dashboard");
       router.refresh();
     });
+  }
+
+  // Adopting an existing workspace → show a brief loader instead of the
+  // create-company form, so the user never sees (or creates) a duplicate.
+  if (adopting) {
+    return (
+      <div className="flex min-h-screen flex-col items-center justify-center gap-4 bg-slate-50 dark:bg-slate-950">
+        <Loader2 className="h-7 w-7 animate-spin text-blue-600" />
+        <p className="text-sm text-slate-500 dark:text-slate-400">Opening your workspace…</p>
+      </div>
+    );
   }
 
   return (

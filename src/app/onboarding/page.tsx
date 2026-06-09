@@ -29,6 +29,25 @@ export default async function OnboardingPage() {
     if (org?.onboardingCompletedAt) redirect("/dashboard");
   }
 
+  // Escape-route guard: the user has NO active org, but may already belong to a
+  // company (e.g. an invited member returning later, or a session that lost its
+  // active org). In that case we must ADOPT the existing workspace, never create
+  // a duplicate. We surface the existing org id so the wizard can setActive() it.
+  let existingOrgId: string | null = null;
+  if (!orgId) {
+    try {
+      const { clerkClient } = await import("@clerk/nextjs/server");
+      const client = await clerkClient();
+      const memberships = await client.users.getOrganizationMembershipList({
+        userId,
+        limit: 1,
+      });
+      existingOrgId = memberships.data[0]?.organization.id ?? null;
+    } catch {
+      existingOrgId = null; // fall through to normal "create company" flow
+    }
+  }
+
   // Live setup-checklist signal (Step 3). Zero when no workspace exists yet.
   let setup = {
     profileDone: false,
@@ -62,6 +81,7 @@ export default async function OnboardingPage() {
   return (
     <OnboardingWizard
       hasOrg={Boolean(orgId)}
+      existingOrgId={existingOrgId}
       member={{ name: memberName }}
       org={{
         name: org?.name ?? "",

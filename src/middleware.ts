@@ -36,6 +36,10 @@ const isUploadRoute = createRouteMatcher(["/api/documents(.*)"]);
 const isExportRoute = createRouteMatcher(["/api/proposals/(.*)/export"]);
 const isAuthRoute = createRouteMatcher(["/api/auth(.*)", "/sign-in(.*)", "/sign-up(.*)"]);
 
+// Org-first onboarding: the ONLY protected page a user without an active
+// organization may reach. Exempting it here is what prevents a redirect loop.
+const isOnboardingRoute = createRouteMatcher(["/onboarding(.*)"]);
+
 // API routes authenticate themselves (each handler calls auth() and returns a
 // JSON 401 when unauthenticated). Calling auth.protect() on them in middleware
 // returns an HTML 404 page instead, which breaks client-side fetch().json().
@@ -78,10 +82,29 @@ function withSecurityHeaders(res: NextResponse): NextResponse {
 const clerkHandler = clerkMiddleware(async (auth, req: NextRequest) => {
   const limited = await rateGuard(req);
   if (limited) return limited;
-  // Pages redirect to sign-in; API routes self-authenticate.
+
+  // Pages redirect to sign-in; API routes self-authenticate (they return JSON
+  // 401s themselves, so we don't auth.protect() them here).
   if (!isPublicRoute(req) && !isApiRoute(req)) {
     await auth.protect();
+
+    // ── Org-first gate (the bulletproof edge check) ──────────────────────────
+    // A signed-in user with NO active organization (no company workspace yet)
+    // may ONLY reach /onboarding. Every other protected page is forced back to
+    // /onboarding. Because /onboarding is exempted, there is no redirect loop.
+    //
+    // This is the single source of truth for the "must have a company" rule and
+    // covers every escape route at once: deep links to /dashboard, a stale tab,
+    // or a user who closed the browser mid-onboarding and signs back in later.
+    const { userId, orgId } = await auth();
+    if (userId && !orgId && !isOnboardingRoute(req)) {
+      const url = req.nextUrl.clone();
+      url.pathname = "/onboarding";
+      url.search = "";
+      return withSecurityHeaders(NextResponse.redirect(url));
+    }
   }
+
   return withSecurityHeaders(NextResponse.next());
 });
 
