@@ -26,7 +26,7 @@ export default async function CheckoutPage({
   // Validate the requested plan; bad/empty params → back to pricing.
   const tier = (rawTier ?? "").toUpperCase();
   if (!isBillableTier(tier)) {
-    redirect("/#pricing");
+    redirect("/pricing");
   }
   const cycle: BillingCycle = rawCycle === "annual" ? "annual" : "monthly";
   const dest = `/checkout?tier=${tier}&cycle=${cycle}`;
@@ -78,7 +78,7 @@ export default async function CheckoutPage({
         </p>
         <div className="mt-6 flex gap-3">
           <Link
-            href="/#pricing"
+            href="/pricing"
             className="rounded-xl border border-slate-200 px-5 py-2.5 text-sm font-semibold text-slate-700 hover:bg-slate-50 dark:border-slate-700 dark:text-slate-200"
           >
             Back to pricing

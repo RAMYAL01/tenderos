@@ -9,6 +9,7 @@ import { rateLimit, RATE_LIMITS, tooManyRequests } from "@/lib/rate-limit";
 const isPublicRoute = createRouteMatcher([
   "/",
   "/about(.*)",            // Marketing — public
+  "/pricing(.*)",          // Marketing — public
   "/contact(.*)",          // Marketing — public
   "/blog(.*)",             // Blog — public
   "/solutions(.*)",        // SEO pillar pages — public

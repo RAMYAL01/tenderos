@@ -223,7 +223,7 @@ export function Navbar() {
               </div>
             </Dropdown>
 
-            <PillLink href="/#pricing" active={activeSection === "pricing"}>
+            <PillLink href="/pricing" active={activeSection === "pricing"}>
               Pricing
             </PillLink>
             <PillLink href="/about">About</PillLink>
@@ -312,7 +312,7 @@ export function Navbar() {
               { label: "Product", href: "/#features" },
               { label: "BOQ Pricing Engine", href: "/solutions/boq-pricing" },
               { label: "Tender & BOQ Extraction", href: "/solutions/tender-extraction" },
-              { label: "Pricing", href: "/#pricing" },
+              { label: "Pricing", href: "/pricing" },
               { label: "About", href: "/about" },
               { label: "FAQ", href: "/#faq" },
               { label: "Contact", href: "/contact" },

@@ -75,6 +75,26 @@ export default function SignUpPage() {
             }}
           />
           )}
+
+          {!isOidcAuth() && (
+            <p className="mt-6 text-center text-xs leading-relaxed text-slate-400 dark:text-slate-500">
+              By creating an account, you agree to our{" "}
+              <Link
+                href="/terms"
+                className="font-medium text-slate-500 underline underline-offset-2 hover:text-slate-700 dark:text-slate-400 dark:hover:text-slate-200"
+              >
+                Terms of Service
+              </Link>{" "}
+              and{" "}
+              <Link
+                href="/privacy"
+                className="font-medium text-slate-500 underline underline-offset-2 hover:text-slate-700 dark:text-slate-400 dark:hover:text-slate-200"
+              >
+                Privacy Policy
+              </Link>
+              .
+            </p>
+          )}
         </div>
       </div>
     </div>

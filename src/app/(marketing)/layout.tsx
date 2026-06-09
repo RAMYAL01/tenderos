@@ -1,3 +1,5 @@
+import { CookieConsent } from "@/components/marketing/cookie-consent";
+
 /**
  * Marketing layout — clean, no sidebar, no auth required.
  * Used for: landing page, pricing, about, legal pages.
@@ -10,6 +12,7 @@ export default function MarketingLayout({
   return (
     <div className="min-h-screen bg-white dark:bg-slate-950">
       {children}
+      <CookieConsent />
     </div>
   );
 }
