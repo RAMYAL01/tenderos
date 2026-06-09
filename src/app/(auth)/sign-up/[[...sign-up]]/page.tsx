@@ -40,6 +40,8 @@ export default function SignUpPage() {
             />
           ) : (
           <SignUp
+            forceRedirectUrl="/onboarding"
+            signInUrl="/sign-in"
             appearance={{
               elements: {
                 rootBox: "w-full",

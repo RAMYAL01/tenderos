@@ -36,8 +36,11 @@ export const getAuthContext = cache(async (): Promise<AuthContext> => {
   }
 
   if (!clerkOrgId) {
-    // Authenticated but no org selected — Clerk will handle org creation/selection
-    redirect("/sign-in");
+    // Authenticated but no company workspace yet. The company is the customer,
+    // so route them into org-first onboarding to create their workspace.
+    // (The /onboarding page uses auth() directly — not this helper — so there
+    // is no redirect loop.)
+    redirect("/onboarding");
   }
 
   // Look up our DB org record

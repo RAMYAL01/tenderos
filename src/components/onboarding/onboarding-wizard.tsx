@@ -2,6 +2,7 @@
 
 import { useState, useTransition } from "react";
 import { useRouter } from "next/navigation";
+import { useOrganizationList } from "@clerk/nextjs";
 import Link from "next/link";
 import {
   Building2,
@@ -83,7 +84,9 @@ const PLANS = [
 ];
 
 type Props = {
-  member: { name: string; role: string };
+  /** Whether a company workspace (Clerk org) already exists. If false, Step 1 creates it. */
+  hasOrg: boolean;
+  member: { name: string };
   org: {
     name: string;
     organizationType: string | null;
@@ -103,8 +106,9 @@ type Props = {
 
 const STEPS = ["Company Workspace", "Choose Plan", "Get Started"];
 
-export function OnboardingWizard({ member, org, setup }: Props) {
+export function OnboardingWizard({ hasOrg, member, org, setup }: Props) {
   const router = useRouter();
+  const { isLoaded, createOrganization, setActive } = useOrganizationList();
   const [step, setStep] = useState(setup.profileDone ? 1 : 0);
   const [pending, startTransition] = useTransition();
   const [error, setError] = useState<string | null>(null);
@@ -130,12 +134,32 @@ export function OnboardingWizard({ member, org, setup }: Props) {
       return;
     }
     startTransition(async () => {
-      const res = await saveCompanyProfile(form as CompanyProfileInput);
-      if (!res.success) {
-        setError(res.error ?? "Could not save.");
-        return;
+      try {
+        // No workspace yet → create the company (Clerk organization) and make it
+        // the active org for this session. This is the heart of org-first signup:
+        // the COMPANY is created here, not a personal account.
+        if (!hasOrg) {
+          if (!isLoaded || !createOrganization || !setActive) {
+            setError("Still loading — please try again in a moment.");
+            return;
+          }
+          const newOrg = await createOrganization({ name: form.name.trim() });
+          await setActive({ organization: newOrg.id });
+        }
+
+        // Persist the company profile (the org is now active in the session).
+        const res = await saveCompanyProfile(form as CompanyProfileInput);
+        if (!res.success) {
+          setError(res.error ?? "Could not save.");
+          return;
+        }
+        router.refresh();
+        setStep(1);
+      } catch (e) {
+        setError(
+          e instanceof Error ? e.message : "Could not create your company workspace."
+        );
       }
-      setStep(1);
     });
   }
 
