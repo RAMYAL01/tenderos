@@ -2,6 +2,7 @@ import { auth } from "@clerk/nextjs/server";
 import { NextResponse, after } from "next/server";
 import { z } from "zod";
 import { db } from "@/lib/prisma";
+import { checkAndConsumeAiCredit } from "@/lib/billing/quota";
 import { runComplianceAgent } from "@/lib/ai/agents/generate-compliance";
 
 export const runtime = "nodejs";
@@ -29,8 +30,15 @@ export async function POST(req: Request) {
   const org = await db.organization.findUnique({ where: { clerkOrgId: orgId } });
   if (!org) return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
 
+  // Tenant scope: the tender must belong to this org (also scopes the count).
+  const tender = await db.tender.findFirst({
+    where: { id: tenderId, orgId: org.id, deletedAt: null },
+    select: { id: true },
+  });
+  if (!tender) return NextResponse.json({ error: "Tender not found" }, { status: 404 });
+
   const reqCount = await db.requirement.count({
-    where: { tenderId, deletedAt: null },
+    where: { tenderId, orgId: org.id, deletedAt: null },
   });
 
   if (reqCount === 0) {
@@ -38,6 +46,12 @@ export async function POST(req: Request) {
       { error: "No requirements found. Extract requirements first." },
       { status: 400 }
     );
+  }
+
+  // Plan limit: one AI credit per compliance run.
+  const quota = await checkAndConsumeAiCredit(org.id);
+  if (!quota.ok) {
+    return NextResponse.json({ error: quota.error, code: quota.code }, { status: 402 });
   }
 
   const job = await db.aIJob.create({

@@ -15,6 +15,7 @@
 
 import { after, NextResponse } from "next/server";
 import { getAuthContext } from "@/lib/auth";
+import { checkAndConsumeAiCredit } from "@/lib/billing/quota";
 import { db } from "@/lib/prisma";
 import { WorkflowInputSchema } from "@/lib/workflow/boq/schemas";
 import {
@@ -41,6 +42,12 @@ export async function POST(req: Request) {
       { error: "Invalid input", issues: parsed.error.issues.slice(0, 5) },
       { status: 400 }
     );
+  }
+
+  // Plan limit: one AI credit per workflow run (continuation steps are free).
+  const quota = await checkAndConsumeAiCredit(org.id);
+  if (!quota.ok) {
+    return NextResponse.json({ error: quota.error, code: quota.code }, { status: 402 });
   }
 
   const workflowId = await createBoqWorkflow({

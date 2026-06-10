@@ -173,7 +173,7 @@ export async function deleteCostLine(lineId: string): Promise<ActionResult> {
     });
     if (!line) return { success: false, error: "Not found." };
 
-    await db.costLine.delete({ where: { id: lineId } });
+    await db.costLine.deleteMany({ where: { id: lineId, orgId: org.id } });
     revalidatePath(`/tenders/${line.financialProposal.tenderId}/financial`);
     return { success: true };
   } catch (err) {

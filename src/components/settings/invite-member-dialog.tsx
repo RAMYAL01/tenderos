@@ -57,6 +57,10 @@ export function InviteMemberDialog({ canInviteAdmin = false }: { canInviteAdmin?
         toast({ title: "Could not invite", description: res.error, variant: "destructive" });
         return;
       }
+      if (!res.invitation.path) {
+        toast({ title: "Could not invite", description: "No link returned — try again.", variant: "destructive" });
+        return;
+      }
       setLink(`${window.location.origin}${res.invitation.path}`);
       toast({ title: "Invite link ready", description: `Share it with ${email}.` });
     } finally {

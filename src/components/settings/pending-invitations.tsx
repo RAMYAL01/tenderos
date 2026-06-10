@@ -1,10 +1,14 @@
 "use client";
 
 import { useState, useTransition } from "react";
-import { Copy, Check, X, Clock, MailCheck, Ban } from "lucide-react";
+import { Link2, Check, X, Clock, MailCheck, Ban } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { toast } from "@/hooks/use-toast";
-import { revokeInvitation, type InvitationDTO } from "@/lib/actions/invitations";
+import {
+  createInvitation,
+  revokeInvitation,
+  type InvitationDTO,
+} from "@/lib/actions/invitations";
 import { cn } from "@/lib/utils";
 
 const ROLE_LABEL: Record<string, string> = {
@@ -35,10 +39,27 @@ export function PendingInvitations({
 
   if (invitations.length === 0) return null;
 
-  async function copy(inv: InvitationDTO) {
-    await navigator.clipboard.writeText(`${window.location.origin}${inv.path}`);
-    setCopiedId(inv.id);
-    setTimeout(() => setCopiedId(null), 1500);
+  /**
+   * Invite tokens are stored hashed, so the original link can't be re-read.
+   * "Copy link" mints a FRESH link for the same email+role (server-side upsert
+   * rotates the token + extends expiry) and copies it.
+   */
+  function copy(inv: InvitationDTO) {
+    startTransition(async () => {
+      const res = await createInvitation({ email: inv.email, role: inv.role });
+      if (!res.success || !res.invitation.path) {
+        toast({
+          title: "Could not generate link",
+          description: !res.success ? res.error : undefined,
+          variant: "destructive",
+        });
+        return;
+      }
+      await navigator.clipboard.writeText(`${window.location.origin}${res.invitation.path}`);
+      setCopiedId(inv.id);
+      setTimeout(() => setCopiedId(null), 1500);
+      toast({ title: "Fresh invite link copied", description: `Valid for 7 days — ${inv.email}` });
+    });
   }
 
   function revoke(id: string) {
@@ -89,11 +110,18 @@ export function PendingInvitations({
 
               {inv.status === "PENDING" && canManage && (
                 <div className="flex items-center gap-1">
-                  <Button size="icon" variant="ghost" className="h-8 w-8" onClick={() => copy(inv)} aria-label="Copy link">
+                  <Button
+                    size="icon"
+                    variant="ghost"
+                    className="h-8 w-8"
+                    onClick={() => copy(inv)}
+                    disabled={pending}
+                    aria-label="Copy a fresh invite link"
+                  >
                     {copiedId === inv.id ? (
                       <Check className="h-4 w-4 text-green-600" />
                     ) : (
-                      <Copy className="h-4 w-4" />
+                      <Link2 className="h-4 w-4" />
                     )}
                   </Button>
                   <Button

@@ -1,12 +1,14 @@
 import { auth } from "@clerk/nextjs/server";
 import { NextResponse } from "next/server";
 import { z } from "zod";
+import { ContentLanguage } from "@prisma/client";
 import { db } from "@/lib/prisma";
+import { checkAndConsumeProposalQuota } from "@/lib/billing/quota";
 
 const CreateSchema = z.object({
   tenderId: z.string(),
   title: z.string().min(1),
-  language: z.enum(["EN", "AR", "AR_SA", "AR_AE", "AR_EG", "BILINGUAL"]).default("EN"),
+  language: z.nativeEnum(ContentLanguage).default("EN"),
 });
 
 export async function POST(req: Request) {
@@ -28,12 +30,18 @@ export async function POST(req: Request) {
   });
   if (!tender) return NextResponse.json({ error: "Tender not found" }, { status: 404 });
 
+  // Plan limit: proposals per month.
+  const quota = await checkAndConsumeProposalQuota(org.id);
+  if (!quota.ok) {
+    return NextResponse.json({ error: quota.error, code: quota.code }, { status: 402 });
+  }
+
   const proposal = await db.proposal.create({
     data: {
       tenderId: parsed.data.tenderId,
       orgId: org.id,
       title: parsed.data.title,
-      language: parsed.data.language as any,
+      language: parsed.data.language,
       status: "DRAFT",
       createdById: member.id,
     },

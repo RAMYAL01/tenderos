@@ -91,7 +91,7 @@ export async function POST(req: Request) {
 
       default:
         // Unknown event type — log and return 200 so Clerk doesn't retry
-        console.log(`Unhandled Clerk event: ${evt.type}`);
+        console.warn(`Unhandled Clerk event: ${evt.type}`);
     }
 
     return new Response("OK", { status: 200 });
@@ -122,7 +122,7 @@ async function handleOrgCreated(data: {
     },
   });
 
-  console.log(`Organization created: ${data.id} (${data.name})`);
+  console.warn(`Organization created: ${data.id} (${data.name})`);
 }
 
 async function handleOrgUpdated(data: {
@@ -142,7 +142,7 @@ async function handleOrgUpdated(data: {
     },
   });
 
-  console.log(`Organization updated: ${data.id}`);
+  console.warn(`Organization updated: ${data.id}`);
 }
 
 async function handleOrgDeleted(data: { id?: string; deleted?: boolean }) {
@@ -155,7 +155,7 @@ async function handleOrgDeleted(data: { id?: string; deleted?: boolean }) {
     },
   });
 
-  console.log(`Organization soft-deleted: ${data.id}`);
+  console.warn(`Organization soft-deleted: ${data.id}`);
 }
 
 async function handleMembershipCreated(data: {
@@ -218,7 +218,7 @@ async function handleMembershipCreated(data: {
     },
   });
 
-  console.log(`Member added: ${user_id} to org ${org.id} as ${role}`);
+  console.warn(`Member added: ${user_id} to org ${org.id} as ${role}`);
 }
 
 async function handleMembershipUpdated(data: {
@@ -237,7 +237,7 @@ async function handleMembershipUpdated(data: {
     data: { role },
   });
 
-  console.log(
+  console.warn(
     `Member role updated: ${data.public_user_data.user_id} → ${role}`
   );
 }
@@ -262,7 +262,7 @@ async function handleMembershipDeleted(data: {
     },
   });
 
-  console.log(
+  console.warn(
     `Member removed: ${data.public_user_data.user_id} from org ${org.id}`
   );
 }
@@ -290,7 +290,7 @@ async function handleUserUpdated(data: {
     },
   });
 
-  console.log(`User profile synced: ${data.id}`);
+  console.warn(`User profile synced: ${data.id}`);
 }
 
 // ── Helpers ───────────────────────────────────────────────────────────────────

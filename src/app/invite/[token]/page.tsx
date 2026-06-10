@@ -2,6 +2,7 @@ import Link from "next/link";
 import { Building2, MailWarning, Clock, ShieldCheck } from "lucide-react";
 import { db } from "@/lib/prisma";
 import { isOidcAuth } from "@/lib/auth/mode";
+import { hashInviteToken } from "@/lib/security/invite-token";
 import { Logo } from "@/components/ui/logo";
 import { Button } from "@/components/ui/button";
 import { AcceptInvitationCard } from "@/components/onboarding/accept-invitation-card";
@@ -36,8 +37,9 @@ export default async function InvitePage({
 }) {
   const { token } = await params;
 
+  // Tokens are stored hashed — hash the URL token before lookup.
   const invitation = await db.invitation.findUnique({
-    where: { token },
+    where: { token: hashInviteToken(token) },
     include: { organization: { select: { name: true, logoUrl: true } } },
   });
 

@@ -1,6 +1,7 @@
 "use server";
 
 import { db } from "@/lib/prisma";
+import { hashInviteToken } from "@/lib/security/invite-token";
 import type { MemberRole } from "@prisma/client";
 
 /**
@@ -38,8 +39,9 @@ export async function acceptInvitation(token: string): Promise<AcceptResult> {
       return { success: false, error: "Please sign in to accept.", code: "AUTH_REQUIRED" };
     }
 
+    // Tokens are stored hashed — hash the presented token before lookup.
     const invitation = await db.invitation.findUnique({
-      where: { token },
+      where: { token: hashInviteToken(token) },
       include: { organization: true },
     });
 

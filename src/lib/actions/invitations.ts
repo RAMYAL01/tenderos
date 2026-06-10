@@ -5,6 +5,8 @@ import { z } from "zod";
 import { revalidatePath } from "next/cache";
 import { db } from "@/lib/prisma";
 import { getAuthContext, requireRole } from "@/lib/auth";
+import { checkSeatLimit } from "@/lib/billing/quota";
+import { hashInviteToken } from "@/lib/security/invite-token";
 import type { MemberRole, InvitationStatus } from "@prisma/client";
 
 /**
@@ -42,8 +44,12 @@ export type InvitationDTO = {
   email: string;
   role: MemberRole;
   status: InvitationStatus;
-  token: string;
-  path: string; // "/invite/<token>" — client composes the absolute URL
+  /**
+   * "/invite/<rawToken>" — ONLY present on the createInvitation result (tokens
+   * are stored hashed, so the link can't be reconstructed later; use
+   * createInvitation again to mint a fresh link for the same email).
+   */
+  path: string | null;
   expiresAt: string;
   createdAt: string;
 };
@@ -52,22 +58,23 @@ type CreateResult =
   | { success: true; invitation: InvitationDTO }
   | { success: false; error: string };
 
-function toDTO(i: {
-  id: string;
-  email: string;
-  role: MemberRole;
-  status: InvitationStatus;
-  token: string;
-  expiresAt: Date;
-  createdAt: Date;
-}): InvitationDTO {
+function toDTO(
+  i: {
+    id: string;
+    email: string;
+    role: MemberRole;
+    status: InvitationStatus;
+    expiresAt: Date;
+    createdAt: Date;
+  },
+  rawToken?: string
+): InvitationDTO {
   return {
     id: i.id,
     email: i.email,
     role: i.role,
     status: i.status,
-    token: i.token,
-    path: `/invite/${i.token}`,
+    path: rawToken ? `/invite/${rawToken}` : null,
     expiresAt: i.expiresAt.toISOString(),
     createdAt: i.createdAt.toISOString(),
   };
@@ -102,7 +109,12 @@ export async function createInvitation(input: {
       return { success: false, error: "That person is already in your workspace." };
     }
 
-    const token = randomBytes(24).toString("base64url");
+    // Plan limit: seats (active members + pending invites).
+    const seats = await checkSeatLimit(org.id);
+    if (!seats.ok) return { success: false, error: seats.error };
+
+    const rawToken = randomBytes(24).toString("base64url");
+    const tokenHash = hashInviteToken(rawToken); // stored hashed — raw shown once
     const expiresAt = new Date(Date.now() + INVITE_TTL_DAYS * 86_400_000);
 
     // One active invite per email per workspace — refresh in place.
@@ -112,14 +124,14 @@ export async function createInvitation(input: {
         orgId: org.id,
         email,
         role,
-        token,
+        token: tokenHash,
         status: "PENDING",
         invitedById: member.id,
         expiresAt,
       },
       update: {
         role,
-        token,
+        token: tokenHash,
         status: "PENDING",
         invitedById: member.id,
         expiresAt,
@@ -129,7 +141,7 @@ export async function createInvitation(input: {
     });
 
     revalidatePath("/settings/members");
-    return { success: true, invitation: toDTO(invitation) };
+    return { success: true, invitation: toDTO(invitation, rawToken) };
   } catch (err) {
     console.error("createInvitation error:", err);
     return { success: false, error: "Could not create the invitation." };
@@ -147,7 +159,7 @@ export async function listInvitations(): Promise<InvitationDTO[]> {
     orderBy: { createdAt: "desc" },
     take: 50,
   });
-  return rows.map(toDTO);
+  return rows.map((r) => toDTO(r));
 }
 
 /** Revoke a pending invitation (org-scoped). */

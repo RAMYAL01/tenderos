@@ -1,13 +1,14 @@
 import { auth } from "@clerk/nextjs/server";
 import { NextResponse } from "next/server";
 import { z } from "zod";
+import { RequirementType, RequirementPriority } from "@prisma/client";
 import { db } from "@/lib/prisma";
 
 const UpdateSchema = z.object({
   textEn: z.string().min(1).optional(),
   textAr: z.string().nullable().optional(),
-  requirementType: z.enum(["MANDATORY","OPTIONAL","INFORMATIONAL","CONDITIONAL"]).optional(),
-  priority: z.enum(["CRITICAL","HIGH","MEDIUM","LOW"]).optional(),
+  requirementType: z.nativeEnum(RequirementType).optional(),
+  priority: z.nativeEnum(RequirementPriority).optional(),
   sectionRef: z.string().nullable().optional(),
   tags: z.array(z.string()).optional(),
 });
@@ -38,15 +39,15 @@ export async function PATCH(
     return NextResponse.json({ error: "Invalid" }, { status: 400 });
   }
 
-  const updated = await db.requirement.update({
-    where: { id },
-    data: {
-      ...parsed.data,
-      requirementType: parsed.data.requirementType as any,
-      priority: parsed.data.priority as any,
-    },
+  // Scoped write — the orgId predicate is part of the mutation itself, so this
+  // can never touch another tenant's row even if the pre-check is refactored away.
+  const res = await db.requirement.updateMany({
+    where: { id, orgId: ctx.org.id },
+    data: parsed.data,
   });
+  if (res.count === 0) return NextResponse.json({ error: "Not found" }, { status: 404 });
 
+  const updated = await db.requirement.findFirst({ where: { id, orgId: ctx.org.id } });
   return NextResponse.json(updated);
 }
 
@@ -61,6 +62,10 @@ export async function DELETE(
   const ctx = await getOrgAndVerify(orgId, id);
   if (!ctx) return NextResponse.json({ error: "Not found" }, { status: 404 });
 
-  await db.requirement.update({ where: { id }, data: { deletedAt: new Date() } });
+  const res = await db.requirement.updateMany({
+    where: { id, orgId: ctx.org.id },
+    data: { deletedAt: new Date() },
+  });
+  if (res.count === 0) return NextResponse.json({ error: "Not found" }, { status: 404 });
   return NextResponse.json({ success: true });
 }

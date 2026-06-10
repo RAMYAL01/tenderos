@@ -2,6 +2,7 @@ import { auth } from "@clerk/nextjs/server";
 import { NextResponse, after } from "next/server";
 import { z } from "zod";
 import { db } from "@/lib/prisma";
+import { checkAndConsumeAiCredit } from "@/lib/billing/quota";
 import { runExtractionAgent } from "@/lib/ai/agents/extract-requirements";
 
 export const runtime = "nodejs";
@@ -56,6 +57,12 @@ export async function POST(req: Request) {
       { error: "No processed documents available. Wait for document processing to complete." },
       { status: 400 }
     );
+  }
+
+  // Plan limit: one AI credit per user-initiated extraction run.
+  const quota = await checkAndConsumeAiCredit(org.id);
+  if (!quota.ok) {
+    return NextResponse.json({ error: quota.error, code: quota.code }, { status: 402 });
   }
 
   // Create AIJob record

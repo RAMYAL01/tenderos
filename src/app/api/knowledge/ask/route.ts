@@ -5,6 +5,7 @@ import { generateText } from "ai";
 import { db } from "@/lib/prisma";
 import { embedQuery } from "@/lib/ai/embedding-provider";
 import { tenantChunkSearch } from "@/lib/security/rag-search";
+import { checkAndConsumeAiCredit } from "@/lib/billing/quota";
 import { getChatModel } from "@/lib/ai/llm-provider";
 
 export const runtime = "nodejs";
@@ -40,6 +41,12 @@ export async function POST(req: Request) {
 
   const org = await db.organization.findUnique({ where: { clerkOrgId: orgId } });
   if (!org) return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
+
+  // Plan limit: one AI credit per knowledge question.
+  const quota = await checkAndConsumeAiCredit(org.id);
+  if (!quota.ok) {
+    return NextResponse.json({ error: quota.error, code: quota.code }, { status: 402 });
+  }
 
   // 1. Embed the question with the configured provider.
   let queryEmbedding: number[];

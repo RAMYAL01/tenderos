@@ -2,6 +2,7 @@ import { auth } from "@clerk/nextjs/server";
 import { NextResponse } from "next/server";
 import { z } from "zod";
 import { db } from "@/lib/prisma";
+import { checkAndConsumeAiCredit } from "@/lib/billing/quota";
 import { streamSectionDraft } from "@/lib/ai/agents/draft-section";
 
 export const runtime = "nodejs";
@@ -53,6 +54,12 @@ export async function POST(req: Request) {
 
   if (!section) {
     return NextResponse.json({ error: "Section not found" }, { status: 404 });
+  }
+
+  // Plan limit: one AI credit per drafted section.
+  const quota = await checkAndConsumeAiCredit(org.id);
+  if (!quota.ok) {
+    return NextResponse.json({ error: quota.error, code: quota.code }, { status: 402 });
   }
 
   try {

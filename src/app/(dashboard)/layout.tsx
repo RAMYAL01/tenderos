@@ -1,7 +1,9 @@
 import { redirect } from "next/navigation";
 import { getAuthContext } from "@/lib/auth";
+import { getBillingLock } from "@/lib/billing/quota";
 import { Sidebar } from "@/components/layout/sidebar";
 import { Header } from "@/components/layout/header";
+import { BillingLockGate } from "@/components/billing/billing-lock-gate";
 import { WorkspaceProvider } from "@/components/providers/workspace-provider";
 
 /**
@@ -27,6 +29,10 @@ export default async function DashboardLayout({
     redirect("/onboarding");
   }
 
+  // Billing gate: expired trial / unpaid subscription locks the app shell
+  // (settings stay reachable so billing can be fixed — see BillingLockGate).
+  const billing = await getBillingLock(org.id);
+
   return (
     <WorkspaceProvider org={org} member={member}>
       <div className="flex h-screen overflow-hidden bg-slate-50 dark:bg-slate-950">
@@ -38,8 +44,10 @@ export default async function DashboardLayout({
           <Header />
 
           {/* Scrollable content */}
-          <main className="flex-1 overflow-y-auto">
-            {children}
+          <main className="flex flex-1 flex-col overflow-y-auto">
+            <BillingLockGate locked={billing.locked} reason={billing.reason}>
+              {children}
+            </BillingLockGate>
           </main>
         </div>
       </div>

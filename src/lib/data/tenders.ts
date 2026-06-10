@@ -16,11 +16,16 @@ export interface TenderListItem {
   counts: { documents: number; requirements: number; proposals: number };
 }
 
-/** All non-deleted tenders for an org, newest first, with related counts. */
+/**
+ * Non-deleted tenders for an org, newest first, with related counts.
+ * Capped at 500 rows as a response-size guard; move to cursor pagination
+ * when any tenant approaches the cap.
+ */
 export async function getAllTenders(orgId: string): Promise<TenderListItem[]> {
   const rows = await db.tender.findMany({
     where: { orgId, deletedAt: null },
     orderBy: { updatedAt: "desc" },
+    take: 500,
     select: {
       id: true,
       titleEn: true,

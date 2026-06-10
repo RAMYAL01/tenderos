@@ -76,8 +76,16 @@ export function priceIdToPlan(
   return null;
 }
 
-/** Map a Stripe subscription status to our internal status string. */
-export function mapStripeStatus(status: Stripe.Subscription.Status): string {
+/**
+ * Canonical internal subscription statuses. The DB column is a String for
+ * migration-safety, but ALL writes must go through this union so the set of
+ * values can never drift ("canceled" vs "cancelled" class of bug).
+ */
+export const SUBSCRIPTION_STATUSES = ["trialing", "active", "past_due", "cancelled", "unpaid"] as const;
+export type SubscriptionStatus = (typeof SUBSCRIPTION_STATUSES)[number];
+
+/** Map a Stripe subscription status to our internal status union. */
+export function mapStripeStatus(status: Stripe.Subscription.Status): SubscriptionStatus {
   switch (status) {
     case "trialing":
       return "trialing";

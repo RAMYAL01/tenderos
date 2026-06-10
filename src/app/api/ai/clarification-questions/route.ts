@@ -2,6 +2,7 @@ import { auth } from "@clerk/nextjs/server";
 import { NextResponse, after } from "next/server";
 import { z } from "zod";
 import { db } from "@/lib/prisma";
+import { checkAndConsumeAiCredit } from "@/lib/billing/quota";
 import { runClarificationAgent } from "@/lib/ai/agents/clarification-questions";
 
 const RequestSchema = z.object({ tenderId: z.string().min(1) });
@@ -34,6 +35,12 @@ export async function POST(req: Request) {
     select: { id: true },
   });
   if (!tender) return NextResponse.json({ error: "Not found" }, { status: 404 });
+
+  // Plan limit: one AI credit per clarification run.
+  const quota = await checkAndConsumeAiCredit(org.id);
+  if (!quota.ok) {
+    return NextResponse.json({ error: quota.error, code: quota.code }, { status: 402 });
+  }
 
   const job = await db.aIJob.create({
     data: {

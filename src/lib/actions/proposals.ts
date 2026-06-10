@@ -2,18 +2,20 @@
 
 import { revalidatePath } from "next/cache";
 import { z } from "zod";
+import { ContentLanguage, SectionType } from "@prisma/client";
 import { db } from "@/lib/prisma";
 import { getAuthContext, requireRole } from "@/lib/auth";
+import { checkAndConsumeProposalQuota } from "@/lib/billing/quota";
 
 const CreateProposalSchema = z.object({
   tenderId: z.string().min(1),
   title: z.string().min(1).max(300),
-  language: z.enum(["EN", "AR", "AR_SA", "AR_AE", "AR_EG", "BILINGUAL"]).default("EN"),
+  language: z.nativeEnum(ContentLanguage).default("EN"),
 });
 
 const CreateSectionSchema = z.object({
   proposalId: z.string().min(1),
-  sectionType: z.string().min(1),
+  sectionType: z.nativeEnum(SectionType),
   titleEn: z.string().optional(),
   titleAr: z.string().optional(),
   orderIndex: z.number().default(0),
@@ -39,8 +41,12 @@ export async function createProposal(
     });
     if (!tender) return { success: false, error: "Tender not found" };
 
+    // Plan limit: proposals per month.
+    const quota = await checkAndConsumeProposalQuota(org.id);
+    if (!quota.ok) return { success: false, error: quota.error };
+
     // Build default sections based on tender type
-    const defaultSections = [
+    const defaultSections: SectionType[] = [
       "COVER_LETTER",
       "EXECUTIVE_SUMMARY",
       "COMPANY_OVERVIEW",
@@ -56,13 +62,13 @@ export async function createProposal(
         tenderId: validated.tenderId,
         orgId: org.id,
         title: validated.title,
-        language: validated.language as any,
+        language: validated.language,
         status: "DRAFT",
         createdById: member.id,
         sections: {
           create: defaultSections.map((sectionType, idx) => ({
             orgId: org.id,
-            sectionType: sectionType as any,
+            sectionType,
             orderIndex: idx,
           })),
         },
@@ -90,7 +96,7 @@ export async function addProposalSection(
       data: {
         proposalId: validated.proposalId,
         orgId: org.id,
-        sectionType: validated.sectionType as any,
+        sectionType: validated.sectionType,
         titleEn: validated.titleEn || null,
         titleAr: validated.titleAr || null,
         orderIndex: validated.orderIndex,

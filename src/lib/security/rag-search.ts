@@ -140,6 +140,7 @@ export async function tenantChunkSearch(
     FROM knowledge_chunks kc
     JOIN content_library_items cli ON cli.id = kc."sourceId"
     WHERE kc."orgId" = ${orgId}              -- TENANT ISOLATION (bound param, pre-rank)
+      AND cli."orgId" = ${orgId}             -- defense-in-depth: parent must be same tenant
       AND cli."deletedAt" IS NULL
       AND kc.embedding IS NOT NULL
       AND 1 - (kc.embedding <=> ${vectorLiteral}::vector) >= ${minSimilarity}

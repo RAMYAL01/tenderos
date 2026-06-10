@@ -339,6 +339,10 @@ model Tender {
   complianceRows     ComplianceMatrixRow[]
   financialProposals FinancialProposal[]
 
+  @@index([orgId, status])
+  @@index([orgId, deletedAt])
+  @@index([createdById])
+  @@index([assignedManagerId])
   @@map("tenders")
 }
 
@@ -379,6 +383,9 @@ model Document {
   requirements Requirement[]
   reviewFlags  DocumentReviewFlag[]
 
+  @@index([tenderId])
+  @@index([orgId, processingStatus])
+  @@index([uploadedById])
   @@map("documents")
 }
 
@@ -456,6 +463,9 @@ model Requirement {
   document      Document?            @relation(fields: [documentId], references: [id], onDelete: SetNull)
   complianceRow ComplianceMatrixRow?
 
+  @@index([tenderId, deletedAt])
+  @@index([orgId])
+  @@index([documentId])
   @@map("requirements")
 }
 
@@ -484,6 +494,9 @@ model ComplianceMatrixRow {
   requirement Requirement @relation(fields: [requirementId], references: [id], onDelete: Cascade)
   assignedTo  Member?     @relation("ComplianceAssignee", fields: [assignedToId], references: [id])
 
+  @@index([tenderId, status])
+  @@index([orgId])
+  @@index([assignedToId])
   @@map("compliance_matrix_rows")
 }
 
@@ -515,6 +528,9 @@ model Proposal {
   comments   ProposalComment[]
   exportJobs ExportJob[]
 
+  @@index([tenderId, deletedAt])
+  @@index([orgId, status])
+  @@index([createdById])
   @@map("proposals")
 }
 
@@ -551,6 +567,10 @@ model ProposalSection {
   lastEditedBy Member?           @relation("SectionEditor", fields: [lastEditedById], references: [id])
   comments     ProposalComment[]
 
+  @@index([proposalId, orderIndex])
+  @@index([orgId])
+  @@index([assignedToId])
+  @@index([lastEditedById])
   @@map("proposal_sections")
 }
 
@@ -576,6 +596,8 @@ model ProposalVersion {
   createdBy Member   @relation(fields: [createdById], references: [id])
 
   @@unique([proposalId, versionNumber])
+  @@index([orgId])
+  @@index([createdById])
   @@map("proposal_versions")
 }
 
@@ -613,6 +635,8 @@ model ContentLibraryItem {
   createdBy    Member           @relation(fields: [createdById], references: [id])
   chunks       KnowledgeChunk[]
 
+  @@index([orgId, deletedAt])
+  @@index([createdById])
   @@map("content_library_items")
 }
 
@@ -772,6 +796,11 @@ model ProposalComment {
   replies   ProposalComment[] @relation("CommentThread")
   createdBy Member            @relation(fields: [createdById], references: [id])
 
+  @@index([proposalId, deletedAt])
+  @@index([sectionId])
+  @@index([orgId])
+  @@index([parentId])
+  @@index([createdById])
   @@map("proposal_comments")
 }
 
@@ -801,6 +830,9 @@ model ExportJob {
   proposal  Proposal @relation(fields: [proposalId], references: [id], onDelete: Cascade)
   createdBy Member   @relation(fields: [createdById], references: [id])
 
+  @@index([proposalId])
+  @@index([orgId, status])
+  @@index([createdById])
   @@map("export_jobs")
 }
 
@@ -836,6 +868,8 @@ model AIJob {
   // Relations
   organization Organization @relation(fields: [orgId], references: [id], onDelete: Cascade)
 
+  @@index([orgId, status])
+  @@index([orgId, createdAt])
   @@map("ai_jobs")
 }
 
@@ -894,6 +928,8 @@ model AuditLog {
   organization Organization? @relation(fields: [orgId], references: [id])
   member       Member?       @relation(fields: [memberId], references: [id])
 
+  @@index([orgId, createdAt])
+  @@index([memberId])
   @@map("audit_logs")
 }
 
@@ -953,6 +989,7 @@ model CostLine {
   financialProposal FinancialProposal @relation(fields: [financialProposalId], references: [id], onDelete: Cascade)
 
   @@index([financialProposalId])
+  @@index([orgId])
   @@map("cost_lines")
 }
 

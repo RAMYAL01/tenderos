@@ -1,10 +1,11 @@
 import { auth } from "@clerk/nextjs/server";
 import { NextResponse } from "next/server";
 import { z } from "zod";
+import { ComplianceStatus } from "@prisma/client";
 import { db } from "@/lib/prisma";
 
 const UpdateSchema = z.object({
-  status: z.enum(["NOT_STARTED","IN_PROGRESS","COMPLETED","NOT_APPLICABLE","FLAGGED"]).optional(),
+  status: z.nativeEnum(ComplianceStatus).optional(),
   responseEn: z.string().nullable().optional(),
   responseAr: z.string().nullable().optional(),
   sectionReference: z.string().nullable().optional(),
@@ -32,10 +33,13 @@ export async function PATCH(
   const parsed = UpdateSchema.safeParse(body);
   if (!parsed.success) return NextResponse.json({ error: "Invalid" }, { status: 400 });
 
-  const updated = await db.complianceMatrixRow.update({
-    where: { id },
-    data: { ...parsed.data, status: parsed.data.status as any },
+  // Scoped write — orgId is part of the mutation predicate itself.
+  const res = await db.complianceMatrixRow.updateMany({
+    where: { id, orgId: org.id },
+    data: parsed.data,
   });
+  if (res.count === 0) return NextResponse.json({ error: "Not found" }, { status: 404 });
 
+  const updated = await db.complianceMatrixRow.findFirst({ where: { id, orgId: org.id } });
   return NextResponse.json(updated);
 }
