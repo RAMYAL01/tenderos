@@ -120,6 +120,61 @@ export async function checkSeatLimit(orgId: string): Promise<QuotaResult> {
 }
 
 /**
+ * Discovery — standing saved-search monitors (inventory cap, like seats).
+ * Counts live (non-deleted) SavedSearch rows. -1/<=0 limit = unlimited.
+ */
+export async function checkSavedSearchLimit(orgId: string): Promise<QuotaResult> {
+  const org = await db.organization.findUnique({
+    where: { id: orgId },
+    select: { maxSavedSearches: true },
+  });
+  if (!org) return { ok: false, code: "QUOTA_EXCEEDED", error: "Workspace not found." };
+  if (org.maxSavedSearches <= 0) return { ok: true };
+
+  const used = await db.savedSearch.count({ where: { orgId, deletedAt: null } });
+  if (used >= org.maxSavedSearches) {
+    return {
+      ok: false,
+      code: "QUOTA_EXCEEDED",
+      error: `Your plan includes ${org.maxSavedSearches} saved ${org.maxSavedSearches === 1 ? "search" : "searches"}. Upgrade in Settings → Billing to add more.`,
+    };
+  }
+  return { ok: true, remaining: org.maxSavedSearches - used - 1 };
+}
+
+/**
+ * Discovery — standing tracked opportunities. "Tracked" = explicit commitment
+ * (SAVED or CONVERTED). System-suggested NEW/VIEWED matches do NOT count, so the
+ * auto-generated feed can never exhaust the limit — only deliberate save/convert
+ * does. -1/<=0 limit = unlimited.
+ */
+export async function checkTrackedOpportunityLimit(orgId: string): Promise<QuotaResult> {
+  const org = await db.organization.findUnique({
+    where: { id: orgId },
+    select: { maxTrackedOpportunities: true },
+  });
+  if (!org) return { ok: false, code: "QUOTA_EXCEEDED", error: "Workspace not found." };
+  if (org.maxTrackedOpportunities <= 0) return { ok: true };
+
+  const used = await db.opportunityMatch.count({
+    where: { orgId, trackingStatus: { in: ["SAVED", "CONVERTED"] } },
+  });
+  if (used >= org.maxTrackedOpportunities) {
+    return {
+      ok: false,
+      code: "QUOTA_EXCEEDED",
+      error: `Your plan tracks up to ${org.maxTrackedOpportunities} opportunities. Upgrade in Settings → Billing to track more.`,
+    };
+  }
+  return { ok: true, remaining: org.maxTrackedOpportunities - used - 1 };
+}
+
+/** Discovery — scheduled alerts/digests are a paid-tier feature (not Starter). */
+export function canUseScheduledDiscovery(planTier: string): boolean {
+  return planTier !== "STARTER";
+}
+
+/**
  * Billing lock for the app shell: true when the trial has expired with no paid
  * plan, or the subscription is unpaid. (past_due keeps access — Stripe retries.)
  */

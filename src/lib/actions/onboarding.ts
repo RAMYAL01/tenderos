@@ -80,6 +80,16 @@ export async function completeOnboarding(): Promise<Result> {
       data: { onboardingCompletedAt: new Date() },
     });
 
+    // Activation: seed the Discover feed from the just-captured company profile so
+    // the workspace lands on a non-empty, personalized feed. Bounded + best-effort
+    // — never blocks onboarding completion if matching hiccups.
+    try {
+      const { matchOpportunitiesForOrg } = await import("@/lib/discovery/match");
+      await matchOpportunitiesForOrg(org.id);
+    } catch (e) {
+      console.warn("completeOnboarding: opportunity match skipped:", e);
+    }
+
     revalidatePath("/dashboard");
     return { success: true };
   } catch (err) {

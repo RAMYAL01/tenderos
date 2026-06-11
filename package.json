@@ -10,6 +10,8 @@
     "lint:fix": "next lint --fix",
     "type-check": "tsc --noEmit",
     "test:boq": "tsx --test src/lib/financial/boq/__tests__/price-boq.test.ts",
+    "test:discovery": "tsx --test src/lib/discovery/__tests__/isolation.test.ts",
+    "seed:opportunities": "tsx prisma/seed-opportunities.ts",
     "db:generate": "prisma generate",
     "db:push": "prisma db push",
     "db:migrate": "prisma migrate dev",

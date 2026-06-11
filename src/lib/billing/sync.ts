@@ -24,6 +24,8 @@ export async function applyPlanToOrg(orgId: string, tier: PlanTier): Promise<voi
       maxProposalsMonth: limits.proposalsPerMonth,
       aiCreditsMonth: limits.aiCreditsPerMonth,
       storageBytesLimit: BigInt(limits.storageBytesLimit),
+      maxSavedSearches: limits.savedSearches,
+      maxTrackedOpportunities: limits.trackedOpportunities,
     },
   });
 }

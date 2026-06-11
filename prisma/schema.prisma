@@ -202,38 +202,74 @@ enum FinancialStatus {
   EXPORTED
 }
 
+// ── Tender Discovery Engine ────────────────────────────────────────────────────
+enum OpportunitySourceKind {
+  GOVERNMENT_PORTAL
+  AGGREGATOR
+  RSS
+  API
+  MANUAL
+}
+
+enum OpportunityStatus {
+  OPEN
+  CLOSING_SOON
+  CLOSED
+  CANCELLED
+}
+
+/// Per-tenant lifecycle of a discovered opportunity. NEW = system-suggested
+/// (does NOT count against the tracked-opportunity quota). SAVED/CONVERTED =
+/// explicit user commitment (counts). DISMISSED = pruned from the feed.
+enum MatchTrackingStatus {
+  NEW
+  VIEWED
+  SAVED
+  DISMISSED
+  CONVERTED
+}
+
+enum AlertFrequency {
+  INSTANT // scaffolded; only DAILY is honored under Vercel Hobby daily-cron
+  DAILY
+  WEEKLY
+}
+
 // ─────────────────────────────────────────────────────────────────────────────
 // MODEL 1: Organization
 // Multi-tenant root. Every other table has orgId → this.
 // clerkOrgId links to Clerk's organization system.
 // ─────────────────────────────────────────────────────────────────────────────
 model Organization {
-  id                    String            @id @default(cuid())
-  clerkOrgId            String            @unique // Clerk org ID e.g. "org_xxxx"
-  name                  String
-  nameAr                String? // Arabic organization name
-  slug                  String            @unique
-  planTier              PlanTier          @default(STARTER)
-  maxSeats              Int               @default(3)
-  maxProposalsMonth     Int               @default(5)
-  aiCreditsMonth        Int               @default(50)
-  storageBytesLimit     BigInt            @default(2147483648) // 2 GB
-  storageBytesUsed      BigInt            @default(0)
-  defaultLanguage       ContentLanguage   @default(EN)
-  industry              String? // construction | defense | facilities | oil_gas
-  organizationType      OrganizationType? // onboarding Step 1
-  employeeCount         String? // banded: "1-10" | "11-50" | "51-200" | "201-500" | "500+"
-  countryCode           String?           @db.Char(2) // ISO 3166-1: AE, SA, EG, QA
-  settings              Json              @default("{}")
-  logoUrl               String?
-  website               String?
-  isActive              Boolean           @default(true)
-  trialEndsAt           DateTime?
+  id                      String            @id @default(cuid())
+  clerkOrgId              String            @unique // Clerk org ID e.g. "org_xxxx"
+  name                    String
+  nameAr                  String? // Arabic organization name
+  slug                    String            @unique
+  planTier                PlanTier          @default(STARTER)
+  maxSeats                Int               @default(3)
+  maxProposalsMonth       Int               @default(5)
+  aiCreditsMonth          Int               @default(50)
+  storageBytesLimit       BigInt            @default(2147483648) // 2 GB
+  storageBytesUsed        BigInt            @default(0)
+  defaultLanguage         ContentLanguage   @default(EN)
+  industry                String? // construction | defense | facilities | oil_gas
+  organizationType        OrganizationType? // onboarding Step 1
+  employeeCount           String? // banded: "1-10" | "11-50" | "51-200" | "201-500" | "500+"
+  countryCode             String?           @db.Char(2) // ISO 3166-1: AE, SA, EG, QA
+  settings                Json              @default("{}")
+  logoUrl                 String?
+  website                 String?
+  isActive                Boolean           @default(true)
+  trialEndsAt             DateTime?
+  // Discovery plan limits (standing-inventory caps; -1 = unlimited per quota.ts).
+  maxSavedSearches        Int               @default(1)
+  maxTrackedOpportunities Int               @default(10)
   // Org-first onboarding: null until the workspace wizard is completed.
-  onboardingCompletedAt DateTime?
-  createdAt             DateTime          @default(now())
-  updatedAt             DateTime          @updatedAt
-  deletedAt             DateTime?
+  onboardingCompletedAt   DateTime?
+  createdAt               DateTime          @default(now())
+  updatedAt               DateTime          @updatedAt
+  deletedAt               DateTime?
 
   // Relations
   members             Member[]
@@ -252,6 +288,11 @@ model Organization {
   apiKeys             ApiKey[]
   webhookEndpoints    WebhookEndpoint[]
   webhookDeliveries   WebhookDelivery[]
+  savedSearches       SavedSearch[]
+  opportunityMatches  OpportunityMatch[]
+  // NOTE: deliberately NO relation to Opportunity / OpportunitySource — those are
+  // a GLOBAL shared catalog with no orgId. The tenant boundary lives on
+  // OpportunityMatch (the per-tenant join). See models at the end of this file.
 
   @@map("organizations")
 }
@@ -304,30 +345,33 @@ model Member {
 // Everything (documents, requirements, proposals) belongs to a tender.
 // ─────────────────────────────────────────────────────────────────────────────
 model Tender {
-  id                 String          @id @default(cuid())
-  orgId              String
-  titleEn            String
-  titleAr            String?
-  referenceNo        String? // Client's RFP reference number
-  clientName         String?
-  clientNameAr       String?
-  clientCountry      String?         @db.Char(2)
-  sector             String? // construction | defense | facilities | oil_gas
-  tenderType         String? // RFP | RFQ | ITB | EOI | ITT
-  submissionDeadline DateTime?
-  estimatedValue     Decimal?        @db.Decimal(18, 2)
-  currency           String?         @default("USD") @db.Char(3)
-  status             TenderStatus    @default(DRAFT)
-  primaryLanguage    ContentLanguage @default(EN)
-  tags               String[]        @default([])
-  notes              String?
-  lossReason         LossReason?
-  outcomeNotes       String? // Post-bid debrief notes
-  createdById        String
-  assignedManagerId  String?
-  createdAt          DateTime        @default(now())
-  updatedAt          DateTime        @updatedAt
-  deletedAt          DateTime?
+  id                  String          @id @default(cuid())
+  orgId               String
+  titleEn             String
+  titleAr             String?
+  referenceNo         String? // Client's RFP reference number
+  clientName          String?
+  clientNameAr        String?
+  clientCountry       String?         @db.Char(2)
+  sector              String? // construction | defense | facilities | oil_gas
+  tenderType          String? // RFP | RFQ | ITB | EOI | ITT
+  submissionDeadline  DateTime?
+  estimatedValue      Decimal?        @db.Decimal(18, 2)
+  currency            String?         @default("USD") @db.Char(3)
+  status              TenderStatus    @default(DRAFT)
+  primaryLanguage     ContentLanguage @default(EN)
+  tags                String[]        @default([])
+  notes               String?
+  lossReason          LossReason?
+  outcomeNotes        String? // Post-bid debrief notes
+  // Provenance: the discovered Opportunity this tender was converted from (if any).
+  // Nullable, no cascade — the global catalog must never cascade-delete tenant data.
+  sourceOpportunityId String?
+  createdById         String
+  assignedManagerId   String?
+  createdAt           DateTime        @default(now())
+  updatedAt           DateTime        @updatedAt
+  deletedAt           DateTime?
 
   // Relations
   organization       Organization          @relation(fields: [orgId], references: [id], onDelete: Cascade)
@@ -338,6 +382,7 @@ model Tender {
   proposals          Proposal[]
   complianceRows     ComplianceMatrixRow[]
   financialProposals FinancialProposal[]
+  fromOpportunity    OpportunityMatch[]    @relation("TenderFromOpportunity")
 
   @@index([orgId, status])
   @@index([orgId, deletedAt])
@@ -1128,4 +1173,138 @@ model WebhookDelivery {
   @@index([status, nextAttemptAt]) // the retry-queue scan
   @@index([orgId, eventType])
   @@map("webhook_deliveries")
+}
+
+// ═════════════════════════════════════════════════════════════════════════════
+// TENDER DISCOVERY ENGINE
+//
+// ⚠ TENANCY EXCEPTION. Every other model in this schema is strictly org-scoped
+// (orgId on every row). The Discovery catalog is the ONE deliberate exception:
+// a government tender is an objective public fact, identical for every
+// contractor, so OpportunitySource + Opportunity are a GLOBAL shared catalog
+// with NO orgId and NO cascade to Organization.
+//
+// The tenant boundary moves to OpportunityMatch (the per-tenant join). Rules:
+//   1. ONLY src/lib/discovery/ingest.ts may write Opportunity / OpportunitySource
+//      (enforced by a CI guard test). They are read-only to tenants.
+//   2. Nothing org-derived is ever written into the global rows (no per-tenant
+//      keywords, no "N orgs tracking" denormalization — that would leak interest).
+//   3. The cross-boundary FK is one-way: OpportunityMatch → Opportunity, with
+//      onDelete Restrict/SetNull — NEVER Cascade. Org deletion cascades only the
+//      per-tenant join, never the catalog.
+// ═════════════════════════════════════════════════════════════════════════════
+
+/// GLOBAL CATALOG — no orgId. A tender-publishing source (gov portal, aggregator).
+/// Written ONLY by src/lib/discovery/ingest.ts.
+model OpportunitySource {
+  id              String                @id @default(cuid())
+  name            String
+  slug            String                @unique
+  country         String?               @db.Char(2)
+  kind            OpportunitySourceKind
+  baseUrl         String?
+  adapterKey      String // resolves the ingestion adapter module
+  defaultLanguage ContentLanguage       @default(EN)
+  isActive        Boolean               @default(true)
+  lastPolledAt    DateTime?
+  createdAt       DateTime              @default(now())
+  updatedAt       DateTime              @updatedAt
+
+  opportunities Opportunity[]
+
+  @@map("opportunity_sources")
+}
+
+/// GLOBAL CATALOG — no orgId. A discovered public tender opportunity.
+/// Deduped on (sourceId, externalId); contentHash detects changes on re-ingest.
+/// Written ONLY by src/lib/discovery/ingest.ts. Embedding (semantic match) is
+/// deferred to the P2 sprint and intentionally NOT present yet.
+model Opportunity {
+  id             String            @id @default(cuid())
+  sourceId       String
+  externalId     String // stable id within the source
+  titleEn        String
+  titleAr        String?
+  descriptionEn  String?           @db.Text
+  descriptionAr  String?           @db.Text
+  buyerName      String?
+  buyerNameAr    String?
+  country        String?           @db.Char(2)
+  sector         String? // normalized: construction | facilities | oil_gas | infrastructure | ...
+  tenderType     String? // free text from source; normalized to enum on convert
+  referenceNo    String?
+  estimatedValue Decimal?          @db.Decimal(18, 2)
+  currency       String?           @db.Char(3)
+  publishedAt    DateTime?
+  closingDate    DateTime?
+  sourceUrl      String?
+  language       ContentLanguage   @default(EN)
+  contentHash    String // change-detection on re-ingest
+  status         OpportunityStatus @default(OPEN)
+  rawPayload     Json // original source payload (NEVER tenant-derived data)
+  createdAt      DateTime          @default(now())
+  updatedAt      DateTime          @updatedAt
+
+  source  OpportunitySource  @relation(fields: [sourceId], references: [id])
+  matches OpportunityMatch[] // one-way: the per-tenant join points IN
+
+  @@unique([sourceId, externalId]) // global dedup natural key
+  @@index([country, sector])
+  @@index([status, closingDate])
+  @@index([closingDate])
+  @@map("opportunities")
+}
+
+/// PER-TENANT — the isolation boundary. One row per (org, opportunity) carrying
+/// this org's relevance score + lifecycle. trackingStatus NEW = system-suggested
+/// (free); SAVED/CONVERTED = counts against maxTrackedOpportunities.
+model OpportunityMatch {
+  id                String              @id @default(cuid())
+  orgId             String // TENANT BINDING
+  opportunityId     String
+  savedSearchId     String?
+  relevanceScore    Float
+  scoreBreakdown    Json? // explainability: which components contributed
+  trackingStatus    MatchTrackingStatus @default(NEW)
+  convertedTenderId String? // set on convert (this org's tender — same-org enforced in action)
+  notes             String?
+  dismissedReason   String?
+  lastNotifiedAt    DateTime? // alert dedup (Sprint 2 cron uses this)
+  createdById       String? // nullable: system-created matches have no member
+  createdAt         DateTime            @default(now())
+  updatedAt         DateTime            @updatedAt
+
+  organization    Organization @relation(fields: [orgId], references: [id], onDelete: Cascade)
+  opportunity     Opportunity  @relation(fields: [opportunityId], references: [id], onDelete: Restrict) // catalog churn must NOT delete tenant tracking
+  savedSearch     SavedSearch? @relation(fields: [savedSearchId], references: [id], onDelete: SetNull)
+  convertedTender Tender?      @relation("TenderFromOpportunity", fields: [convertedTenderId], references: [id], onDelete: SetNull)
+
+  @@unique([orgId, opportunityId]) // idempotent matching
+  @@index([orgId, trackingStatus, relevanceScore]) // the feed: filter status, order by score
+  @@index([orgId, lastNotifiedAt]) // alert-dedup / "new since" query
+  @@index([opportunityId])
+  @@map("opportunity_matches")
+}
+
+/// PER-TENANT — a standing monitor (the stickiness device). Alert delivery is
+/// Sprint 2; the model + quota gate land now.
+model SavedSearch {
+  id                 String         @id @default(cuid())
+  orgId              String
+  name               String
+  filters            Json           @default("{}") // country, sector, value band, keywords
+  useProfileDefaults Boolean        @default(true)
+  alertsEnabled      Boolean        @default(false)
+  alertFrequency     AlertFrequency @default(DAILY)
+  createdById        String
+  createdAt          DateTime       @default(now())
+  updatedAt          DateTime       @updatedAt
+  deletedAt          DateTime?
+
+  organization Organization       @relation(fields: [orgId], references: [id], onDelete: Cascade)
+  matches      OpportunityMatch[]
+
+  @@index([orgId, deletedAt])
+  @@index([orgId, alertsEnabled])
+  @@map("saved_searches")
 }

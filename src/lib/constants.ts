@@ -15,6 +15,10 @@ export const PLAN_LIMITS: Record<
     proposalsPerMonth: number;
     aiCreditsPerMonth: number;
     storageBytesLimit: number;
+    /** Discovery: standing saved-search monitors. -1 = unlimited (quota.ts `<= 0` fast-path). */
+    savedSearches: number;
+    /** Discovery: standing tracked (SAVED/CONVERTED) opportunities. -1 = unlimited. */
+    trackedOpportunities: number;
     label: string;
     price: number; // USD/month
   }
@@ -24,6 +28,8 @@ export const PLAN_LIMITS: Record<
     proposalsPerMonth: 5,
     aiCreditsPerMonth: 50,
     storageBytesLimit: 2 * 1024 * 1024 * 1024,   // 2 GB
+    savedSearches: 1,           // read-only teaser
+    trackedOpportunities: 10,
     label: "Starter",
     price: 149,
   },
@@ -32,6 +38,8 @@ export const PLAN_LIMITS: Record<
     proposalsPerMonth: 20,
     aiCreditsPerMonth: 250,
     storageBytesLimit: 10 * 1024 * 1024 * 1024,  // 10 GB
+    savedSearches: 10,          // the headline upgrade driver
+    trackedOpportunities: 100,
     label: "Professional",
     price: 499,
   },
@@ -40,6 +48,8 @@ export const PLAN_LIMITS: Record<
     proposalsPerMonth: 999_999,
     aiCreditsPerMonth: 1000,
     storageBytesLimit: 50 * 1024 * 1024 * 1024,  // 50 GB
+    savedSearches: 50,
+    trackedOpportunities: -1,   // unlimited
     label: "Business",
     price: 1299,
   },
@@ -48,6 +58,8 @@ export const PLAN_LIMITS: Record<
     proposalsPerMonth: 999_999,
     aiCreditsPerMonth: 999_999,
     storageBytesLimit: 999_999 * 1024 * 1024 * 1024,
+    savedSearches: -1,          // unlimited
+    trackedOpportunities: -1,
     label: "Enterprise",
     price: 0,  // Custom
   },

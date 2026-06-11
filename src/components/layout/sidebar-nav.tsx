@@ -5,6 +5,7 @@ import { usePathname } from "next/navigation";
 import { cn } from "@/lib/utils";
 import {
   LayoutDashboard,
+  Compass,
   FolderOpen,
   FileText,
   CheckSquare,
@@ -23,6 +24,7 @@ interface NavItem {
 
 const mainNav: NavItem[] = [
   { label: "Dashboard", href: "/dashboard", icon: LayoutDashboard },
+  { label: "Discover", href: "/discover", icon: Compass },
   { label: "Tenders", href: "/tenders", icon: FolderOpen },
   { label: "Proposals", href: "/proposals", icon: FileText },
   { label: "Compliance", href: "/compliance", icon: CheckSquare },
