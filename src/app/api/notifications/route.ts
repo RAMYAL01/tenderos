@@ -4,11 +4,11 @@ import { db } from "@/lib/prisma";
 
 export interface NotificationItem {
   id: string;
-  type: "deadline" | "review" | "failed";
+  type: "deadline" | "review" | "failed" | "discovery";
   title: string;
   description: string;
   href: string;
-  tone: "amber" | "red" | "blue";
+  tone: "amber" | "red" | "blue" | "emerald";
   at: string; // ISO
 }
 
@@ -24,7 +24,7 @@ export async function GET() {
   const now = new Date();
   const in7Days = new Date(now.getTime() + 7 * 24 * 60 * 60 * 1000);
 
-  const [deadlines, attentionDocs] = await Promise.all([
+  const [deadlines, attentionDocs, discoveryAlerts] = await Promise.all([
     db.tender.findMany({
       where: {
         orgId: org.id,
@@ -51,6 +51,13 @@ export async function GET() {
         tenderId: true,
         updatedAt: true,
       },
+    }),
+    // Unread discovery digests (created by the daily refresh cron).
+    db.opportunityAlert.findMany({
+      where: { orgId: org.id, channel: "IN_APP", status: "SENT", readAt: null },
+      orderBy: { createdAt: "desc" },
+      take: 3,
+      select: { id: true, matchCount: true, createdAt: true },
     }),
   ]);
 
@@ -79,6 +86,18 @@ export async function GET() {
       href: `/tenders/${d.tenderId}`,
       tone: failed ? "red" : "blue",
       at: d.updatedAt.toISOString(),
+    });
+  }
+
+  for (const a of discoveryAlerts) {
+    items.push({
+      id: `discovery-${a.id}`,
+      type: "discovery",
+      title: `${a.matchCount} new matched ${a.matchCount === 1 ? "opportunity" : "opportunities"}`,
+      description: "Fresh tenders ranked for your company in Discover.",
+      href: "/discover",
+      tone: "emerald",
+      at: a.createdAt.toISOString(),
     });
   }
 

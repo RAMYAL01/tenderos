@@ -2,17 +2,21 @@
 
 import { useMemo, useState, useTransition } from "react";
 import { useRouter } from "next/navigation";
-import { Search, Sparkles, Loader2 } from "lucide-react";
+import { Search, Sparkles, Loader2, BellRing, BellOff, BookmarkPlus, X } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { Button } from "@/components/ui/button";
 import { toast } from "@/hooks/use-toast";
 import type { DiscoverItem } from "@/lib/data/opportunities";
+import type { SavedSearchItem } from "@/lib/data/saved-searches";
 import { OpportunityCard } from "./opportunity-card";
 import {
   convertOpportunityToTender,
   trackOpportunity,
   dismissOpportunity,
   scanForOpportunities,
+  createSavedSearch,
+  deleteSavedSearch,
+  toggleSavedSearchAlerts,
 } from "@/lib/actions/opportunities";
 
 type FilterKey = "all" | "strong" | "closing" | "saved";
@@ -30,12 +34,21 @@ function isClosingSoon(d: Date | null): boolean {
   return days >= 0 && days <= 7;
 }
 
-export function DiscoverList({ items }: { items: DiscoverItem[] }) {
+export function DiscoverList({
+  items,
+  savedSearches = [],
+  canScheduleAlerts = false,
+}: {
+  items: DiscoverItem[];
+  savedSearches?: SavedSearchItem[];
+  canScheduleAlerts?: boolean;
+}) {
   const router = useRouter();
   const [pending, start] = useTransition();
   const [pendingId, setPendingId] = useState<string | null>(null);
   const [query, setQuery] = useState("");
   const [filter, setFilter] = useState<FilterKey>("all");
+  const [savingSearch, setSavingSearch] = useState(false);
 
   const counts = useMemo(
     () => ({
@@ -92,6 +105,59 @@ export function DiscoverList({ items }: { items: DiscoverItem[] }) {
     });
   }
 
+  function saveCurrentSearch() {
+    const name =
+      query.trim() ||
+      (filter !== "all" ? FILTERS.find((f) => f.key === filter)?.label : "") ||
+      "All opportunities";
+    setSavingSearch(true);
+    start(async () => {
+      const res = await createSavedSearch({
+        name: name.slice(0, 80),
+        filters: { query: query.trim(), filter },
+        alertsEnabled: canScheduleAlerts, // on by default where the tier allows
+      });
+      setSavingSearch(false);
+      if (!res.success) {
+        toast({ title: "Couldn't save search", description: res.error, variant: "destructive" });
+        return;
+      }
+      toast({
+        title: "Search saved",
+        description: canScheduleAlerts
+          ? "You'll get a daily digest when new matches arrive."
+          : "Saved. Upgrade to Professional for daily alert digests.",
+      });
+      router.refresh();
+    });
+  }
+
+  function applySaved(s: SavedSearchItem) {
+    setQuery(s.filters.query ?? "");
+    const f = s.filters.filter as FilterKey | undefined;
+    setFilter(f && FILTERS.some((x) => x.key === f) ? f : "all");
+  }
+
+  function removeSaved(id: string) {
+    start(async () => {
+      const res = await deleteSavedSearch(id);
+      if (!res.success) toast({ title: "Couldn't delete", description: res.error, variant: "destructive" });
+      router.refresh();
+    });
+  }
+
+  function toggleAlerts(s: SavedSearchItem) {
+    start(async () => {
+      const res = await toggleSavedSearchAlerts(s.id, !s.alertsEnabled);
+      if (!res.success) {
+        toast({ title: "Couldn't update alerts", description: res.error, variant: "destructive" });
+        return;
+      }
+      toast({ title: s.alertsEnabled ? "Daily digest off" : "Daily digest on", description: s.name });
+      router.refresh();
+    });
+  }
+
   return (
     <div className="p-6">
       {/* Controls */}
@@ -124,12 +190,54 @@ export function DiscoverList({ items }: { items: DiscoverItem[] }) {
               className="h-9 w-56 rounded-lg border border-slate-200 bg-white pl-9 pr-3 text-sm text-slate-900 outline-none focus:border-blue-500 focus:ring-2 focus:ring-blue-500/20 dark:border-slate-700 dark:bg-slate-900 dark:text-white"
             />
           </div>
+          <Button variant="outline" size="sm" onClick={saveCurrentSearch} disabled={pending || savingSearch}>
+            {savingSearch ? <Loader2 className="h-4 w-4 animate-spin" /> : <BookmarkPlus className="h-4 w-4" />}
+            Save search
+          </Button>
           <Button variant="outline" size="sm" onClick={rescan} disabled={pending}>
             {pendingId === "__scan__" ? <Loader2 className="h-4 w-4 animate-spin" /> : <Sparkles className="h-4 w-4" />}
             Refresh
           </Button>
         </div>
       </div>
+
+      {/* Saved monitors */}
+      {savedSearches.length > 0 && (
+        <div className="mb-5 flex flex-wrap items-center gap-2">
+          <span className="text-xs font-semibold uppercase tracking-wide text-slate-400">Monitors</span>
+          {savedSearches.map((s) => (
+            <span
+              key={s.id}
+              className="group inline-flex items-center gap-1 rounded-full border border-slate-200 bg-white py-1 pl-3 pr-1 text-sm text-slate-700 dark:border-slate-700 dark:bg-slate-900 dark:text-slate-200"
+            >
+              <button type="button" onClick={() => applySaved(s)} className="hover:text-blue-600" title="Apply this search">
+                {s.name}
+              </button>
+              <button
+                type="button"
+                onClick={() => toggleAlerts(s)}
+                disabled={pending}
+                className={cn(
+                  "rounded-full p-1 transition-colors",
+                  s.alertsEnabled ? "text-blue-600 hover:bg-blue-50 dark:hover:bg-blue-950" : "text-slate-400 hover:bg-slate-100 dark:hover:bg-slate-800"
+                )}
+                title={s.alertsEnabled ? "Daily digest on — click to disable" : "Daily digest off — click to enable"}
+              >
+                {s.alertsEnabled ? <BellRing className="h-3.5 w-3.5" /> : <BellOff className="h-3.5 w-3.5" />}
+              </button>
+              <button
+                type="button"
+                onClick={() => removeSaved(s.id)}
+                disabled={pending}
+                className="rounded-full p-1 text-slate-400 hover:bg-red-50 hover:text-red-600 dark:hover:bg-red-950"
+                title="Delete monitor"
+              >
+                <X className="h-3.5 w-3.5" />
+              </button>
+            </span>
+          ))}
+        </div>
+      )}
 
       {/* List */}
       {filtered.length === 0 ? (

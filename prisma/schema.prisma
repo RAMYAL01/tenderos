@@ -235,6 +235,18 @@ enum AlertFrequency {
   WEEKLY
 }
 
+enum AlertChannel {
+  IN_APP
+  EMAIL // scaffolded; no email infra yet
+  WEBHOOK
+}
+
+enum AlertStatus {
+  PENDING
+  SENT
+  FAILED
+}
+
 // ─────────────────────────────────────────────────────────────────────────────
 // MODEL 1: Organization
 // Multi-tenant root. Every other table has orgId → this.
@@ -290,6 +302,7 @@ model Organization {
   webhookDeliveries   WebhookDelivery[]
   savedSearches       SavedSearch[]
   opportunityMatches  OpportunityMatch[]
+  opportunityAlerts   OpportunityAlert[]
   // NOTE: deliberately NO relation to Opportunity / OpportunitySource — those are
   // a GLOBAL shared catalog with no orgId. The tenant boundary lives on
   // OpportunityMatch (the per-tenant join). See models at the end of this file.
@@ -1301,10 +1314,36 @@ model SavedSearch {
   updatedAt          DateTime       @updatedAt
   deletedAt          DateTime?
 
+  alerts OpportunityAlert[]
+
   organization Organization       @relation(fields: [orgId], references: [id], onDelete: Cascade)
   matches      OpportunityMatch[]
 
   @@index([orgId, deletedAt])
   @@index([orgId, alertsEnabled])
   @@map("saved_searches")
+}
+
+/// PER-TENANT — append-only digest delivery log (mirrors WebhookDelivery).
+/// One row per digest sent to an org; payload holds the matched items shown.
+model OpportunityAlert {
+  id            String       @id @default(cuid())
+  orgId         String // TENANT BINDING
+  savedSearchId String? // SetNull: keep the delivery record if the search is deleted
+  channel       AlertChannel @default(IN_APP)
+  status        AlertStatus  @default(PENDING)
+  matchCount    Int
+  payload       Json // [{opportunityId, title, score}] snapshot at send time
+  sentAt        DateTime?
+  readAt        DateTime? // in-app: when the user opened the digest
+  error         String?
+  createdAt     DateTime     @default(now())
+
+  organization Organization @relation(fields: [orgId], references: [id], onDelete: Cascade)
+  savedSearch  SavedSearch? @relation(fields: [savedSearchId], references: [id], onDelete: SetNull)
+
+  @@index([orgId, createdAt])
+  @@index([orgId, readAt])
+  @@index([status, createdAt])
+  @@map("opportunity_alerts")
 }

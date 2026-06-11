@@ -79,7 +79,13 @@ function SectionLabel({ children }: { children: React.ReactNode }) {
   );
 }
 
-export function SidebarNav({ memberRole }: { memberRole: string }) {
+export function SidebarNav({
+  memberRole,
+  discoverBadge = 0,
+}: {
+  memberRole: string;
+  discoverBadge?: number;
+}) {
   const pathname = usePathname();
 
   function isActive(href: string): boolean {
@@ -92,7 +98,11 @@ export function SidebarNav({ memberRole }: { memberRole: string }) {
       <SectionLabel>Main</SectionLabel>
       <div className="flex flex-col gap-1">
         {mainNav.map((item) => (
-          <NavLink key={item.href} item={item} active={isActive(item.href)} />
+          <NavLink
+            key={item.href}
+            item={item.href === "/discover" ? { ...item, badge: discoverBadge } : item}
+            active={isActive(item.href)}
+          />
         ))}
       </div>
 

@@ -1,9 +1,13 @@
 import { Suspense } from "react";
+import { after } from "next/server";
 import { Compass } from "lucide-react";
 import { PageHeader } from "@/components/ui/page-header";
 import { PageSkeleton } from "@/components/ui/page-skeleton";
 import { getAuthContext } from "@/lib/auth";
+import { db } from "@/lib/prisma";
 import { getDiscoverFeed, catalogHasOpportunities } from "@/lib/data/opportunities";
+import { getSavedSearches } from "@/lib/data/saved-searches";
+import { canUseScheduledDiscovery } from "@/lib/billing/quota";
 import { DiscoverList } from "@/components/discovery/discover-list";
 import { DiscoverScanCta } from "@/components/discovery/discover-scan-cta";
 
@@ -12,7 +16,21 @@ export const metadata = { title: "Discover" };
 async function DiscoverContent() {
   const { org } = await getAuthContext();
   // PURE READ — never triggers matching on render (matching is the scan action).
-  const feed = await getDiscoverFeed(org.id);
+  const [feed, savedSearches] = await Promise.all([
+    getDiscoverFeed(org.id),
+    getSavedSearches(org.id),
+  ]);
+
+  // Viewing the feed consumes the unread digests (clears bell + nav badge).
+  // after() = post-response, so the render itself stays a pure read.
+  after(async () => {
+    await db.opportunityAlert
+      .updateMany({
+        where: { orgId: org.id, channel: "IN_APP", readAt: null },
+        data: { readAt: new Date() },
+      })
+      .catch(() => {});
+  });
 
   if (feed.length === 0) {
     const hasCatalog = await catalogHasOpportunities();
@@ -34,7 +52,13 @@ async function DiscoverContent() {
     );
   }
 
-  return <DiscoverList items={feed} />;
+  return (
+    <DiscoverList
+      items={feed}
+      savedSearches={savedSearches}
+      canScheduleAlerts={canUseScheduledDiscovery(org.planTier)}
+    />
+  );
 }
 
 export default function DiscoverPage() {

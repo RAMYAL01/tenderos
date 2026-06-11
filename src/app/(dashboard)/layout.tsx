@@ -1,5 +1,6 @@
 import { redirect } from "next/navigation";
 import { getAuthContext } from "@/lib/auth";
+import { db } from "@/lib/prisma";
 import { getBillingLock } from "@/lib/billing/quota";
 import { Sidebar } from "@/components/layout/sidebar";
 import { Header } from "@/components/layout/header";
@@ -31,13 +32,19 @@ export default async function DashboardLayout({
 
   // Billing gate: expired trial / unpaid subscription locks the app shell
   // (settings stay reachable so billing can be fixed — see BillingLockGate).
-  const billing = await getBillingLock(org.id);
+  const [billing, unreadDiscovery] = await Promise.all([
+    getBillingLock(org.id),
+    // Unread discovery digests → "new opportunities" badge on the Discover nav.
+    db.opportunityAlert.count({
+      where: { orgId: org.id, channel: "IN_APP", status: "SENT", readAt: null },
+    }),
+  ]);
 
   return (
     <WorkspaceProvider org={org} member={member}>
       <div className="flex h-screen overflow-hidden bg-slate-50 dark:bg-slate-950">
         {/* Sidebar — fixed left panel */}
-        <Sidebar member={member} org={org} />
+        <Sidebar member={member} org={org} discoverBadge={unreadDiscovery} />
 
         {/* Main content area */}
         <div className="flex flex-1 flex-col overflow-hidden">

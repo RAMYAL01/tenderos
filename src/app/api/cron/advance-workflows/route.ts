@@ -3,7 +3,9 @@
  * pattern). If a serverless function was reaped before a workflow reached a
  * terminal state, this picks it up from the persisted state and drives it on.
  *
- * Schedule (vercel.json): every few minutes.
+ * Schedule (vercel.json): 0 3 * * * — DAILY (Vercel Hobby allows daily crons
+ * only, so a stalled workflow may wait up to 24h for this backstop; the primary
+ * path is the in-request `after()` continuation).
  * Auth: Authorization: Bearer ${CRON_SECRET}.
  */
 

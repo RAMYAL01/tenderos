@@ -8,6 +8,8 @@ import type { Member, Organization } from "@prisma/client";
 interface SidebarProps {
   member: Member;
   org: Organization;
+  /** Unread discovery-digest count shown on the Discover nav item. */
+  discoverBadge?: number;
 }
 
 function initials(name: string): string {
@@ -23,7 +25,7 @@ function initials(name: string): string {
  * - Main navigation (client component for active states)
  * - Clerk UserButton at the bottom
  */
-export function Sidebar({ member, org }: SidebarProps) {
+export function Sidebar({ member, org, discoverBadge = 0 }: SidebarProps) {
   const oidc = isOidcAuth();
   return (
     <aside className="relative flex h-screen w-64 shrink-0 flex-col border-r border-white/10 bg-gradient-to-b from-[#101a30] via-[#0c1424] to-[#080d18]">
@@ -77,7 +79,7 @@ export function Sidebar({ member, org }: SidebarProps) {
 
       {/* ── Navigation ────────────────────────────────────────── */}
       <div className="sidebar-scroll relative flex flex-1 flex-col overflow-y-auto py-4">
-        <SidebarNav memberRole={member.role} />
+        <SidebarNav memberRole={member.role} discoverBadge={discoverBadge} />
       </div>
 
       {/* ── User area ─────────────────────────────────────────── */}

@@ -109,39 +109,38 @@ export interface MatchResult {
   matched: number;
 }
 
-/**
- * Compute (and persist) the org's opportunity matches. Bounded + idempotent.
- * Returns counts. Safe to call repeatedly (re-scoring is in place).
- */
-export async function matchOpportunitiesForOrg(orgId: string): Promise<MatchResult> {
+type OrgSignals = {
+  org: Pick<Organization, "countryCode" | "organizationType" | "industry" | "employeeCount">;
+  won: WonSignals;
+};
+
+/** Load the org profile + won-tender signals used by the scorer. */
+async function loadOrgSignals(orgId: string): Promise<OrgSignals | null> {
   const org = await db.organization.findUnique({
     where: { id: orgId },
     select: { countryCode: true, organizationType: true, industry: true, employeeCount: true },
   });
-  if (!org) return { scanned: 0, matched: 0 };
+  if (!org) return null;
 
-  // Won-tender signals (this org only).
   const wonTenders = await db.tender.findMany({
     where: { orgId, status: "WON", deletedAt: null },
     select: { sector: true, clientCountry: true },
     take: 200,
   });
-  const won: WonSignals = {
-    sectors: new Set(wonTenders.map((t) => (t.sector ?? "").toLowerCase()).filter(Boolean)),
-    countries: new Set(wonTenders.map((t) => (t.clientCountry ?? "").toUpperCase()).filter(Boolean)),
+  return {
+    org,
+    won: {
+      sectors: new Set(wonTenders.map((t) => (t.sector ?? "").toLowerCase()).filter(Boolean)),
+      countries: new Set(wonTenders.map((t) => (t.clientCountry ?? "").toUpperCase()).filter(Boolean)),
+    },
   };
+}
 
-  // Bounded scan of the GLOBAL catalog (read-only), freshest-closing first.
-  const opps = await db.opportunity.findMany({
-    where: { status: { in: ["OPEN", "CLOSING_SOON"] } },
-    select: { id: true, country: true, sector: true, estimatedValue: true, publishedAt: true, status: true },
-    orderBy: [{ closingDate: "asc" }],
-    take: MAX_SCAN,
-  });
-
+/** Score a set of opportunities for one org and persist the per-tenant matches. */
+async function scoreAndPersist(orgId: string, signals: OrgSignals, opps: OppForScore[]): Promise<number> {
   let matched = 0;
   for (const opp of opps) {
-    const { score, breakdown } = scoreOne(org, opp, won);
+    const { score, breakdown } = scoreOne(signals.org, opp, signals.won);
     if (score < MIN_SCORE_TO_PERSIST) continue;
 
     // Idempotent: create as NEW; on update refresh score ONLY (never touch the
@@ -153,6 +152,46 @@ export async function matchOpportunitiesForOrg(orgId: string): Promise<MatchResu
     });
     matched++;
   }
+  return matched;
+}
 
+/**
+ * Compute (and persist) the org's opportunity matches over the full (bounded)
+ * open catalog. User/onboarding-triggered. Safe to call repeatedly.
+ */
+export async function matchOpportunitiesForOrg(orgId: string): Promise<MatchResult> {
+  const signals = await loadOrgSignals(orgId);
+  if (!signals) return { scanned: 0, matched: 0 };
+
+  // Bounded scan of the GLOBAL catalog (read-only), freshest-closing first.
+  const opps = await db.opportunity.findMany({
+    where: { status: { in: ["OPEN", "CLOSING_SOON"] } },
+    select: { id: true, country: true, sector: true, estimatedValue: true, publishedAt: true, status: true },
+    orderBy: [{ closingDate: "asc" }],
+    take: MAX_SCAN,
+  });
+
+  const matched = await scoreAndPersist(orgId, signals, opps);
+  return { scanned: opps.length, matched };
+}
+
+/**
+ * Delta variant for the daily cron (audit M7): scores ONLY the given changed
+ * opportunities for one org — O(delta), never O(catalog) per org.
+ */
+export async function matchOpportunityDeltaForOrg(
+  orgId: string,
+  opportunityIds: string[]
+): Promise<MatchResult> {
+  if (opportunityIds.length === 0) return { scanned: 0, matched: 0 };
+  const signals = await loadOrgSignals(orgId);
+  if (!signals) return { scanned: 0, matched: 0 };
+
+  const opps = await db.opportunity.findMany({
+    where: { id: { in: opportunityIds }, status: { in: ["OPEN", "CLOSING_SOON"] } },
+    select: { id: true, country: true, sector: true, estimatedValue: true, publishedAt: true, status: true },
+  });
+
+  const matched = await scoreAndPersist(orgId, signals, opps);
   return { scanned: opps.length, matched };
 }

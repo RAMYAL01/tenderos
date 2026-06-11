@@ -52,6 +52,10 @@
     {
       "path": "/api/cron/advance-workflows",
       "schedule": "0 3 * * *"
+    },
+    {
+      "path": "/api/cron/refresh-opportunities",
+      "schedule": "0 6 * * *"
     }
   ],
 

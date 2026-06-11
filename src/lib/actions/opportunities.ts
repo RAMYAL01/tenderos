@@ -146,6 +146,48 @@ export async function createSavedSearch(
   }
 }
 
+/** Soft-delete a saved search (org-scoped; alert history is kept via SetNull). */
+export async function deleteSavedSearch(id: string): Promise<Result> {
+  try {
+    const { org } = await getAuthContext();
+    const res = await db.savedSearch.updateMany({
+      where: { id, orgId: org.id, deletedAt: null },
+      data: { deletedAt: new Date(), alertsEnabled: false },
+    });
+    if (res.count === 0) return { success: false, error: "Not found." };
+    revalidatePath("/discover");
+    return { success: true };
+  } catch (err) {
+    if (isRedirectError(err)) throw err;
+    console.error("deleteSavedSearch error:", err);
+    return { success: false, error: "Could not delete the search." };
+  }
+}
+
+/** Toggle daily-digest alerts on a saved search (paid tiers only). */
+export async function toggleSavedSearchAlerts(id: string, enabled: boolean): Promise<Result> {
+  try {
+    const { org } = await getAuthContext();
+    if (enabled && !canUseScheduledDiscovery(org.planTier)) {
+      return {
+        success: false,
+        error: "Daily discovery alerts are available on Professional and above. Upgrade in Settings → Billing.",
+      };
+    }
+    const res = await db.savedSearch.updateMany({
+      where: { id, orgId: org.id, deletedAt: null },
+      data: { alertsEnabled: enabled },
+    });
+    if (res.count === 0) return { success: false, error: "Not found." };
+    revalidatePath("/discover");
+    return { success: true };
+  } catch (err) {
+    if (isRedirectError(err)) throw err;
+    console.error("toggleSavedSearchAlerts error:", err);
+    return { success: false, error: "Could not update alerts." };
+  }
+}
+
 // ── Convert → Tender (WRITER M12 · atomic M13 · same-org txn M2 · normalize M15) ─
 
 const TENDER_TYPES = new Set(["RFP", "RFQ", "ITB", "EOI", "ITT", "RFI"]);

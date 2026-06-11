@@ -128,6 +128,29 @@ export async function ingestOpportunities(
   return { source: sourceId, inserted, updated, unchanged };
 }
 
+/**
+ * Age out expired opportunities (closingDate passed → CLOSED). Lives HERE
+ * because ingest.ts is the only module allowed to write the global catalog.
+ * Called by the daily refresh cron.
+ */
+export async function sweepExpiredOpportunities(): Promise<number> {
+  const res = await db.opportunity.updateMany({
+    where: { status: { in: ["OPEN", "CLOSING_SOON"] }, closingDate: { lt: new Date() } },
+    data: { status: "CLOSED" },
+  });
+  return res.count;
+}
+
+/** Mark opportunities entering their final week as CLOSING_SOON. */
+export async function sweepClosingSoonOpportunities(): Promise<number> {
+  const inSevenDays = new Date(Date.now() + 7 * 24 * 60 * 60 * 1000);
+  const res = await db.opportunity.updateMany({
+    where: { status: "OPEN", closingDate: { gte: new Date(), lte: inSevenDays } },
+    data: { status: "CLOSING_SOON" },
+  });
+  return res.count;
+}
+
 /** Register (or fetch) a source. The only creator of OpportunitySource rows. */
 export async function upsertSource(input: {
   slug: string;
