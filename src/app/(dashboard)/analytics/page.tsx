@@ -68,6 +68,35 @@ async function AnalyticsContent() {
         <MonthlyBars data={a.monthly} />
       </Panel>
 
+      {/* Win/Loss Intelligence */}
+      <div className="grid grid-cols-1 gap-6 lg:grid-cols-3">
+        <Panel title="Win Rate by Sector">
+          <RateRows
+            rows={a.winLoss.bySector}
+            empty="Record bid outcomes to see where you win."
+          />
+        </Panel>
+        <Panel title="Win Rate by Country">
+          <RateRows
+            rows={a.winLoss.byCountry}
+            empty="Record bid outcomes to see your strongest markets."
+          />
+        </Panel>
+        <Panel title="Why Bids Are Lost">
+          <HBars
+            items={a.winLoss.lossReasons}
+            empty="No recorded losses — debrief lost bids to find the pattern."
+          />
+          {a.winLoss.outcomesPending > 0 && (
+            <p className="mt-4 rounded-lg bg-violet-50 px-3 py-2 text-xs text-violet-700 dark:bg-violet-950/40 dark:text-violet-300">
+              {a.winLoss.outcomesPending} submitted{" "}
+              {a.winLoss.outcomesPending === 1 ? "bid is" : "bids are"} past deadline —
+              record the outcomes to sharpen matching and bid scoring.
+            </p>
+          )}
+        </Panel>
+      </div>
+
       {/* Proposals + Language */}
       <div className="grid grid-cols-1 gap-6 lg:grid-cols-2">
         <Panel title="Proposals by Status">
@@ -108,6 +137,45 @@ async function AnalyticsContent() {
           <TeamTable rows={a.team} />
         </Panel>
       </div>
+    </div>
+  );
+}
+
+function RateRows({
+  rows,
+  empty,
+}: {
+  rows: Array<{ label: string; won: number; lost: number; rate: number }>;
+  empty: string;
+}) {
+  if (rows.length === 0) {
+    return <p className="py-6 text-center text-sm text-slate-400">{empty}</p>;
+  }
+  return (
+    <div className="space-y-3">
+      {rows.map((r) => (
+        <div key={r.label}>
+          <div className="mb-1 flex items-baseline justify-between text-sm">
+            <span className="font-medium text-slate-700 dark:text-slate-200">{r.label}</span>
+            <span className="text-xs tabular-nums text-slate-400">
+              {r.won}W / {r.lost}L ·{" "}
+              <span
+                className={
+                  r.rate >= 50 ? "font-semibold text-emerald-600" : "font-semibold text-red-500"
+                }
+              >
+                {r.rate}%
+              </span>
+            </span>
+          </div>
+          <div className="h-2 overflow-hidden rounded-full bg-slate-100 dark:bg-slate-800">
+            <div
+              className={r.rate >= 50 ? "h-full rounded-full bg-emerald-500" : "h-full rounded-full bg-amber-500"}
+              style={{ width: `${Math.max(4, r.rate)}%` }}
+            />
+          </div>
+        </div>
+      ))}
     </div>
   );
 }

@@ -4,11 +4,11 @@ import { db } from "@/lib/prisma";
 
 export interface NotificationItem {
   id: string;
-  type: "deadline" | "review" | "failed" | "discovery";
+  type: "deadline" | "review" | "failed" | "discovery" | "outcome";
   title: string;
   description: string;
   href: string;
-  tone: "amber" | "red" | "blue" | "emerald";
+  tone: "amber" | "red" | "blue" | "emerald" | "violet";
   at: string; // ISO
 }
 
@@ -24,7 +24,7 @@ export async function GET() {
   const now = new Date();
   const in7Days = new Date(now.getTime() + 7 * 24 * 60 * 60 * 1000);
 
-  const [deadlines, attentionDocs, discoveryAlerts] = await Promise.all([
+  const [deadlines, attentionDocs, discoveryAlerts, outcomeDue] = await Promise.all([
     db.tender.findMany({
       where: {
         orgId: org.id,
@@ -58,6 +58,19 @@ export async function GET() {
       orderBy: { createdAt: "desc" },
       take: 3,
       select: { id: true, matchCount: true, createdAt: true },
+    }),
+    // Outcome debriefs overdue: submitted, deadline 7+ days past, no debrief yet.
+    db.tender.findMany({
+      where: {
+        orgId: org.id,
+        deletedAt: null,
+        status: "SUBMITTED",
+        outcomeRecordedAt: null,
+        submissionDeadline: { lt: new Date(now.getTime() - 7 * 86_400_000) },
+      },
+      orderBy: { submissionDeadline: "asc" },
+      take: 4,
+      select: { id: true, titleEn: true, submissionDeadline: true },
     }),
   ]);
 
@@ -98,6 +111,18 @@ export async function GET() {
       href: "/discover",
       tone: "emerald",
       at: a.createdAt.toISOString(),
+    });
+  }
+
+  for (const t of outcomeDue) {
+    items.push({
+      id: `outcome-${t.id}`,
+      type: "outcome",
+      title: "Did you win this bid?",
+      description: `${t.titleEn} — record the outcome to sharpen your scoring.`,
+      href: `/tenders/${t.id}`,
+      tone: "violet",
+      at: t.submissionDeadline!.toISOString(),
     });
   }
 

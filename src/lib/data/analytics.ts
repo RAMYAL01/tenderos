@@ -40,6 +40,15 @@ export interface AnalyticsData {
   team: Array<{ name: string; tenders: number; proposals: number }>;
   language: NameCount[];
   monthly: Array<{ month: string; created: number; won: number }>;
+  /** Win/Loss intelligence — the debrief data feeding the matcher + qualifier. */
+  winLoss: {
+    bySector: Array<{ label: string; won: number; lost: number; rate: number }>;
+    byCountry: Array<{ label: string; won: number; lost: number; rate: number }>;
+    lossReasons: NameCount[];
+    awardedValue: number; // sum of actual awarded values (falls back to estimate)
+    outcomesRecorded: number; // tenders with a recorded debrief
+    outcomesPending: number; // SUBMITTED past deadline — awaiting a debrief
+  };
 }
 
 const LANG_LABELS: Record<string, string> = {
@@ -61,8 +70,14 @@ export async function getAnalytics(orgId: string): Promise<AnalyticsData> {
         select: {
           status: true,
           estimatedValue: true,
+          awardedValue: true,
           currency: true,
           primaryLanguage: true,
+          sector: true,
+          clientCountry: true,
+          lossReason: true,
+          submissionDeadline: true,
+          outcomeRecordedAt: true,
           createdAt: true,
           updatedAt: true,
           createdById: true,
@@ -160,6 +175,53 @@ export async function getAnalytics(orgId: string): Promise<AnalyticsData> {
     .map((p) => ({ label: titleCase(p.status), count: p._count?._all ?? 0 }))
     .sort((a, b) => b.count - a.count);
 
+  // ── Win/Loss intelligence ──
+  const decidedTenders = tenders.filter((t) => t.status === "WON" || t.status === "LOST");
+  const rateGroup = (keyOf: (t: (typeof tenders)[number]) => string | null) => {
+    const groups = new Map<string, { won: number; lost: number }>();
+    for (const t of decidedTenders) {
+      const key = keyOf(t);
+      if (!key) continue;
+      const g = groups.get(key) ?? { won: 0, lost: 0 };
+      if (t.status === "WON") g.won += 1;
+      else g.lost += 1;
+      groups.set(key, g);
+    }
+    return [...groups.entries()]
+      .map(([label, g]) => ({
+        label,
+        won: g.won,
+        lost: g.lost,
+        rate: Math.round((g.won / (g.won + g.lost)) * 1000) / 10,
+      }))
+      .sort((a, b) => b.won + b.lost - (a.won + a.lost))
+      .slice(0, 6);
+  };
+  const lossReasonMap = new Map<string, number>();
+  for (const t of tenders) {
+    if (t.status === "LOST" && t.lossReason) {
+      lossReasonMap.set(t.lossReason, (lossReasonMap.get(t.lossReason) ?? 0) + 1);
+    }
+  }
+  const now = new Date();
+  const winLoss: AnalyticsData["winLoss"] = {
+    bySector: rateGroup((t) => (t.sector ? titleCase(t.sector) : null)),
+    byCountry: rateGroup((t) => t.clientCountry?.toUpperCase() ?? null),
+    lossReasons: [...lossReasonMap.entries()]
+      .map(([k, count]) => ({ label: titleCase(k), count }))
+      .sort((a, b) => b.count - a.count),
+    awardedValue: tenders
+      .filter((t) => t.status === "WON")
+      .reduce((s, t) => s + (t.awardedValue != null ? num(t.awardedValue) : num(t.estimatedValue)), 0),
+    outcomesRecorded: tenders.filter((t) => t.outcomeRecordedAt != null).length,
+    outcomesPending: tenders.filter(
+      (t) =>
+        t.status === "SUBMITTED" &&
+        t.submissionDeadline != null &&
+        t.submissionDeadline.getTime() < now.getTime() - 7 * 86_400_000
+    ).length,
+  };
+
   // ── AI usage ──
   const plan: PlanTier = subscription?.planTier ?? "STARTER";
   const creditsLimit = PLAN_LIMITS[plan].aiCreditsPerMonth;
@@ -198,6 +260,7 @@ export async function getAnalytics(orgId: string): Promise<AnalyticsData> {
     team,
     language,
     monthly: monthly.map((m) => ({ month: m.month, created: m.created, won: m.won })),
+    winLoss,
   };
 }
 

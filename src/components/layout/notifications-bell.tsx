@@ -2,16 +2,16 @@
 
 import { useEffect, useRef, useState } from "react";
 import { useRouter } from "next/navigation";
-import { Bell, CalendarClock, AlertTriangle, FileWarning, Loader2, CheckCheck, Compass } from "lucide-react";
+import { Bell, CalendarClock, AlertTriangle, FileWarning, Loader2, CheckCheck, Compass, Trophy } from "lucide-react";
 import { cn } from "@/lib/utils";
 
 interface NotificationItem {
   id: string;
-  type: "deadline" | "review" | "failed" | "discovery";
+  type: "deadline" | "review" | "failed" | "discovery" | "outcome";
   title: string;
   description: string;
   href: string;
-  tone: "amber" | "red" | "blue" | "emerald";
+  tone: "amber" | "red" | "blue" | "emerald" | "violet";
   at: string;
 }
 
@@ -20,6 +20,7 @@ const TONE: Record<string, { wrap: string; icon: React.ElementType }> = {
   red: { wrap: "bg-red-50 text-red-600 dark:bg-red-950/50 dark:text-red-400", icon: FileWarning },
   blue: { wrap: "bg-blue-50 text-blue-600 dark:bg-blue-950/50 dark:text-blue-400", icon: AlertTriangle },
   emerald: { wrap: "bg-emerald-50 text-emerald-600 dark:bg-emerald-950/50 dark:text-emerald-400", icon: Compass },
+  violet: { wrap: "bg-violet-50 text-violet-600 dark:bg-violet-950/50 dark:text-violet-400", icon: Trophy },
 };
 
 function timeAgo(iso: string): string {

@@ -386,6 +386,12 @@ model Tender {
   notes               String?
   lossReason          LossReason?
   outcomeNotes        String? // Post-bid debrief notes
+  // Structured outcome debrief (Win/Loss Intelligence — feeds the discovery
+  // matcher, the bid qualifier, and the analytics win/loss panel).
+  awardedValue        Decimal?        @db.Decimal(18, 2) // actual contract value (WON)
+  winningCompetitor   String? // who took it (LOST) — competitor intelligence
+  outcomeRecordedAt   DateTime?
+  outcomeRecordedById String?
   // Provenance: the discovered Opportunity this tender was converted from (if any).
   // Nullable, no cascade — the global catalog must never cascade-delete tenant data.
   sourceOpportunityId String?

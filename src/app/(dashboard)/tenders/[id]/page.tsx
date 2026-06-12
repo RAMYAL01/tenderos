@@ -17,6 +17,7 @@ import { PageHeader } from "@/components/ui/page-header";
 import { Separator } from "@/components/ui/separator";
 import { TenderDocumentsPanel } from "@/components/tenders/tender-documents-panel";
 import { BidDecisionCard, type BidDecisionData } from "@/components/tenders/bid-decision-card";
+import { RecordOutcomeDialog } from "@/components/tenders/record-outcome-dialog";
 import { getAuthContext, hasRole } from "@/lib/auth";
 import { db } from "@/lib/prisma";
 import { formatDeadline, cn } from "@/lib/utils";
@@ -126,6 +127,10 @@ export default async function TenderDetailPage({
               Extract Requirements →
             </Link>
           </Button>
+        )}
+
+        {hasRole(member.role, "MANAGER") && (
+          <RecordOutcomeDialog tenderId={id} currentStatus={tender.status} />
         )}
       </PageHeader>
 
