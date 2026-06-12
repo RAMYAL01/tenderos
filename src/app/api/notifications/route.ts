@@ -1,14 +1,14 @@
 import { NextResponse } from "next/server";
-import { getAuthContext } from "@/lib/auth";
+import { getAuthContext, hasRole } from "@/lib/auth";
 import { db } from "@/lib/prisma";
 
 export interface NotificationItem {
   id: string;
-  type: "deadline" | "review" | "failed" | "discovery" | "outcome";
+  type: "deadline" | "review" | "failed" | "discovery" | "outcome" | "approval";
   title: string;
   description: string;
   href: string;
-  tone: "amber" | "red" | "blue" | "emerald" | "violet";
+  tone: "amber" | "red" | "blue" | "emerald" | "violet" | "indigo";
   at: string; // ISO
 }
 
@@ -19,12 +19,12 @@ export interface NotificationItem {
  * attention (held for review or failed processing).
  */
 export async function GET() {
-  const { org } = await getAuthContext();
+  const { org, member } = await getAuthContext();
 
   const now = new Date();
   const in7Days = new Date(now.getTime() + 7 * 24 * 60 * 60 * 1000);
 
-  const [deadlines, attentionDocs, discoveryAlerts, outcomeDue] = await Promise.all([
+  const [deadlines, attentionDocs, discoveryAlerts, outcomeDue, awaitingReview, changesRequested] = await Promise.all([
     db.tender.findMany({
       where: {
         orgId: org.id,
@@ -71,6 +71,27 @@ export async function GET() {
       orderBy: { submissionDeadline: "asc" },
       take: 4,
       select: { id: true, titleEn: true, submissionDeadline: true },
+    }),
+    // Awaiting MY review (managers+ see the review queue).
+    hasRole(member.role, "MANAGER")
+      ? db.proposal.findMany({
+          where: { orgId: org.id, deletedAt: null, status: "IN_REVIEW" },
+          orderBy: { updatedAt: "asc" },
+          take: 4,
+          select: { id: true, title: true, tenderId: true, updatedAt: true },
+        })
+      : Promise.resolve([]),
+    // Changes requested on proposals I created.
+    db.proposal.findMany({
+      where: {
+        orgId: org.id,
+        deletedAt: null,
+        status: "CHANGES_REQUESTED",
+        createdById: member.id,
+      },
+      orderBy: { updatedAt: "desc" },
+      take: 4,
+      select: { id: true, title: true, tenderId: true, updatedAt: true },
     }),
   ]);
 
@@ -123,6 +144,30 @@ export async function GET() {
       href: `/tenders/${t.id}`,
       tone: "violet",
       at: t.submissionDeadline!.toISOString(),
+    });
+  }
+
+  for (const p of awaitingReview) {
+    items.push({
+      id: `approval-${p.id}`,
+      type: "approval",
+      title: "Proposal awaiting your review",
+      description: p.title,
+      href: `/tenders/${p.tenderId}/proposals/${p.id}`,
+      tone: "indigo",
+      at: p.updatedAt.toISOString(),
+    });
+  }
+
+  for (const p of changesRequested) {
+    items.push({
+      id: `changes-${p.id}`,
+      type: "approval",
+      title: "Changes requested on your proposal",
+      description: p.title,
+      href: `/tenders/${p.tenderId}/proposals/${p.id}`,
+      tone: "indigo",
+      at: p.updatedAt.toISOString(),
     });
   }
 

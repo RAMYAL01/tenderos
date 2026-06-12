@@ -2,6 +2,7 @@ import { notFound } from "next/navigation";
 import { getAuthContext, hasRole } from "@/lib/auth";
 import { db } from "@/lib/prisma";
 import { ProposalEditor } from "@/components/proposals/proposal-editor";
+import { ReviewBar, type ReviewTrailItem } from "@/components/proposals/review-bar";
 
 export const metadata = { title: "Proposal Editor" };
 
@@ -32,6 +33,28 @@ export default async function ProposalEditorPage({
 
   if (!proposal || proposal.tender.id !== tenderId) notFound();
 
+  // Approval trail (latest first) with actor names resolved org-scoped.
+  const trailRows = await db.proposalReviewEvent.findMany({
+    where: { proposalId, orgId: org.id },
+    orderBy: { createdAt: "desc" },
+    take: 10,
+  });
+  const actorIds = [...new Set(trailRows.map((t) => t.actorId))];
+  const actors = actorIds.length
+    ? await db.member.findMany({
+        where: { id: { in: actorIds }, orgId: org.id },
+        select: { id: true, name: true },
+      })
+    : [];
+  const actorName = new Map(actors.map((a) => [a.id, a.name]));
+  const trail: ReviewTrailItem[] = trailRows.map((t) => ({
+    id: t.id,
+    action: t.action,
+    note: t.note,
+    actorName: actorName.get(t.actorId) ?? "Unknown",
+    at: t.createdAt.toISOString(),
+  }));
+
   // Load requirements with their compliance status for this proposal
   const complianceRows = await db.complianceMatrixRow.findMany({
     where: { tenderId },
@@ -53,7 +76,15 @@ export default async function ProposalEditorPage({
   const canEdit = hasRole(member.role, "WRITER");
 
   return (
-    <ProposalEditor
+    <>
+      <ReviewBar
+        proposalId={proposal.id}
+        status={proposal.status}
+        trail={trail}
+        canSubmit={hasRole(member.role, "WRITER")}
+        canReview={hasRole(member.role, "MANAGER")}
+      />
+      <ProposalEditor
       proposal={{
         id: proposal.id,
         title: proposal.title,
@@ -67,5 +98,6 @@ export default async function ProposalEditorPage({
       requirements={requirements}
       canEdit={canEdit}
     />
+    </>
   );
 }

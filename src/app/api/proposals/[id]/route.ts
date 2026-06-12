@@ -1,12 +1,17 @@
 import { auth } from "@clerk/nextjs/server";
 import { NextResponse } from "next/server";
 import { z } from "zod";
+import { ContentLanguage } from "@prisma/client";
 import { db } from "@/lib/prisma";
 
+// Review states (IN_REVIEW / CHANGES_REQUESTED / APPROVED) are deliberately NOT
+// accepted here — they must flow through the gated, role-checked, trail-logged
+// actions in lib/actions/proposal-review.ts. This PATCH covers only the
+// non-review lifecycle (rename, language, export/archive bookkeeping).
 const UpdateSchema = z.object({
-  title: z.string().optional(),
-  status: z.enum(["DRAFT","IN_REVIEW","CHANGES_REQUESTED","APPROVED","EXPORTED","ARCHIVED"]).optional(),
-  language: z.enum(["EN","AR","AR_SA","AR_AE","AR_EG","BILINGUAL"]).optional(),
+  title: z.string().min(1).max(300).optional(),
+  status: z.enum(["DRAFT", "EXPORTED", "ARCHIVED"]).optional(),
+  language: z.nativeEnum(ContentLanguage).optional(),
 });
 
 export async function GET(
@@ -52,11 +57,13 @@ export async function PATCH(
   const parsed = UpdateSchema.safeParse(body);
   if (!parsed.success) return NextResponse.json({ error: "Invalid" }, { status: 400 });
 
-  const updated = await db.proposal.update({
-    where: { id, orgId: org.id },
-    data: { ...parsed.data, status: parsed.data.status as any, language: parsed.data.language as any },
+  const res = await db.proposal.updateMany({
+    where: { id, orgId: org.id, deletedAt: null },
+    data: parsed.data,
   });
+  if (res.count === 0) return NextResponse.json({ error: "Not found" }, { status: 404 });
 
+  const updated = await db.proposal.findFirst({ where: { id, orgId: org.id } });
   return NextResponse.json(updated);
 }
 

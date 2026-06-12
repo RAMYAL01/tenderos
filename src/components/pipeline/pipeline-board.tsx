@@ -112,7 +112,11 @@ export function PipelineBoard({
                   <DropdownMenuSeparator />
                   {STAGES.filter((s) => s.key !== currentStage).map((s) => (
                     <DropdownMenuItem key={s.key} onClick={() => move(card, s.key)}>
-                      Move to {s.label}
+                      {/* Reopening a closed tender clears its recorded outcome —
+                          say so, so the move is informed (verification finding). */}
+                      {currentStage === "CLOSED"
+                        ? `Reopen to ${s.label} (clears outcome)`
+                        : `Move to ${s.label}`}
                     </DropdownMenuItem>
                   ))}
                 </>

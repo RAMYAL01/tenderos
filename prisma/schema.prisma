@@ -255,6 +255,14 @@ enum BidRecommendation {
   REVIEW // not enough signal either way — human judgment required
 }
 
+// ── Proposal review gates ─────────────────────────────────────────────────────
+enum ProposalReviewAction {
+  SUBMITTED // writer → IN_REVIEW
+  APPROVED // manager → APPROVED
+  CHANGES_REQUESTED // manager → CHANGES_REQUESTED (note required)
+  REOPENED // manager reopens an approved proposal → DRAFT
+}
+
 // ─────────────────────────────────────────────────────────────────────────────
 // MODEL 1: Organization
 // Multi-tenant root. Every other table has orgId → this.
@@ -312,6 +320,7 @@ model Organization {
   opportunityMatches  OpportunityMatch[]
   opportunityAlerts   OpportunityAlert[]
   bidDecisions        BidDecision[]
+  proposalReviews     ProposalReviewEvent[]
   // NOTE: deliberately NO relation to Opportunity / OpportunitySource — those are
   // a GLOBAL shared catalog with no orgId. The tenant boundary lives on
   // OpportunityMatch (the per-tenant join). See models at the end of this file.
@@ -595,12 +604,13 @@ model Proposal {
   deletedAt       DateTime?
 
   // Relations
-  tender     Tender            @relation(fields: [tenderId], references: [id], onDelete: Cascade)
-  createdBy  Member            @relation(fields: [createdById], references: [id])
-  sections   ProposalSection[]
-  versions   ProposalVersion[]
-  comments   ProposalComment[]
-  exportJobs ExportJob[]
+  tender       Tender                @relation(fields: [tenderId], references: [id], onDelete: Cascade)
+  createdBy    Member                @relation(fields: [createdById], references: [id])
+  sections     ProposalSection[]
+  versions     ProposalVersion[]
+  comments     ProposalComment[]
+  exportJobs   ExportJob[]
+  reviewEvents ProposalReviewEvent[]
 
   @@index([tenderId, deletedAt])
   @@index([orgId, status])
@@ -1399,4 +1409,25 @@ model BidDecision {
   @@index([orgId, recommendation])
   @@index([orgId, createdAt])
   @@map("bid_decisions")
+}
+
+/// PER-TENANT — append-only proposal review trail. Every gate transition
+/// (submit → approve / request changes / reopen) is recorded here; the trail is
+/// the approval audit a bid committee can stand behind. Rows are never updated
+/// or deleted by application code.
+model ProposalReviewEvent {
+  id         String               @id @default(cuid())
+  orgId      String // TENANT BINDING
+  proposalId String
+  action     ProposalReviewAction
+  note       String? // required for CHANGES_REQUESTED (enforced in the action)
+  actorId    String // member who performed the transition
+  createdAt  DateTime             @default(now())
+
+  organization Organization @relation(fields: [orgId], references: [id], onDelete: Cascade)
+  proposal     Proposal     @relation(fields: [proposalId], references: [id], onDelete: Cascade)
+
+  @@index([proposalId, createdAt])
+  @@index([orgId, createdAt])
+  @@map("proposal_review_events")
 }
