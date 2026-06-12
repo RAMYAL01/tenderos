@@ -19,6 +19,7 @@ const TASKS = [
   "proposal_generation",
   "scope_interpretation",
   "boq_classification",
+  "bid_qualification",
 ] as const;
 
 const FeedbackSchema = z.object({

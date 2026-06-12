@@ -157,6 +157,7 @@ enum AIJobType {
   RECOMMEND_CONTENT
   EMBED_CONTENT
   TRANSLATE_CONTENT
+  BID_QUALIFICATION
 }
 
 enum ContentLanguage {
@@ -247,6 +248,13 @@ enum AlertStatus {
   FAILED
 }
 
+// ── Bid/No-Bid Qualification Engine ───────────────────────────────────────────
+enum BidRecommendation {
+  BID
+  NO_BID
+  REVIEW // not enough signal either way — human judgment required
+}
+
 // ─────────────────────────────────────────────────────────────────────────────
 // MODEL 1: Organization
 // Multi-tenant root. Every other table has orgId → this.
@@ -303,6 +311,7 @@ model Organization {
   savedSearches       SavedSearch[]
   opportunityMatches  OpportunityMatch[]
   opportunityAlerts   OpportunityAlert[]
+  bidDecisions        BidDecision[]
   // NOTE: deliberately NO relation to Opportunity / OpportunitySource — those are
   // a GLOBAL shared catalog with no orgId. The tenant boundary lives on
   // OpportunityMatch (the per-tenant join). See models at the end of this file.
@@ -396,6 +405,7 @@ model Tender {
   complianceRows     ComplianceMatrixRow[]
   financialProposals FinancialProposal[]
   fromOpportunity    OpportunityMatch[]    @relation("TenderFromOpportunity")
+  bidDecision        BidDecision?
 
   @@index([orgId, status])
   @@index([orgId, deletedAt])
@@ -1346,4 +1356,41 @@ model OpportunityAlert {
   @@index([orgId, readAt])
   @@index([status, createdAt])
   @@map("opportunity_alerts")
+}
+
+/// PER-TENANT — Bid/No-Bid qualification record (one live analysis per tender;
+/// re-running replaces it). The score is DETERMINISTIC factor math; the LLM may
+/// only nudge it within a hard ±0.15 band and contributes the qualitative
+/// rationale/risks (same fence as the BOQ money engine — AI never sets numbers).
+/// The human decision (agree/override) is the training-flywheel signal.
+model BidDecision {
+  id             String             @id @default(cuid())
+  orgId          String // TENANT BINDING
+  tenderId       String             @unique // latest analysis per tender
+  score          Float // 0..1 final (deterministic base + clamped LLM nudge)
+  baseScore      Float // 0..1 deterministic component only (auditability)
+  llmAdjustment  Float              @default(0) // clamped to [-0.15, +0.15]
+  confidence     Float // 0..1 — how much org history/signal backed this
+  recommendation BidRecommendation
+  factors        Json // deterministic breakdown: {profileFit, geographyFit, valueFit, historyFit, deadlinePressure, ...}
+  rationale      String             @db.Text // LLM qualitative reasoning (EN)
+  rationaleAr    String?            @db.Text
+  risks          Json? // [{title, severity, detail}]
+  questionsToAsk Json? // string[] — what to clarify before committing
+  modelVersion   String?
+  // Human decision (the record + the flywheel)
+  humanDecision  BidRecommendation? // BID | NO_BID (REVIEW is never a human decision)
+  decidedById    String?
+  decidedAt      DateTime?
+  decisionNotes  String?
+  createdById    String
+  createdAt      DateTime           @default(now())
+  updatedAt      DateTime           @updatedAt
+
+  organization Organization @relation(fields: [orgId], references: [id], onDelete: Cascade)
+  tender       Tender       @relation(fields: [tenderId], references: [id], onDelete: Cascade)
+
+  @@index([orgId, recommendation])
+  @@index([orgId, createdAt])
+  @@map("bid_decisions")
 }

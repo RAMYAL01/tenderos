@@ -118,7 +118,17 @@ export async function runDiscoveryRefresh(): Promise<RefreshSummary> {
 
   // ── 3. ALERT (digest per org with an alerts-enabled monitor) ────────────────
   const monitors = await db.savedSearch.findMany({
-    where: { alertsEnabled: true, deletedAt: null },
+    where: {
+      alertsEnabled: true,
+      deletedAt: null,
+      // Defense in depth (applyPlanToOrg also disables on downgrade): never
+      // digest for Starter, inactive, or deleted orgs.
+      organization: {
+        isActive: true,
+        deletedAt: null,
+        planTier: { not: "STARTER" },
+      },
+    },
     select: { id: true, orgId: true },
     distinct: ["orgId"], // one digest per org per day
     take: MAX_ORGS_PER_RUN,

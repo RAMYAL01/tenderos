@@ -22,6 +22,10 @@ const BATCH = 8; // bound work per cron tick
 const STALE_MS = 60_000; // only touch workflows untouched for >60s (avoid racing a live after())
 
 export async function GET(req: Request) {
+  // Fail closed when the secret is unset ("Bearer undefined" must never match).
+  if (!process.env.CRON_SECRET) {
+    return NextResponse.json({ error: "CRON_SECRET not configured" }, { status: 500 });
+  }
   if (req.headers.get("authorization") !== `Bearer ${process.env.CRON_SECRET}`) {
     return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
   }

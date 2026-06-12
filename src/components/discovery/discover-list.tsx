@@ -106,10 +106,12 @@ export function DiscoverList({
   }
 
   function saveCurrentSearch() {
-    const name =
+    let name =
       query.trim() ||
       (filter !== "all" ? FILTERS.find((f) => f.key === filter)?.label : "") ||
       "All opportunities";
+    // Server schema requires >= 2 chars — a 1-char query must not fail the save.
+    if (name.length < 2) name = `"${name}" search`;
     setSavingSearch(true);
     start(async () => {
       const res = await createSavedSearch({

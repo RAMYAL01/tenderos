@@ -16,7 +16,8 @@ import { Button } from "@/components/ui/button";
 import { PageHeader } from "@/components/ui/page-header";
 import { Separator } from "@/components/ui/separator";
 import { TenderDocumentsPanel } from "@/components/tenders/tender-documents-panel";
-import { getAuthContext } from "@/lib/auth";
+import { BidDecisionCard, type BidDecisionData } from "@/components/tenders/bid-decision-card";
+import { getAuthContext, hasRole } from "@/lib/auth";
 import { db } from "@/lib/prisma";
 import { formatDeadline, cn } from "@/lib/utils";
 
@@ -59,6 +60,37 @@ export default async function TenderDetailPage({
   });
 
   if (!tender) notFound();
+
+  // Bid/No-Bid analysis (org-scoped; decider name resolved server-side so the
+  // card stays a fully-serializable client island).
+  const bidDecisionRow = await db.bidDecision.findFirst({
+    where: { tenderId: id, orgId: org.id },
+  });
+  const decidedBy = bidDecisionRow?.decidedById
+    ? await db.member.findFirst({
+        where: { id: bidDecisionRow.decidedById, orgId: org.id },
+        select: { name: true },
+      })
+    : null;
+  const bidDecision: BidDecisionData | null = bidDecisionRow
+    ? {
+        score: bidDecisionRow.score,
+        baseScore: bidDecisionRow.baseScore,
+        llmAdjustment: bidDecisionRow.llmAdjustment,
+        confidence: bidDecisionRow.confidence,
+        recommendation: bidDecisionRow.recommendation,
+        factors: (bidDecisionRow.factors as Record<string, number>) ?? {},
+        rationale: bidDecisionRow.rationale,
+        rationaleAr: bidDecisionRow.rationaleAr,
+        risks: (bidDecisionRow.risks as BidDecisionData["risks"]) ?? [],
+        questionsToAsk: (bidDecisionRow.questionsToAsk as string[]) ?? [],
+        // Prisma's enum includes REVIEW, but a human decision is only ever BID/NO_BID.
+        humanDecision: bidDecisionRow.humanDecision as "BID" | "NO_BID" | null,
+        decidedByName: decidedBy?.name ?? null,
+        decidedAt: bidDecisionRow.decidedAt?.toISOString() ?? null,
+        decisionNotes: bidDecisionRow.decisionNotes,
+      }
+    : null;
 
   const hasDocuments = tender.documents.length > 0;
   const readyDocuments = tender.documents.filter(
@@ -110,6 +142,14 @@ export default async function TenderDetailPage({
 
         {/* ── Sidebar: Tender details ──────────────────────────────────── */}
         <aside className="w-full shrink-0 space-y-4 lg:w-72">
+          {/* Bid/No-Bid qualification */}
+          <BidDecisionCard
+            tenderId={id}
+            decision={bidDecision}
+            canRun={hasRole(member.role, "WRITER")}
+            canDecide={hasRole(member.role, "MANAGER")}
+          />
+
           {/* Details card */}
           <div className="rounded-xl border border-slate-200 bg-white p-4 dark:border-slate-800 dark:bg-slate-900">
             <h3 className="mb-3 text-sm font-semibold text-slate-700 dark:text-slate-300">

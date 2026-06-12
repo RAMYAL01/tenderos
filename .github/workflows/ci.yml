@@ -61,6 +61,9 @@ jobs:
       - name: Discovery catalog isolation guard (only ingest.ts writes global tables)
         run: npm run test:discovery
 
+      - name: Bid/No-Bid deterministic factor engine tests
+        run: npm run test:bid
+
   # ── Job 2: Build ──────────────────────────────────────────────────────────
   build:
     name: Build

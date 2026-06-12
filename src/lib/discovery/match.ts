@@ -24,7 +24,8 @@ const MAX_SCAN = 500;
 const MIN_SCORE_TO_PERSIST = 0.12;
 
 // organizationType → sectors this org is most likely to bid on.
-const TYPE_SECTOR_AFFINITY: Record<string, string[]> = {
+// (Exported: shared with the Bid/No-Bid factor engine.)
+export const TYPE_SECTOR_AFFINITY: Record<string, string[]> = {
   GENERAL_CONTRACTOR: ["construction", "infrastructure", "facilities"],
   EPC_CONTRACTOR: ["oil_gas", "infrastructure", "construction", "energy", "water"],
   CONSTRUCTION_COMPANY: ["construction", "infrastructure"],
@@ -36,7 +37,8 @@ const TYPE_SECTOR_AFFINITY: Record<string, string[]> = {
 };
 
 // employeeCount band → comfortable contract-value ceiling (USD, rough capacity proxy).
-const BAND_VALUE_CEILING: Record<string, number> = {
+// (Exported: shared with the Bid/No-Bid factor engine.)
+export const BAND_VALUE_CEILING: Record<string, number> = {
   "1-10": 2_000_000,
   "11-50": 20_000_000,
   "51-200": 100_000_000,

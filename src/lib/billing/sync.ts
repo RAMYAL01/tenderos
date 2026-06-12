@@ -28,6 +28,16 @@ export async function applyPlanToOrg(orgId: string, tier: PlanTier): Promise<voi
       maxTrackedOpportunities: limits.trackedOpportunities,
     },
   });
+
+  // Scheduled discovery digests are Professional+. On a downgrade to STARTER,
+  // switch off any alert-enabled monitors so the daily cron stops digesting
+  // for this org (the cron also re-checks tier — defense in depth).
+  if (tier === "STARTER") {
+    await db.savedSearch.updateMany({
+      where: { orgId, alertsEnabled: true },
+      data: { alertsEnabled: false },
+    });
+  }
 }
 
 /**
