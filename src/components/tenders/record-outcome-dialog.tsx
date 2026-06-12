@@ -37,13 +37,24 @@ export function RecordOutcomeDialog({
   tenderId,
   currentStatus,
   trigger,
+  open: controlledOpen,
+  onOpenChange,
 }: {
   tenderId: string;
   currentStatus: string;
   trigger?: React.ReactNode;
+  /** Controlled mode (e.g. driven from the pipeline board) — no trigger rendered. */
+  open?: boolean;
+  onOpenChange?: (open: boolean) => void;
 }) {
   const router = useRouter();
-  const [open, setOpen] = useState(false);
+  const [uncontrolledOpen, setUncontrolledOpen] = useState(false);
+  const isControlled = controlledOpen !== undefined;
+  const open = isControlled ? controlledOpen : uncontrolledOpen;
+  const setOpen = (v: boolean) => {
+    if (isControlled) onOpenChange?.(v);
+    else setUncontrolledOpen(v);
+  };
   const [pending, start] = useTransition();
   const isEdit = ["WON", "LOST", "NO_DECISION", "CANCELLED"].includes(currentStatus);
 
@@ -94,14 +105,16 @@ export function RecordOutcomeDialog({
 
   return (
     <Dialog open={open} onOpenChange={setOpen}>
-      <DialogTrigger asChild>
-        {trigger ?? (
-          <Button size="sm" variant={isEdit ? "outline" : "default"}>
-            <Trophy className="h-4 w-4" />
-            {isEdit ? "Edit outcome" : "Record outcome"}
-          </Button>
-        )}
-      </DialogTrigger>
+      {!isControlled && (
+        <DialogTrigger asChild>
+          {trigger ?? (
+            <Button size="sm" variant={isEdit ? "outline" : "default"}>
+              <Trophy className="h-4 w-4" />
+              {isEdit ? "Edit outcome" : "Record outcome"}
+            </Button>
+          )}
+        </DialogTrigger>
+      )}
       <DialogContent className="sm:max-w-md">
         <DialogHeader>
           <DialogTitle>Bid outcome</DialogTitle>
