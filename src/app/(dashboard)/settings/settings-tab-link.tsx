@@ -2,7 +2,7 @@
 
 import Link from "next/link";
 import { usePathname } from "next/navigation";
-import { Building2, Users, CreditCard, Bell, Shield, Brain, type LucideIcon } from "lucide-react";
+import { Building2, Users, CreditCard, Bell, Shield, Brain, ScrollText, type LucideIcon } from "lucide-react";
 import { cn } from "@/lib/utils";
 
 /**
@@ -17,6 +17,7 @@ const ICONS: Record<string, LucideIcon> = {
   Bell,
   Shield,
   Brain,
+  ScrollText,
 };
 
 interface Tab {

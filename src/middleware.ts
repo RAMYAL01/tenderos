@@ -17,6 +17,7 @@ const isPublicRoute = createRouteMatcher([
   "/terms(.*)",            // Legal — public
   "/privacy(.*)",          // Legal — public
   "/refund(.*)",           // Legal — public
+  "/trust(.*)",            // Trust Center — public
   "/checkout(.*)",         // Checkout funnel — self-gates auth, preserves plan
   "/sitemap.xml",          // SEO — public
   "/robots.txt",           // SEO — public

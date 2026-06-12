@@ -4,6 +4,7 @@ import { revalidatePath } from "next/cache";
 import { z } from "zod";
 import { db } from "@/lib/prisma";
 import { getAuthContext, requireRole } from "@/lib/auth";
+import { logAudit } from "@/lib/security/audit";
 
 // ── Validation schemas ────────────────────────────────────────────────────────
 
@@ -112,6 +113,17 @@ export async function updateMemberRole(
       data: { role: newRole as any },
     });
 
+    await logAudit({
+      orgId: org.id,
+      memberId: currentMember.id,
+      action: "member.role_changed",
+      resourceType: "member",
+      resourceId: targetMember.id,
+      oldValues: { role: targetMember.role },
+      newValues: { role: newRole },
+      metadata: { targetEmail: targetMember.email },
+    });
+
     revalidatePath("/settings/members");
     return { success: true };
   } catch (err) {
@@ -150,6 +162,15 @@ export async function removeMember(memberId: string): Promise<ActionResult> {
     await db.member.update({
       where: { id: memberId },
       data: { isActive: false, deletedAt: new Date() },
+    });
+
+    await logAudit({
+      orgId: org.id,
+      memberId: currentMember.id,
+      action: "member.removed",
+      resourceType: "member",
+      resourceId: targetMember.id,
+      oldValues: { role: targetMember.role, email: targetMember.email },
     });
 
     revalidatePath("/settings/members");

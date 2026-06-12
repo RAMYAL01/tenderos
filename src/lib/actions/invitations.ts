@@ -7,6 +7,7 @@ import { db } from "@/lib/prisma";
 import { getAuthContext, requireRole } from "@/lib/auth";
 import { checkSeatLimit } from "@/lib/billing/quota";
 import { hashInviteToken } from "@/lib/security/invite-token";
+import { logAudit } from "@/lib/security/audit";
 import type { MemberRole, InvitationStatus } from "@prisma/client";
 
 /**
@@ -140,6 +141,15 @@ export async function createInvitation(input: {
       },
     });
 
+    await logAudit({
+      orgId: org.id,
+      memberId: member.id,
+      action: "invitation.created",
+      resourceType: "invitation",
+      resourceId: invitation.id,
+      newValues: { email, role },
+    });
+
     revalidatePath("/settings/members");
     return { success: true, invitation: toDTO(invitation, rawToken) };
   } catch (err) {
@@ -176,6 +186,14 @@ export async function revokeInvitation(id: string): Promise<{ success: boolean; 
     if (res.count === 0) {
       return { success: false, error: "Invitation not found or already used." };
     }
+
+    await logAudit({
+      orgId: org.id,
+      memberId: member.id,
+      action: "invitation.revoked",
+      resourceType: "invitation",
+      resourceId: id,
+    });
 
     revalidatePath("/settings/members");
     return { success: true };

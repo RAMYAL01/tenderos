@@ -4,6 +4,7 @@ import { revalidatePath } from "next/cache";
 import { z } from "zod";
 import { db } from "@/lib/prisma";
 import { getAuthContext, requireRole } from "@/lib/auth";
+import { logAudit } from "@/lib/security/audit";
 
 /**
  * Record the HUMAN bid/no-bid decision on an AI qualification.
@@ -75,6 +76,15 @@ export async function recordBidDecision(
         },
       })
       .catch(() => {}); // feedback is best-effort — never block the decision
+
+    await logAudit({
+      orgId: org.id,
+      memberId: member.id,
+      action: "tender.bid_decision",
+      resourceType: "tender",
+      resourceId: tenderId,
+      newValues: { decision, aiRecommendation: analysis.recommendation, score: analysis.score },
+    });
 
     revalidatePath(`/tenders/${tenderId}`);
     return { success: true };

@@ -5,6 +5,7 @@ import { z } from "zod";
 import { LossReason, TenderStatus } from "@prisma/client";
 import { db } from "@/lib/prisma";
 import { getAuthContext, requireRole } from "@/lib/auth";
+import { logAudit } from "@/lib/security/audit";
 
 /**
  * Outcome debrief — the Win/Loss Intelligence producer.
@@ -116,6 +117,19 @@ export async function recordTenderOutcome(input: RecordOutcomeInput): Promise<Re
           .catch(() => {});
       }
     }
+
+    await logAudit({
+      orgId: org.id,
+      memberId: member.id,
+      action: "tender.outcome_recorded",
+      resourceType: "tender",
+      resourceId: d.tenderId,
+      newValues: {
+        status: d.status,
+        lossReason: d.lossReason ?? null,
+        awardedValue: d.awardedValue ?? null,
+      },
+    });
 
     revalidatePath(`/tenders/${d.tenderId}`);
     revalidatePath("/tenders");

@@ -34,6 +34,12 @@ const settingsTabs = [
     roles: ["OWNER", "ADMIN"],
   },
   {
+    label: "Audit Log",
+    href: "/settings/audit",
+    icon: "ScrollText",
+    roles: ["OWNER", "ADMIN"],
+  },
+  {
     label: "Training Data",
     href: "/settings/training",
     icon: "Brain",

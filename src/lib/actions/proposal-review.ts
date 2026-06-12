@@ -4,6 +4,7 @@ import { revalidatePath } from "next/cache";
 import { z } from "zod";
 import { db } from "@/lib/prisma";
 import { getAuthContext, requireRole } from "@/lib/auth";
+import { logAudit } from "@/lib/security/audit";
 import type { ProposalReviewAction, ProposalStatus } from "@prisma/client";
 
 /**
@@ -58,6 +59,16 @@ async function transition(opts: {
   });
 
   if (!ok) return { success: false, error: failMessage };
+
+  // Org-level security audit (one call covers all four gates).
+  await logAudit({
+    orgId,
+    memberId: actorId,
+    action: `proposal.${action.toLowerCase()}`,
+    resourceType: "proposal",
+    resourceId: proposalId,
+    newValues: { status: to, note: note ?? null },
+  });
 
   revalidatePath(`/tenders`);
   revalidatePath(`/proposals`);
