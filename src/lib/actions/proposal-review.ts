@@ -1,10 +1,12 @@
 "use server";
 
+import { after } from "next/server";
 import { revalidatePath } from "next/cache";
 import { z } from "zod";
 import { db } from "@/lib/prisma";
 import { getAuthContext, requireRole } from "@/lib/auth";
 import { logAudit } from "@/lib/security/audit";
+import { notifyApprovalRequested, notifyApprovalCompleted } from "@/lib/email/events";
 import type { ProposalReviewAction, ProposalStatus } from "@prisma/client";
 
 /**
@@ -82,7 +84,7 @@ export async function submitProposalForReview(proposalId: string): Promise<Resul
     requireRole(member.role, "WRITER");
     const id = IdSchema.parse(proposalId);
 
-    return await transition({
+    const result = await transition({
       proposalId: id,
       orgId: org.id,
       actorId: member.id,
@@ -91,6 +93,12 @@ export async function submitProposalForReview(proposalId: string): Promise<Resul
       action: "SUBMITTED",
       failMessage: "Only a draft (or changes-requested) proposal can be submitted for review.",
     });
+    if (result.success) {
+      after(() =>
+        notifyApprovalRequested({ orgId: org.id, proposalId: id, requestorMemberId: member.id })
+      );
+    }
+    return result;
   } catch (err) {
     if (isRedirect(err)) throw err;
     console.error("submitProposalForReview error:", err);
@@ -105,7 +113,7 @@ export async function approveProposal(proposalId: string, note?: string): Promis
     requireRole(member.role, "MANAGER");
     const id = IdSchema.parse(proposalId);
 
-    return await transition({
+    const result = await transition({
       proposalId: id,
       orgId: org.id,
       actorId: member.id,
@@ -115,6 +123,12 @@ export async function approveProposal(proposalId: string, note?: string): Promis
       note: note ? NoteSchema.parse(note) : null,
       failMessage: "Only a proposal in review can be approved.",
     });
+    if (result.success) {
+      after(() =>
+        notifyApprovalCompleted({ orgId: org.id, proposalId: id, approverMemberId: member.id })
+      );
+    }
+    return result;
   } catch (err) {
     if (isRedirect(err)) throw err;
     console.error("approveProposal error:", err);

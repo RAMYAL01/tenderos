@@ -1,10 +1,12 @@
 "use server";
 
+import { after } from "next/server";
 import { z } from "zod";
 import { revalidatePath } from "next/cache";
 import { db } from "@/lib/prisma";
 import { getAuthContext, requireRole } from "@/lib/auth";
 import { slugify } from "@/lib/utils";
+import { notifyWorkspaceCreated } from "@/lib/email/events";
 import type { OrganizationType } from "@prisma/client";
 
 /**
@@ -89,6 +91,9 @@ export async function completeOnboarding(): Promise<Result> {
     } catch (e) {
       console.warn("completeOnboarding: opportunity match skipped:", e);
     }
+
+    // Welcome email — best-effort, after the response.
+    after(() => notifyWorkspaceCreated({ orgId: org.id, memberId: member.id }));
 
     revalidatePath("/dashboard");
     return { success: true };

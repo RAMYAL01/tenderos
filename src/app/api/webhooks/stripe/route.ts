@@ -1,6 +1,14 @@
 import type Stripe from "stripe";
+import { after } from "next/server";
 import { getStripe } from "@/lib/billing/stripe";
-import { syncSubscription, handleSubscriptionCancelled } from "@/lib/billing/sync";
+import { syncSubscription, handleSubscriptionCancelled, resolveOrgId } from "@/lib/billing/sync";
+import { notifyPaymentFailed, notifySubscriptionChange } from "@/lib/email/events";
+
+/** Format a Stripe minor-unit amount as a display string, e.g. "USD 499.00". */
+function formatAmount(amount: number | null | undefined, currency: string | null | undefined): string | null {
+  if (amount == null) return null;
+  return `${(currency ?? "usd").toUpperCase()} ${(amount / 100).toFixed(2)}`;
+}
 
 /**
  * Stripe Webhook Handler
@@ -58,6 +66,21 @@ export async function POST(req: Request) {
             sub.metadata = { ...sub.metadata, orgId: session.metadata.orgId };
           }
           await syncSubscription(sub);
+
+          // Activation email — trial-started vs upgraded, to org admins.
+          const orgId = await resolveOrgId(sub);
+          if (orgId) {
+            const trialing = sub.status === "trialing";
+            after(() =>
+              notifySubscriptionChange({
+                orgId,
+                kind: trialing ? "TRIAL_STARTED" : "UPGRADED",
+                trialEndsOn: sub.trial_end
+                  ? new Date(sub.trial_end * 1000).toISOString().slice(0, 10)
+                  : null,
+              })
+            );
+          }
         }
         break;
       }
@@ -69,7 +92,10 @@ export async function POST(req: Request) {
       }
 
       case "customer.subscription.deleted": {
-        await handleSubscriptionCancelled(event.data.object as Stripe.Subscription);
+        const sub = event.data.object as Stripe.Subscription;
+        await handleSubscriptionCancelled(sub);
+        const orgId = await resolveOrgId(sub);
+        if (orgId) after(() => notifySubscriptionChange({ orgId, kind: "CANCELLED" }));
         break;
       }
 
@@ -81,6 +107,11 @@ export async function POST(req: Request) {
         if (subId) {
           const sub = await stripe.subscriptions.retrieve(subId);
           await syncSubscription(sub); // status will be past_due / unpaid
+          const orgId = await resolveOrgId(sub);
+          if (orgId) {
+            const amountDue = formatAmount(invoice.amount_due, invoice.currency);
+            after(() => notifyPaymentFailed({ orgId, amountDue }));
+          }
         }
         break;
       }

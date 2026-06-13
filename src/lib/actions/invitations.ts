@@ -1,6 +1,7 @@
 "use server";
 
 import { randomBytes } from "crypto";
+import { after } from "next/server";
 import { z } from "zod";
 import { revalidatePath } from "next/cache";
 import { db } from "@/lib/prisma";
@@ -8,6 +9,8 @@ import { getAuthContext, requireRole } from "@/lib/auth";
 import { checkSeatLimit } from "@/lib/billing/quota";
 import { hashInviteToken } from "@/lib/security/invite-token";
 import { logAudit } from "@/lib/security/audit";
+import { APP_URL } from "@/lib/constants";
+import { notifyUserInvited } from "@/lib/email/events";
 import type { MemberRole, InvitationStatus } from "@prisma/client";
 
 /**
@@ -149,6 +152,21 @@ export async function createInvitation(input: {
       resourceId: invitation.id,
       newValues: { email, role },
     });
+
+    // Email the invite link (the raw token exists only here). Best-effort, after
+    // the response — the shareable link is still returned regardless, so the
+    // invite flow never depends on email being configured.
+    after(() =>
+      notifyUserInvited({
+        orgId: org.id,
+        toEmail: email,
+        organizationName: org.name,
+        inviterName: member.name,
+        role,
+        acceptUrl: `${APP_URL}/invite/${rawToken}`,
+        expiresInDays: INVITE_TTL_DAYS,
+      })
+    );
 
     revalidatePath("/settings/members");
     return { success: true, invitation: toDTO(invitation, rawToken) };

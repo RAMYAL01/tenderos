@@ -7,6 +7,8 @@ import {
 } from "@/lib/discovery/ingest";
 import { matchOpportunityDeltaForOrg } from "@/lib/discovery/match";
 import { ADAPTERS } from "@/lib/discovery/adapters";
+import { enqueueOrgDigest } from "@/lib/email/digest";
+import { drainEmailQueue } from "@/lib/email/email-queue";
 
 /**
  * Daily discovery refresh (the cron's brain). Three bounded phases:
@@ -41,6 +43,8 @@ export interface RefreshSummary {
   orgsMatched: number;
   matchesUpserted: number;
   alertsCreated: number;
+  digestEmailsQueued: number;
+  digestEmailsSent: number;
 }
 
 export async function runDiscoveryRefresh(): Promise<RefreshSummary> {
@@ -52,6 +56,8 @@ export async function runDiscoveryRefresh(): Promise<RefreshSummary> {
     orgsMatched: 0,
     matchesUpserted: 0,
     alertsCreated: 0,
+    digestEmailsQueued: 0,
+    digestEmailsSent: 0,
   };
 
   // ── 1. INGEST ────────────────────────────────────────────────────────────────
@@ -123,7 +129,7 @@ export async function runDiscoveryRefresh(): Promise<RefreshSummary> {
         planTier: { not: "STARTER" },
       },
     },
-    select: { id: true, orgId: true },
+    select: { id: true, orgId: true, organization: { select: { name: true } } },
     distinct: ["orgId"], // one digest per org per day
     take: MAX_ORGS_PER_RUN,
   });
@@ -143,7 +149,9 @@ export async function runDiscoveryRefresh(): Promise<RefreshSummary> {
         select: {
           id: true,
           relevanceScore: true,
-          opportunity: { select: { id: true, titleEn: true, closingDate: true } },
+          opportunity: {
+            select: { id: true, titleEn: true, buyerName: true, country: true, closingDate: true },
+          },
         },
       });
       if (fresh.length === 0) continue;
@@ -171,9 +179,24 @@ export async function runDiscoveryRefresh(): Promise<RefreshSummary> {
         }),
       ]);
       summary.alertsCreated++;
+
+      // Same deduped set → email digest. Enqueued now, drained after the loop.
+      // No-ops cleanly when email is unconfigured or no member opted in.
+      summary.digestEmailsQueued += await enqueueOrgDigest(
+        { id: monitor.orgId, name: monitor.organization.name },
+        fresh
+      );
     } catch (err) {
       logger.error({ err, orgId: monitor.orgId }, "discovery-refresh: alert failed");
     }
+  }
+
+  // Drain the digest outbox in rate-limited batches (bounded for the cron budget).
+  try {
+    const drained = await drainEmailQueue();
+    summary.digestEmailsSent = drained.sent;
+  } catch (err) {
+    logger.error({ err }, "discovery-refresh: email drain failed");
   }
 
   logger.info(summary, "discovery-refresh complete");

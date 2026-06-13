@@ -11,6 +11,7 @@
 import { NextResponse } from "next/server";
 import { logger } from "@/lib/logger";
 import { runDiscoveryRefresh } from "@/lib/discovery/refresh";
+import { sendTrialExpiryWarnings } from "@/lib/email/trial";
 
 export const dynamic = "force-dynamic";
 export const maxDuration = 300;
@@ -27,7 +28,10 @@ export async function GET(req: Request) {
 
   try {
     const summary = await runDiscoveryRefresh();
-    return NextResponse.json({ success: true, ...summary });
+    // Piggyback the daily trial-expiry sweep (7/3/1-day warnings) here rather
+    // than spend one of Hobby's scarce cron slots on it.
+    const trials = await sendTrialExpiryWarnings();
+    return NextResponse.json({ success: true, ...summary, trials });
   } catch (err) {
     logger.error({ err }, "refresh-opportunities cron failed");
     return NextResponse.json({ error: "Refresh failed" }, { status: 500 });
