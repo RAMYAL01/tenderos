@@ -4,6 +4,7 @@ import { fetchRssOpportunities, type AdapterSource } from "./rss";
 import { fetchOcdsOpportunities } from "./ocds";
 import { fetchWorldBankOpportunities } from "./worldbank";
 import { fetchTedOpportunities } from "./ted";
+import { fetchAfdbOpportunities } from "./afdb";
 
 /**
  * Adapter registry — resolves OpportunitySource.adapterKey to its fetcher.
@@ -14,6 +15,7 @@ import { fetchTedOpportunities } from "./ted";
  *
  *   adapterKey="worldbank" baseUrl=<WB procnotices JSON endpoint> (REAL, MENA)
  *   adapterKey="ted"       baseUrl=<TED v3 notices/search endpoint> (REAL, MENA)
+ *   adapterKey="afdb"      baseUrl=<AfDB procurement.xml RSS> (REAL, N. Africa)
  *   adapterKey="rss"       baseUrl=<RSS/Atom feed of tender notices>
  *   adapterKey="ocds"      baseUrl=<OCDS releases/search endpoint>
  *   adapterKey="gcc-seed"  (the built-in demo catalog — no network)
@@ -28,4 +30,5 @@ export const ADAPTERS: Record<string, Adapter> = {
   ocds: fetchOcdsOpportunities,
   worldbank: fetchWorldBankOpportunities,
   ted: fetchTedOpportunities,
+  afdb: fetchAfdbOpportunities,
 };

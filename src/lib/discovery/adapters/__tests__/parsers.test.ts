@@ -4,6 +4,7 @@ import { parseRss, type AdapterSource } from "../rss";
 import { parseOcds } from "../ocds";
 import { parseWorldBank } from "../worldbank";
 import { parseTed } from "../ted";
+import { parseAfdb } from "../afdb";
 
 const SOURCE: AdapterSource = {
   id: "src1",
@@ -196,4 +197,25 @@ test("TED: maps multilingual MENA notice, filters non-MENA places + missing data
   assert.ok(it.descriptionEn?.includes("residence building")); // entity decoded
   assert.ok(it.closingDate instanceof Date); // "2026-09-01Z" normalized + parsed
   assert.ok(it.sourceUrl?.includes("451304-2025"));
+});
+
+test("AfDB: extracts country from title, keeps only North-Africa (EN + FR)", () => {
+  const xml = `<?xml version="1.0"?><rss version="2.0"><channel>
+    <item><title>EOI - Egypt - Consulting services for the Cairo metro extension - PFOR</title>
+      <link>https://www.afdb.org/en/documents/eoi-egypt-cairo-metro</link>
+      <description>Expression of interest…</description><pubDate>Wed, 10 Jun 2026 09:00:00 GMT</pubDate></item>
+    <item><title>AAO - Maroc - Travaux de construction d'une station de traitement</title>
+      <link>https://www.afdb.org/fr/documents/aao-maroc-station</link>
+      <description>Avis d'appel d'offres…</description></item>
+    <item><title>EOI - South Africa - Audit quality programme</title>
+      <link>https://www.afdb.org/en/documents/eoi-south-africa</link>
+      <description>Sub-Saharan — filtered out.</description></item>
+  </channel></rss>`;
+  const items = parseAfdb(xml, { ...SOURCE, country: null });
+  assert.equal(items.length, 2); // Egypt + Maroc; South Africa dropped
+  const eg = items.find((i) => i.country === "EG");
+  const ma = items.find((i) => i.country === "MA");
+  assert.ok(eg, "Egypt mapped");
+  assert.equal(eg?.tenderType, "EOI"); // type prefix extracted
+  assert.ok(ma, "Maroc → MA (French spelling)");
 });
