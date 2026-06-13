@@ -443,6 +443,10 @@ model Tender {
   // Provenance: the discovered Opportunity this tender was converted from (if any).
   // Nullable, no cascade — the global catalog must never cascade-delete tenant data.
   sourceOpportunityId String?
+  // Demo Mode: a built-in sample tender (with seeded requirements/compliance/bid/
+  // proposal) so a new org sees the full workflow with no upload. One per org,
+  // idempotent, deletable. Never mixed with customer data — flagged + "[Sample]".
+  isSample            Boolean         @default(false)
   createdById         String
   assignedManagerId   String?
   createdAt           DateTime        @default(now())

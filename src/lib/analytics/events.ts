@@ -38,6 +38,13 @@ export const ANALYTICS_EVENTS = {
   // ── Loop & moat ─────────────────────────────────────────────────────
   DIGEST_ENGAGED: "digest_engaged", // action: clicked
   MARKETPLACE_CONNECTION_REQUESTED: "marketplace_connection_requested",
+  // ── Demo mode (activation funnel for no-upload prospects) ───────────
+  DEMO_MODE_STARTED: "demo_mode_started",
+  DEMO_TENDER_VIEWED: "demo_tender_viewed",
+  DEMO_BID_SCORE_VIEWED: "demo_bid_score_viewed",
+  DEMO_COMPLIANCE_VIEWED: "demo_compliance_viewed",
+  DEMO_PROPOSAL_VIEWED: "demo_proposal_viewed",
+  CONVERTED_TO_REAL_TENDER: "converted_to_real_tender", // demo → real usage
 } as const;
 
 export type AnalyticsEvent = (typeof ANALYTICS_EVENTS)[keyof typeof ANALYTICS_EVENTS];
