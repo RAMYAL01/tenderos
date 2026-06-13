@@ -263,6 +263,14 @@ enum ProposalReviewAction {
   REOPENED // manager reopens an approved proposal → DRAFT
 }
 
+// Marketplace partner-connection lifecycle (Sprint 8b). A connection is a
+// directed request requester → addressee; ACCEPTED unlocks private contact info.
+enum ConnectionStatus {
+  PENDING
+  ACCEPTED
+  DECLINED
+}
+
 // ─────────────────────────────────────────────────────────────────────────────
 // MODEL 1: Organization
 // Multi-tenant root. Every other table has orgId → this.
@@ -321,6 +329,9 @@ model Organization {
   opportunityAlerts   OpportunityAlert[]
   bidDecisions        BidDecision[]
   proposalReviews     ProposalReviewEvent[]
+  marketplaceProfile  MarketplaceProfile?
+  sentConnections     PartnerConnection[]   @relation("ConnectionRequester")
+  receivedConnections PartnerConnection[]   @relation("ConnectionAddressee")
   // NOTE: deliberately NO relation to Opportunity / OpportunitySource — those are
   // a GLOBAL shared catalog with no orgId. The tenant boundary lives on
   // OpportunityMatch (the per-tenant join). See models at the end of this file.
@@ -1430,4 +1441,74 @@ model ProposalReviewEvent {
   @@index([proposalId, createdAt])
   @@index([orgId, createdAt])
   @@map("proposal_review_events")
+}
+
+// ─────────────────────────────────────────────────────────────────────────────
+// MARKETPLACE (Sprint 8b) — the partner / JV network.
+//
+// A DELIBERATE cross-tenant surface, the mirror image of the Discovery catalog:
+// there a GLOBAL catalog flows IN with no orgId; here each tenant publishes its
+// OWN profile OUT into a shared directory other tenants can browse. Both are
+// opt-in exceptions to strict isolation, fenced precisely:
+//
+//   • A profile is only visible to others when published = true (opt-in).
+//   • contactEmail / contactName (the private payload) are revealed to another
+//     org ONLY when an ACCEPTED PartnerConnection exists between them. The
+//     directory read model in src/lib/data/marketplace.ts must NEVER project
+//     those columns for a non-connected viewer — that projection IS the boundary.
+//   • Connections are directed requests; either side accepting unlocks contact.
+// ─────────────────────────────────────────────────────────────────────────────
+
+/// PER-TENANT, PUBLISHED OUTWARD — one opt-in directory profile per org.
+model MarketplaceProfile {
+  id            String    @id @default(cuid())
+  orgId         String    @unique // one profile per org
+  published     Boolean   @default(false) // draft until the org opts in
+  displayName   String
+  displayNameAr String?
+  country       String?   @db.Char(2) // ISO 3166-1
+  sectors       String[]  @default([]) // construction | facilities | oil_gas | ...
+  capabilities  String[]  @default([]) // free-tag strengths (EPC, MEP, civil, ...)
+  employeeBand  String? // banded like Organization.employeeCount
+  blurb         String?   @db.Text // the public pitch
+  website       String?
+  // PRIVATE payload — revealed only to ACCEPTED connections (see read model).
+  contactName   String?
+  contactEmail  String?
+  createdById   String
+  createdAt     DateTime  @default(now())
+  updatedAt     DateTime  @updatedAt
+  deletedAt     DateTime?
+
+  organization Organization @relation(fields: [orgId], references: [id], onDelete: Cascade)
+
+  @@index([published, country]) // directory browse: published, filter by country
+  @@index([published, deletedAt])
+  @@map("marketplace_profiles")
+}
+
+/// CROSS-TENANT JOIN — a directed connection request between two orgs. ACCEPTED
+/// is the key that unlocks each side's private contact info to the other. The
+/// unique key prevents duplicate requests in the SAME direction; the "are we
+/// connected?" check considers BOTH directions (handled in the data layer).
+model PartnerConnection {
+  id              String           @id @default(cuid())
+  requesterOrgId  String
+  addresseeOrgId  String
+  status          ConnectionStatus @default(PENDING)
+  message         String?          @db.Text // intro note from the requester
+  responseMessage String?          @db.Text // optional note on accept/decline
+  requestedById   String // member who sent the request
+  respondedById   String? // member who accepted/declined
+  respondedAt     DateTime?
+  createdAt       DateTime         @default(now())
+  updatedAt       DateTime         @updatedAt
+
+  requesterOrg Organization @relation("ConnectionRequester", fields: [requesterOrgId], references: [id], onDelete: Cascade)
+  addresseeOrg Organization @relation("ConnectionAddressee", fields: [addresseeOrgId], references: [id], onDelete: Cascade)
+
+  @@unique([requesterOrgId, addresseeOrgId]) // one pending/active request per direction
+  @@index([addresseeOrgId, status]) // "incoming requests to me"
+  @@index([requesterOrgId, status]) // "requests I sent"
+  @@map("partner_connections")
 }
