@@ -12,6 +12,7 @@ import {
   CheckSquare,
   BookOpen,
   BarChart2,
+  Handshake,
   Settings,
   Shield,
 } from "lucide-react";
@@ -32,6 +33,7 @@ const mainNav: NavItem[] = [
   { label: "Compliance", href: "/compliance", icon: CheckSquare },
   { label: "Knowledge", href: "/library", icon: BookOpen },
   { label: "Analytics", href: "/analytics", icon: BarChart2 },
+  { label: "Marketplace", href: "/marketplace", icon: Handshake },
 ];
 
 const bottomNav: NavItem[] = [{ label: "Settings", href: "/settings/workspace", icon: Settings }];
