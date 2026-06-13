@@ -8,14 +8,24 @@ const DEFAULT_TIMEOUT_MS = 15_000;
 const MAX_BYTES = 8 * 1024 * 1024; // 8 MB cap per feed
 const UA = "TenderOS-Discovery/1.0 (+https://www.thetenderos.com)";
 
-async function fetchBounded(url: string, accept: string): Promise<string> {
+async function fetchBounded(
+  url: string,
+  accept: string,
+  init?: { method?: string; body?: string; contentType?: string }
+): Promise<string> {
   const controller = new AbortController();
   const timer = setTimeout(() => controller.abort(), DEFAULT_TIMEOUT_MS);
   try {
     const res = await fetch(url, {
       signal: controller.signal,
       redirect: "follow",
-      headers: { "User-Agent": UA, Accept: accept },
+      method: init?.method ?? "GET",
+      body: init?.body,
+      headers: {
+        "User-Agent": UA,
+        Accept: accept,
+        ...(init?.contentType ? { "Content-Type": init.contentType } : {}),
+      },
     });
     if (!res.ok) throw new Error(`HTTP ${res.status} from ${url}`);
 
@@ -48,6 +58,16 @@ export function fetchText(url: string): Promise<string> {
 
 export async function fetchJson<T = unknown>(url: string): Promise<T> {
   const text = await fetchBounded(url, "application/json, */*;q=0.8");
+  return JSON.parse(text) as T;
+}
+
+/** POST a JSON body and parse the JSON response (for query-based APIs like TED). */
+export async function postJson<T = unknown>(url: string, body: unknown): Promise<T> {
+  const text = await fetchBounded(url, "application/json, */*;q=0.8", {
+    method: "POST",
+    body: JSON.stringify(body),
+    contentType: "application/json",
+  });
   return JSON.parse(text) as T;
 }
 

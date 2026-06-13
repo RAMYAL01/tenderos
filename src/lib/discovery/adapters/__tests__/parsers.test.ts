@@ -3,6 +3,7 @@ import assert from "node:assert/strict";
 import { parseRss, type AdapterSource } from "../rss";
 import { parseOcds } from "../ocds";
 import { parseWorldBank } from "../worldbank";
+import { parseTed } from "../ted";
 
 const SOURCE: AdapterSource = {
   id: "src1",
@@ -158,4 +159,41 @@ test("World Bank: maps MENA civil-works notice, filters non-MENA + non-published
   assert.ok(it.closingDate instanceof Date);
   assert.ok(it.publishedAt instanceof Date); // "12-Jun-2026" parsed
   assert.ok(it.sourceUrl?.includes("P178176"));
+});
+
+test("TED: maps multilingual MENA notice, filters non-MENA places + missing data", () => {
+  const payload = {
+    totalNoticeCount: 2,
+    notices: [
+      {
+        "publication-number": "451304-2025",
+        "notice-title": { eng: ["Construction of embassy compound, Amman"], fra: ["Construction…"] },
+        "buyer-name": { eng: ["Federal Republic of Germany"] },
+        "place-of-performance": ["DE131", "JOR"], // mixed EU + MENA → JOR wins
+        "deadline-receipt-tender-date-lot": ["2026-09-01Z"], // date-only + Z
+        "publication-date": "2026-06-01Z",
+        "classification-cpv": ["45210000"], // 45 → construction
+        "description-lot": { eng: ["New chancellery &amp; residence building."] },
+        "notice-type": "cn-standard",
+      },
+      {
+        // No MENA place → filtered out.
+        "publication-number": "999999-2025",
+        "notice-title": { eng: ["Some EU-only works"] },
+        "place-of-performance": ["DE131", "FRA"],
+        "classification-cpv": ["45000000"],
+      },
+    ],
+  };
+  const items = parseTed(payload, SOURCE);
+  assert.equal(items.length, 1);
+  const it = items[0];
+  assert.equal(it.externalId, "451304-2025");
+  assert.equal(it.country, "JO"); // JOR → JO, picked over the EU NUTS code
+  assert.equal(it.sector, "construction"); // CPV 45 → construction
+  assert.equal(it.titleEn, "Construction of embassy compound, Amman"); // English preferred
+  assert.equal(it.buyerName, "Federal Republic of Germany");
+  assert.ok(it.descriptionEn?.includes("residence building")); // entity decoded
+  assert.ok(it.closingDate instanceof Date); // "2026-09-01Z" normalized + parsed
+  assert.ok(it.sourceUrl?.includes("451304-2025"));
 });

@@ -3,6 +3,7 @@ import { fetchGccSeedOpportunities } from "./gcc-seed";
 import { fetchRssOpportunities, type AdapterSource } from "./rss";
 import { fetchOcdsOpportunities } from "./ocds";
 import { fetchWorldBankOpportunities } from "./worldbank";
+import { fetchTedOpportunities } from "./ted";
 
 /**
  * Adapter registry — resolves OpportunitySource.adapterKey to its fetcher.
@@ -12,6 +13,7 @@ import { fetchWorldBankOpportunities } from "./worldbank";
  * baseUrl. The cron picks it up on the next run.
  *
  *   adapterKey="worldbank" baseUrl=<WB procnotices JSON endpoint> (REAL, MENA)
+ *   adapterKey="ted"       baseUrl=<TED v3 notices/search endpoint> (REAL, MENA)
  *   adapterKey="rss"       baseUrl=<RSS/Atom feed of tender notices>
  *   adapterKey="ocds"      baseUrl=<OCDS releases/search endpoint>
  *   adapterKey="gcc-seed"  (the built-in demo catalog — no network)
@@ -25,4 +27,5 @@ export const ADAPTERS: Record<string, Adapter> = {
   rss: fetchRssOpportunities,
   ocds: fetchOcdsOpportunities,
   worldbank: fetchWorldBankOpportunities,
+  ted: fetchTedOpportunities,
 };
