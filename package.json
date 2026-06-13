@@ -15,6 +15,7 @@
     "test:bid": "tsx --test src/lib/bid-decision/__tests__/factors.test.ts",
     "test": "npm run test:boq && npm run test:discovery && npm run test:adapters && npm run test:bid",
     "discovery:add-source": "tsx prisma/add-discovery-source.ts",
+    "grant-plan": "tsx prisma/grant-plan.ts",
     "seed:opportunities": "tsx prisma/seed-opportunities.ts",
     "db:generate": "prisma generate",
     "db:push": "prisma db push",
