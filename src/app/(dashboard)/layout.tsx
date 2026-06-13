@@ -6,6 +6,8 @@ import { Sidebar } from "@/components/layout/sidebar";
 import { Header } from "@/components/layout/header";
 import { BillingLockGate } from "@/components/billing/billing-lock-gate";
 import { WorkspaceProvider } from "@/components/providers/workspace-provider";
+import { AnalyticsIdentify } from "@/components/providers/analytics-identify";
+import { PLAN_LIMITS } from "@/lib/constants";
 
 /**
  * Dashboard layout — server component.
@@ -42,6 +44,13 @@ export default async function DashboardLayout({
 
   return (
     <WorkspaceProvider org={org} member={member}>
+      <AnalyticsIdentify
+        userId={member.clerkUserId}
+        organizationId={org.id}
+        organizationName={org.name}
+        plan={PLAN_LIMITS[org.planTier]?.label ?? org.planTier}
+        role={member.role}
+      />
       <div className="flex h-screen overflow-hidden bg-slate-50 dark:bg-slate-950">
         {/* Sidebar — fixed left panel */}
         <Sidebar member={member} org={org} discoverBadge={unreadDiscovery} />

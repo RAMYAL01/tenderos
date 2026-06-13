@@ -2,6 +2,7 @@ import type { Metadata, Viewport } from "next";
 import { ClerkProvider } from "@clerk/nextjs";
 import { ThemeProvider } from "next-themes";
 import { Toaster } from "@/components/ui/toaster";
+import { PostHogProvider } from "@/components/providers/posthog-provider";
 import { isOidcAuth } from "@/lib/auth/mode";
 import "./globals.css";
 
@@ -89,7 +90,7 @@ export default function RootLayout({
           enableSystem
           disableTransitionOnChange
         >
-          {children}
+          <PostHogProvider>{children}</PostHogProvider>
           <Toaster />
         </ThemeProvider>
       </body>
