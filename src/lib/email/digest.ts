@@ -28,7 +28,9 @@ export interface DigestMatch {
   };
 }
 
-const discoverUrl = `${APP_URL}/discover`;
+// ?ref=digest closes the email→product loop: the PostHog provider fires
+// `digest_engaged` when a visit lands with this param (no tracking pixel).
+const discoverUrl = `${APP_URL}/discover?ref=digest`;
 
 function toOpportunity(m: DigestMatch): DigestOpportunity {
   return {

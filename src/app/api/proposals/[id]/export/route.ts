@@ -1,5 +1,7 @@
 import { auth } from "@clerk/nextjs/server";
-import { NextResponse } from "next/server";
+import { NextResponse, after } from "next/server";
+import { track, apiContext } from "@/lib/analytics/track";
+import { ANALYTICS_EVENTS } from "@/lib/analytics/events";
 import { z } from "zod";
 import { db } from "@/lib/prisma";
 import { generateDocx } from "@/lib/export/export-docx";
@@ -57,6 +59,8 @@ export async function POST(
   if (!proposal) {
     return NextResponse.json({ error: "Proposal not found" }, { status: 404 });
   }
+
+  after(() => track(ANALYTICS_EVENTS.PROPOSAL_EXPORTED, apiContext({ userId, org }), { format }));
 
   // PDF: return print URL (browser prints to PDF)
   if (format === "pdf") {

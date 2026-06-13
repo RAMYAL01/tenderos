@@ -1,11 +1,14 @@
 "use server";
 
+import { after } from "next/server";
 import { revalidatePath } from "next/cache";
 import { z } from "zod";
 import { ContentLanguage, SectionType } from "@prisma/client";
 import { db } from "@/lib/prisma";
 import { getAuthContext, requireRole } from "@/lib/auth";
 import { checkAndConsumeProposalQuota } from "@/lib/billing/quota";
+import { track, analyticsContext } from "@/lib/analytics/track";
+import { ANALYTICS_EVENTS } from "@/lib/analytics/events";
 
 const CreateProposalSchema = z.object({
   tenderId: z.string().min(1),
@@ -31,8 +34,9 @@ export async function createProposal(
   data: z.infer<typeof CreateProposalSchema>
 ): Promise<ProposalActionResult> {
   try {
-    const { org, member } = await getAuthContext();
+    const { clerkUserId, org, member } = await getAuthContext();
     requireRole(member.role, "WRITER");
+    const analytics = analyticsContext({ clerkUserId, org, member });
 
     const validated = CreateProposalSchema.parse(data);
 
@@ -43,7 +47,10 @@ export async function createProposal(
 
     // Plan limit: proposals per month.
     const quota = await checkAndConsumeProposalQuota(org.id);
-    if (!quota.ok) return { success: false, error: quota.error };
+    if (!quota.ok) {
+      after(() => track(ANALYTICS_EVENTS.PLAN_LIMIT_REACHED, analytics, { limit_type: "proposal" }));
+      return { success: false, error: quota.error };
+    }
 
     // Build default sections based on tender type
     const defaultSections: SectionType[] = [
@@ -74,6 +81,14 @@ export async function createProposal(
         },
       },
     });
+
+    after(() =>
+      track(ANALYTICS_EVENTS.PROPOSAL_CREATED, analytics, {
+        tenderId: validated.tenderId,
+        sectionCount: defaultSections.length,
+        language: validated.language,
+      })
+    );
 
     revalidatePath(`/tenders/${validated.tenderId}/proposals`);
     return { success: true, id: proposal.id };

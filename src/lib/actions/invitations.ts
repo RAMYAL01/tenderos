@@ -11,6 +11,8 @@ import { hashInviteToken } from "@/lib/security/invite-token";
 import { logAudit } from "@/lib/security/audit";
 import { APP_URL } from "@/lib/constants";
 import { notifyUserInvited } from "@/lib/email/events";
+import { track, analyticsContext } from "@/lib/analytics/track";
+import { ANALYTICS_EVENTS } from "@/lib/analytics/events";
 import type { MemberRole, InvitationStatus } from "@prisma/client";
 
 /**
@@ -90,8 +92,9 @@ export async function createInvitation(input: {
   role: MemberRole;
 }): Promise<CreateResult> {
   try {
-    const { org, member } = await getAuthContext();
+    const { clerkUserId, org, member } = await getAuthContext();
     requireRole(member.role, "ADMIN");
+    const analytics = analyticsContext({ clerkUserId, org, member });
 
     const parsed = CreateSchema.safeParse(input);
     if (!parsed.success) {
@@ -115,7 +118,10 @@ export async function createInvitation(input: {
 
     // Plan limit: seats (active members + pending invites).
     const seats = await checkSeatLimit(org.id);
-    if (!seats.ok) return { success: false, error: seats.error };
+    if (!seats.ok) {
+      after(() => track(ANALYTICS_EVENTS.PLAN_LIMIT_REACHED, analytics, { limit_type: "seat" }));
+      return { success: false, error: seats.error };
+    }
 
     const rawToken = randomBytes(24).toString("base64url");
     const tokenHash = hashInviteToken(rawToken); // stored hashed — raw shown once
@@ -167,6 +173,7 @@ export async function createInvitation(input: {
         expiresInDays: INVITE_TTL_DAYS,
       })
     );
+    after(() => track(ANALYTICS_EVENTS.TEAM_MEMBER_INVITED, analytics, { invitedRole: role }));
 
     revalidatePath("/settings/members");
     return { success: true, invitation: toDTO(invitation, rawToken) };

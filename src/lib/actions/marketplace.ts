@@ -1,11 +1,14 @@
 "use server";
 
+import { after } from "next/server";
 import { revalidatePath } from "next/cache";
 import { z } from "zod";
 import { db } from "@/lib/prisma";
 import { getAuthContext, requireRole } from "@/lib/auth";
 import { logAudit } from "@/lib/security/audit";
 import { areConnected } from "@/lib/data/marketplace";
+import { track, analyticsContext } from "@/lib/analytics/track";
+import { ANALYTICS_EVENTS } from "@/lib/analytics/events";
 
 /**
  * Marketplace actions — the partner / JV network's writes.
@@ -143,7 +146,7 @@ const RequestSchema = z.object({
  */
 export async function requestConnection(input: z.infer<typeof RequestSchema>): Promise<Result> {
   try {
-    const { org, member } = await getAuthContext();
+    const { clerkUserId, org, member } = await getAuthContext();
     requireRole(member.role, "MANAGER");
 
     const parsed = RequestSchema.safeParse(input);
@@ -196,6 +199,13 @@ export async function requestConnection(input: z.infer<typeof RequestSchema>): P
       resourceType: "partner_connection",
       resourceId: addresseeOrgId,
     });
+
+    after(() =>
+      track(
+        ANALYTICS_EVENTS.MARKETPLACE_CONNECTION_REQUESTED,
+        analyticsContext({ clerkUserId, org, member })
+      )
+    );
 
     revalidatePath("/marketplace");
     revalidatePath("/marketplace/connections");

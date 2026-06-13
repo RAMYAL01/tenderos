@@ -5,6 +5,8 @@ import { db } from "@/lib/prisma";
 import { hasRole } from "@/lib/auth";
 import { checkAndConsumeAiCredit } from "@/lib/billing/quota";
 import { runBidQualifierAgent } from "@/lib/ai/agents/bid-qualifier";
+import { track, apiContext } from "@/lib/analytics/track";
+import { ANALYTICS_EVENTS } from "@/lib/analytics/events";
 
 export const runtime = "nodejs";
 export const maxDuration = 120;
@@ -48,6 +50,7 @@ export async function POST(req: Request) {
   // Plan limit: one AI credit per qualification run.
   const quota = await checkAndConsumeAiCredit(org.id);
   if (!quota.ok) {
+    after(() => track(ANALYTICS_EVENTS.PLAN_LIMIT_REACHED, apiContext({ userId, org, role: member.role }), { limit_type: "ai_credit" }));
     return NextResponse.json({ error: quota.error, code: quota.code }, { status: 402 });
   }
 
@@ -67,6 +70,15 @@ export async function POST(req: Request) {
   after(async () => {
     try {
       await runBidQualifierAgent(job.id, tenderId, org.id, member.id);
+      const decision = await db.bidDecision.findUnique({
+        where: { tenderId },
+        select: { recommendation: true, score: true, confidence: true },
+      });
+      await track(ANALYTICS_EVENTS.BID_SCORE_GENERATED, apiContext({ userId, org, role: member.role }), {
+        recommendation: decision?.recommendation,
+        score: decision?.score,
+        confidence: decision?.confidence,
+      });
     } catch (err) {
       console.error("[bid-decision] agent failed:", err);
       await db.aIJob

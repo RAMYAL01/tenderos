@@ -1,10 +1,13 @@
 "use server";
 
+import { after } from "next/server";
 import { redirect } from "next/navigation";
 import { revalidatePath } from "next/cache";
 import { z } from "zod";
 import { db } from "@/lib/prisma";
 import { getAuthContext, requireRole } from "@/lib/auth";
+import { track, analyticsContext } from "@/lib/analytics/track";
+import { ANALYTICS_EVENTS } from "@/lib/analytics/events";
 
 // ── Validation ────────────────────────────────────────────────────────────────
 
@@ -48,7 +51,7 @@ export async function createTender(
   data: z.infer<typeof CreateTenderSchema>
 ): Promise<TenderActionResult> {
   try {
-    const { org, member } = await getAuthContext();
+    const { clerkUserId, org, member } = await getAuthContext();
     requireRole(member.role, "WRITER");
 
     const validated = CreateTenderSchema.safeParse(data);
@@ -99,6 +102,14 @@ export async function createTender(
         assignedManagerId: assignedManagerId || null,
       },
     });
+
+    after(() =>
+      track(ANALYTICS_EVENTS.TENDER_CREATED, analyticsContext({ clerkUserId, org, member }), {
+        sector: sector || undefined,
+        tenderType: tenderType || undefined,
+        hasDeadline: Boolean(submissionDeadline),
+      })
+    );
 
     revalidatePath("/dashboard");
     revalidatePath("/tenders");

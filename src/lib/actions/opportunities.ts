@@ -1,5 +1,6 @@
 "use server";
 
+import { after } from "next/server";
 import { revalidatePath } from "next/cache";
 import { z } from "zod";
 import { db } from "@/lib/prisma";
@@ -10,6 +11,8 @@ import {
   canUseScheduledDiscovery,
 } from "@/lib/billing/quota";
 import { matchOpportunitiesForOrg } from "@/lib/discovery/match";
+import { track, analyticsContext } from "@/lib/analytics/track";
+import { ANALYTICS_EVENTS } from "@/lib/analytics/events";
 
 /**
  * Discovery server actions. Every action resolves orgId from getAuthContext()
@@ -45,7 +48,7 @@ export async function scanForOpportunities(): Promise<Result<{ matched: number }
 
 export async function trackOpportunity(opportunityId: string): Promise<Result> {
   try {
-    const { org } = await getAuthContext();
+    const { clerkUserId, org, member } = await getAuthContext();
 
     const existing = await db.opportunityMatch.findUnique({
       where: { orgId_opportunityId: { orgId: org.id, opportunityId } },
@@ -74,6 +77,12 @@ export async function trackOpportunity(opportunityId: string): Promise<Result> {
         data: { orgId: org.id, opportunityId, relevanceScore: 0.5, trackingStatus: "SAVED" },
       });
     }
+
+    after(() =>
+      track(ANALYTICS_EVENTS.DISCOVERY_MATCH_SAVED, analyticsContext({ clerkUserId, org, member }), {
+        relevanceScore: existing?.relevanceScore ?? 0.5,
+      })
+    );
 
     revalidatePath("/discover");
     return { success: true };

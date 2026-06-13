@@ -7,6 +7,8 @@ import { db } from "@/lib/prisma";
 import { getAuthContext, requireRole } from "@/lib/auth";
 import { logAudit } from "@/lib/security/audit";
 import { notifyApprovalRequested, notifyApprovalCompleted } from "@/lib/email/events";
+import { track, analyticsContext } from "@/lib/analytics/track";
+import { ANALYTICS_EVENTS } from "@/lib/analytics/events";
 import type { ProposalReviewAction, ProposalStatus } from "@prisma/client";
 
 /**
@@ -109,7 +111,7 @@ export async function submitProposalForReview(proposalId: string): Promise<Resul
 /** Manager approves a proposal under review. */
 export async function approveProposal(proposalId: string, note?: string): Promise<Result> {
   try {
-    const { org, member } = await getAuthContext();
+    const { clerkUserId, org, member } = await getAuthContext();
     requireRole(member.role, "MANAGER");
     const id = IdSchema.parse(proposalId);
 
@@ -126,6 +128,11 @@ export async function approveProposal(proposalId: string, note?: string): Promis
     if (result.success) {
       after(() =>
         notifyApprovalCompleted({ orgId: org.id, proposalId: id, approverMemberId: member.id })
+      );
+      after(() =>
+        track(ANALYTICS_EVENTS.PROPOSAL_APPROVED, analyticsContext({ clerkUserId, org, member }), {
+          tenderId: undefined,
+        })
       );
     }
     return result;

@@ -1,13 +1,28 @@
 import type Stripe from "stripe";
 import { after } from "next/server";
+import { db } from "@/lib/prisma";
 import { getStripe } from "@/lib/billing/stripe";
 import { syncSubscription, handleSubscriptionCancelled, resolveOrgId } from "@/lib/billing/sync";
 import { notifyPaymentFailed, notifySubscriptionChange } from "@/lib/email/events";
+import { track, systemContext } from "@/lib/analytics/track";
+import { identifyOrganization } from "@/lib/analytics/groups";
+import { ANALYTICS_EVENTS, type AnalyticsEvent, type AnalyticsProps } from "@/lib/analytics/events";
 
 /** Format a Stripe minor-unit amount as a display string, e.g. "USD 499.00". */
 function formatAmount(amount: number | null | undefined, currency: string | null | undefined): string | null {
   if (amount == null) return null;
   return `${(currency ?? "usd").toUpperCase()} ${(amount / 100).toFixed(2)}`;
+}
+
+/** Load the org and emit a revenue event against its group (no human actor). */
+async function trackRevenue(orgId: string, event: AnalyticsEvent, props?: AnalyticsProps): Promise<void> {
+  const org = await db.organization.findUnique({
+    where: { id: orgId },
+    select: { id: true, name: true, planTier: true, countryCode: true, industry: true, organizationType: true, employeeCount: true },
+  });
+  if (!org) return;
+  await identifyOrganization(org); // keep plan/properties fresh on the group
+  await track(event, systemContext(org), props);
 }
 
 /**
@@ -80,6 +95,13 @@ export async function POST(req: Request) {
                   : null,
               })
             );
+            after(() =>
+              trackRevenue(
+                orgId,
+                trialing ? ANALYTICS_EVENTS.TRIAL_STARTED : ANALYTICS_EVENTS.SUBSCRIPTION_CHANGED,
+                trialing ? {} : { kind: "upgraded" }
+              )
+            );
           }
         }
         break;
@@ -95,7 +117,10 @@ export async function POST(req: Request) {
         const sub = event.data.object as Stripe.Subscription;
         await handleSubscriptionCancelled(sub);
         const orgId = await resolveOrgId(sub);
-        if (orgId) after(() => notifySubscriptionChange({ orgId, kind: "CANCELLED" }));
+        if (orgId) {
+          after(() => notifySubscriptionChange({ orgId, kind: "CANCELLED" }));
+          after(() => trackRevenue(orgId, ANALYTICS_EVENTS.SUBSCRIPTION_CHANGED, { kind: "cancelled" }));
+        }
         break;
       }
 
@@ -111,7 +136,9 @@ export async function POST(req: Request) {
           if (orgId) {
             const amountDue = formatAmount(invoice.amount_due, invoice.currency);
             after(() => notifyPaymentFailed({ orgId, amountDue }));
+            after(() => trackRevenue(orgId, ANALYTICS_EVENTS.PAYMENT_FAILED));
           }
+
         }
         break;
       }

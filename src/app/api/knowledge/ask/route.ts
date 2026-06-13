@@ -1,5 +1,5 @@
 import { auth } from "@clerk/nextjs/server";
-import { NextResponse } from "next/server";
+import { NextResponse, after } from "next/server";
 import { z } from "zod";
 import { generateText } from "ai";
 import { db } from "@/lib/prisma";
@@ -7,6 +7,8 @@ import { embedQuery } from "@/lib/ai/embedding-provider";
 import { tenantChunkSearch } from "@/lib/security/rag-search";
 import { checkAndConsumeAiCredit } from "@/lib/billing/quota";
 import { getChatModel } from "@/lib/ai/llm-provider";
+import { track, apiContext } from "@/lib/analytics/track";
+import { ANALYTICS_EVENTS } from "@/lib/analytics/events";
 
 export const runtime = "nodejs";
 export const maxDuration = 60;
@@ -45,6 +47,7 @@ export async function POST(req: Request) {
   // Plan limit: one AI credit per knowledge question.
   const quota = await checkAndConsumeAiCredit(org.id);
   if (!quota.ok) {
+    after(() => track(ANALYTICS_EVENTS.PLAN_LIMIT_REACHED, apiContext({ userId, org }), { limit_type: "ai_credit" }));
     return NextResponse.json({ error: quota.error, code: quota.code }, { status: 402 });
   }
 
@@ -63,6 +66,8 @@ export async function POST(req: Request) {
     limit: 8,
     minSimilarity: 0.2,
   });
+
+  after(() => track(ANALYTICS_EVENTS.RAG_SEARCH, apiContext({ userId, org }), { hadResults: hits.length > 0 }));
 
   if (hits.length === 0) {
     return NextResponse.json({

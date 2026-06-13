@@ -10,6 +10,8 @@ import { getSavedSearches } from "@/lib/data/saved-searches";
 import { canUseScheduledDiscovery } from "@/lib/billing/quota";
 import { DiscoverList } from "@/components/discovery/discover-list";
 import { DiscoverScanCta } from "@/components/discovery/discover-scan-cta";
+import { CaptureEvent } from "@/components/providers/analytics-capture";
+import { ANALYTICS_EVENTS } from "@/lib/analytics/events";
 
 export const metadata = { title: "Discover" };
 
@@ -53,11 +55,14 @@ async function DiscoverContent() {
   }
 
   return (
-    <DiscoverList
-      items={feed}
-      savedSearches={savedSearches}
-      canScheduleAlerts={canUseScheduledDiscovery(org.planTier)}
-    />
+    <>
+      <CaptureEvent event={ANALYTICS_EVENTS.DISCOVERY_VIEWED} props={{ matchCount: feed.length }} />
+      <DiscoverList
+        items={feed}
+        savedSearches={savedSearches}
+        canScheduleAlerts={canUseScheduledDiscovery(org.planTier)}
+      />
+    </>
   );
 }
 

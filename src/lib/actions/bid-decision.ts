@@ -1,10 +1,13 @@
 "use server";
 
+import { after } from "next/server";
 import { revalidatePath } from "next/cache";
 import { z } from "zod";
 import { db } from "@/lib/prisma";
 import { getAuthContext, requireRole } from "@/lib/auth";
 import { logAudit } from "@/lib/security/audit";
+import { track, analyticsContext } from "@/lib/analytics/track";
+import { ANALYTICS_EVENTS } from "@/lib/analytics/events";
 
 /**
  * Record the HUMAN bid/no-bid decision on an AI qualification.
@@ -27,7 +30,7 @@ export async function recordBidDecision(
   input: z.infer<typeof DecisionSchema>
 ): Promise<Result> {
   try {
-    const { org, member } = await getAuthContext();
+    const { clerkUserId, org, member } = await getAuthContext();
     requireRole(member.role, "MANAGER");
 
     const parsed = DecisionSchema.safeParse(input);
@@ -85,6 +88,13 @@ export async function recordBidDecision(
       resourceId: tenderId,
       newValues: { decision, aiRecommendation: analysis.recommendation, score: analysis.score },
     });
+
+    after(() =>
+      track(ANALYTICS_EVENTS.BID_DECISION_RECORDED, analyticsContext({ clerkUserId, org, member }), {
+        outcome: agreed ? "accepted" : "overridden",
+        decision,
+      })
+    );
 
     revalidatePath(`/tenders/${tenderId}`);
     return { success: true };

@@ -1,5 +1,7 @@
 import { auth } from "@clerk/nextjs/server";
 import { NextResponse, after } from "next/server";
+import { track, apiContext } from "@/lib/analytics/track";
+import { ANALYTICS_EVENTS } from "@/lib/analytics/events";
 import { z } from "zod";
 import { createHash } from "crypto";
 import { db } from "@/lib/prisma";
@@ -121,6 +123,14 @@ export async function POST(req: Request) {
         checksumSha256,
       },
     });
+
+    const sizeBytes = Number(fileSizeBytes);
+    after(() =>
+      track(ANALYTICS_EVENTS.DOCUMENT_UPLOADED, apiContext({ userId, org, role: member.role }), {
+        fileType: mimeType.includes("pdf") ? "pdf" : mimeType.includes("word") ? "docx" : "other",
+        sizeBucket: sizeBytes < 1_000_000 ? "small" : sizeBytes < 10_000_000 ? "medium" : "large",
+      })
+    );
 
     // Update tender status to ACTIVE if still DRAFT
     if (tender.status === "DRAFT") {

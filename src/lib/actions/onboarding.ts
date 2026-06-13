@@ -7,6 +7,9 @@ import { db } from "@/lib/prisma";
 import { getAuthContext, requireRole } from "@/lib/auth";
 import { slugify } from "@/lib/utils";
 import { notifyWorkspaceCreated } from "@/lib/email/events";
+import { track, analyticsContext } from "@/lib/analytics/track";
+import { identifyOrganization } from "@/lib/analytics/groups";
+import { ANALYTICS_EVENTS } from "@/lib/analytics/events";
 import type { OrganizationType } from "@prisma/client";
 
 /**
@@ -74,7 +77,7 @@ export async function saveCompanyProfile(input: CompanyProfileInput): Promise<Re
 /** Final step: mark the workspace onboarding complete (lifts the dashboard gate). */
 export async function completeOnboarding(): Promise<Result> {
   try {
-    const { org, member } = await getAuthContext();
+    const { clerkUserId, org, member } = await getAuthContext();
     requireRole(member.role, "ADMIN");
 
     await db.organization.update({
@@ -94,6 +97,17 @@ export async function completeOnboarding(): Promise<Result> {
 
     // Welcome email — best-effort, after the response.
     after(() => notifyWorkspaceCreated({ orgId: org.id, memberId: member.id }));
+
+    // Analytics: activation top-of-funnel + sync the org group properties.
+    const analytics = analyticsContext({ clerkUserId, org, member });
+    after(async () => {
+      await identifyOrganization(org);
+      await track(ANALYTICS_EVENTS.WORKSPACE_CREATED, analytics, {
+        organizationType: org.organizationType ?? undefined,
+        country: org.countryCode ?? undefined,
+        employeeBand: org.employeeCount ?? undefined,
+      });
+    });
 
     revalidatePath("/dashboard");
     return { success: true };

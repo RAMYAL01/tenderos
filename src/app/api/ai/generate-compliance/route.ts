@@ -4,6 +4,8 @@ import { z } from "zod";
 import { db } from "@/lib/prisma";
 import { checkAndConsumeAiCredit } from "@/lib/billing/quota";
 import { runComplianceAgent } from "@/lib/ai/agents/generate-compliance";
+import { track, apiContext } from "@/lib/analytics/track";
+import { ANALYTICS_EVENTS } from "@/lib/analytics/events";
 
 export const runtime = "nodejs";
 export const maxDuration = 300;
@@ -51,6 +53,7 @@ export async function POST(req: Request) {
   // Plan limit: one AI credit per compliance run.
   const quota = await checkAndConsumeAiCredit(org.id);
   if (!quota.ok) {
+    after(() => track(ANALYTICS_EVENTS.PLAN_LIMIT_REACHED, apiContext({ userId, org }), { limit_type: "ai_credit" }));
     return NextResponse.json({ error: quota.error, code: quota.code }, { status: 402 });
   }
 
@@ -70,6 +73,7 @@ export async function POST(req: Request) {
   after(async () => {
     try {
       await runComplianceAgent(job.id, tenderId, org.id);
+      await track(ANALYTICS_EVENTS.COMPLIANCE_GENERATED, apiContext({ userId, org }), { rowCount: reqCount });
     } catch (err) {
       console.error("[generate-compliance] agent failed:", err);
       await db.aIJob
