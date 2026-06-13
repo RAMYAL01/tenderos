@@ -4,6 +4,7 @@ import { useEffect, useState } from "react";
 import Link from "next/link";
 import { CheckCircle2, ChevronDown, ChevronUp, Circle, Rocket } from "lucide-react";
 import { Button } from "@/components/ui/button";
+import { TrySampleTenderButton } from "@/components/demo/try-sample-button";
 import type { ActivationProgress } from "@/lib/data/activation";
 
 /**
@@ -89,6 +90,15 @@ export function ActivationChecklist({ progress, orgId }: { progress: ActivationP
             );
           })}
         </ul>
+      )}
+
+      {!collapsed && !progress.steps.find((s) => s.key === "tender")?.done && (
+        <div className="flex flex-wrap items-center justify-between gap-3 border-t border-blue-100/70 bg-white/40 px-5 py-3 dark:border-blue-900/30 dark:bg-slate-900/30">
+          <span className="text-xs text-slate-500 dark:text-slate-400">
+            No tender on hand? See the full workflow on a sample — no upload.
+          </span>
+          <TrySampleTenderButton variant="outline" size="sm" />
+        </div>
       )}
     </div>
   );

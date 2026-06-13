@@ -7,6 +7,7 @@ import { Skeleton } from "@/components/ui/skeleton";
 import { getAuthContext } from "@/lib/auth";
 import { getAllTenders } from "@/lib/data/tenders";
 import { TendersList } from "@/components/tenders/tenders-list";
+import { TrySampleTenderButton } from "@/components/demo/try-sample-button";
 
 export const metadata = { title: "Tenders" };
 
@@ -27,12 +28,16 @@ async function TendersContent() {
           Create your first tender to upload RFP documents, extract requirements,
           and start building your technical proposal.
         </p>
-        <Button asChild>
-          <Link href="/tenders/new">
-            <Plus className="mr-2 h-4 w-4" />
-            Create First Tender
-          </Link>
-        </Button>
+        <div className="flex flex-col items-center gap-3">
+          <Button asChild>
+            <Link href="/tenders/new">
+              <Plus className="mr-2 h-4 w-4" />
+              Create First Tender
+            </Link>
+          </Button>
+          <span className="text-xs uppercase tracking-wide text-slate-400">or</span>
+          <TrySampleTenderButton variant="outline" label="Try a sample tender — no upload" />
+        </div>
       </div>
     );
   }

@@ -18,6 +18,7 @@ import { Separator } from "@/components/ui/separator";
 import { TenderDocumentsPanel } from "@/components/tenders/tender-documents-panel";
 import { BidDecisionCard, type BidDecisionData } from "@/components/tenders/bid-decision-card";
 import { RecordOutcomeDialog } from "@/components/tenders/record-outcome-dialog";
+import { SampleBanner } from "@/components/demo/sample-banner";
 import { getAuthContext, hasRole } from "@/lib/auth";
 import { db } from "@/lib/prisma";
 import { formatDeadline, cn } from "@/lib/utils";
@@ -133,6 +134,12 @@ export default async function TenderDetailPage({
           <RecordOutcomeDialog tenderId={id} currentStatus={tender.status} />
         )}
       </PageHeader>
+
+      {tender.isSample && (
+        <div className="px-6 pt-6">
+          <SampleBanner />
+        </div>
+      )}
 
       <div className="flex flex-col gap-6 p-6 lg:flex-row lg:items-start">
         {/* ── Main: Documents ─────────────────────────────────────────── */}
