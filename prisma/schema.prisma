@@ -271,6 +271,30 @@ enum ConnectionStatus {
   DECLINED
 }
 
+// ── Email platform (Resend) ───────────────────────────────────────────────────
+/// Lifecycle of a single outbound email. QUEUED→SENDING→SENT are set by our
+/// sender; DELIVERED/BOUNCED/COMPLAINED arrive later via Resend webhooks.
+enum EmailStatus {
+  QUEUED
+  SENDING
+  SENT
+  DELIVERED
+  FAILED
+  BOUNCED
+  COMPLAINED
+  CANCELLED
+}
+
+/// Email category — the unit a member can mute in NotificationPreference.
+/// TRANSACTIONAL is never mutable (invites, welcome, password reset).
+enum EmailCategory {
+  TRANSACTIONAL
+  DIGEST
+  PROPOSAL
+  APPROVAL
+  BILLING
+}
+
 // ─────────────────────────────────────────────────────────────────────────────
 // MODEL 1: Organization
 // Multi-tenant root. Every other table has orgId → this.
@@ -308,30 +332,32 @@ model Organization {
   deletedAt               DateTime?
 
   // Relations
-  members             Member[]
-  tenders             Tender[]
-  contentLibraryItems ContentLibraryItem[]
-  knowledgeChunks     KnowledgeChunk[]
-  boqWorkflows        BoqWorkflow[]
-  aiFeedback          AIFeedback[]
-  invitations         Invitation[]
-  aiJobs              AIJob[]
-  subscription        Subscription?
-  auditLogs           AuditLog[]
-  financialProposals  FinancialProposal[]
-  rateCatalogueItems  RateCatalogueItem[]
-  vendors             Vendor[]
-  apiKeys             ApiKey[]
-  webhookEndpoints    WebhookEndpoint[]
-  webhookDeliveries   WebhookDelivery[]
-  savedSearches       SavedSearch[]
-  opportunityMatches  OpportunityMatch[]
-  opportunityAlerts   OpportunityAlert[]
-  bidDecisions        BidDecision[]
-  proposalReviews     ProposalReviewEvent[]
-  marketplaceProfile  MarketplaceProfile?
-  sentConnections     PartnerConnection[]   @relation("ConnectionRequester")
-  receivedConnections PartnerConnection[]   @relation("ConnectionAddressee")
+  members                 Member[]
+  tenders                 Tender[]
+  contentLibraryItems     ContentLibraryItem[]
+  knowledgeChunks         KnowledgeChunk[]
+  boqWorkflows            BoqWorkflow[]
+  aiFeedback              AIFeedback[]
+  invitations             Invitation[]
+  aiJobs                  AIJob[]
+  subscription            Subscription?
+  auditLogs               AuditLog[]
+  financialProposals      FinancialProposal[]
+  rateCatalogueItems      RateCatalogueItem[]
+  vendors                 Vendor[]
+  apiKeys                 ApiKey[]
+  webhookEndpoints        WebhookEndpoint[]
+  webhookDeliveries       WebhookDelivery[]
+  savedSearches           SavedSearch[]
+  opportunityMatches      OpportunityMatch[]
+  opportunityAlerts       OpportunityAlert[]
+  bidDecisions            BidDecision[]
+  proposalReviews         ProposalReviewEvent[]
+  marketplaceProfile      MarketplaceProfile?
+  sentConnections         PartnerConnection[]      @relation("ConnectionRequester")
+  receivedConnections     PartnerConnection[]      @relation("ConnectionAddressee")
+  emailLogs               EmailLog[]
+  notificationPreferences NotificationPreference[]
   // NOTE: deliberately NO relation to Opportunity / OpportunitySource — those are
   // a GLOBAL shared catalog with no orgId. The tenant boundary lives on
   // OpportunityMatch (the per-tenant join). See models at the end of this file.
@@ -362,19 +388,21 @@ model Member {
   deletedAt         DateTime?
 
   // Relations
-  organization       Organization          @relation(fields: [orgId], references: [id], onDelete: Cascade)
-  createdTenders     Tender[]              @relation("TenderCreatedBy")
-  managedTenders     Tender[]              @relation("TenderManager")
-  uploadedDocuments  Document[]
-  assignedCompliance ComplianceMatrixRow[] @relation("ComplianceAssignee")
-  createdProposals   Proposal[]
-  assignedSections   ProposalSection[]     @relation("SectionAssignee")
-  editedSections     ProposalSection[]     @relation("SectionEditor")
-  createdVersions    ProposalVersion[]
-  comments           ProposalComment[]
-  libraryItems       ContentLibraryItem[]
-  exportJobs         ExportJob[]
-  auditLogs          AuditLog[]
+  organization           Organization            @relation(fields: [orgId], references: [id], onDelete: Cascade)
+  createdTenders         Tender[]                @relation("TenderCreatedBy")
+  managedTenders         Tender[]                @relation("TenderManager")
+  uploadedDocuments      Document[]
+  assignedCompliance     ComplianceMatrixRow[]   @relation("ComplianceAssignee")
+  createdProposals       Proposal[]
+  assignedSections       ProposalSection[]       @relation("SectionAssignee")
+  editedSections         ProposalSection[]       @relation("SectionEditor")
+  createdVersions        ProposalVersion[]
+  comments               ProposalComment[]
+  libraryItems           ContentLibraryItem[]
+  exportJobs             ExportJob[]
+  auditLogs              AuditLog[]
+  emailLogs              EmailLog[]
+  notificationPreference NotificationPreference?
 
   @@unique([orgId, clerkUserId])
   @@unique([orgId, email])
@@ -1511,4 +1539,62 @@ model PartnerConnection {
   @@index([addresseeOrgId, status]) // "incoming requests to me"
   @@index([requesterOrgId, status]) // "requests I sent"
   @@map("partner_connections")
+}
+
+// ─────────────────────────────────────────────────────────────────────────────
+// EMAIL PLATFORM (Resend) — outbound email log + per-member preferences.
+//
+// EmailLog is BOTH the audit record AND the outbox/queue: high-volume fan-out
+// (the daily digest) is written here as QUEUED and drained in rate-limited
+// batches (see src/lib/email/email-queue.ts), while low-volume transactional
+// mail is sent immediately and logged SENT/FAILED. Every row is org-scoped so
+// the workspace-admin "Email activity" viewer is tenant-safe by construction.
+// ─────────────────────────────────────────────────────────────────────────────
+
+/// PER-TENANT — one row per outbound email (audit + outbox).
+model EmailLog {
+  id                String        @id @default(cuid())
+  orgId             String // TENANT BINDING
+  memberId          String? // recipient member, if they are one (invitees aren't yet)
+  toEmail           String // lower-cased recipient address
+  category          EmailCategory
+  event             String // NotificationEvent value, e.g. "USER_INVITED"
+  subject           String
+  status            EmailStatus   @default(QUEUED)
+  provider          String        @default("resend")
+  providerMessageId String? // Resend id — joins delivery webhooks back to this row
+  error             String?       @db.Text
+  attempts          Int           @default(0)
+  payload           Json? // render context snapshot (no secrets) — also feeds batch drain
+  sentAt            DateTime?
+  createdAt         DateTime      @default(now())
+  updatedAt         DateTime      @updatedAt
+
+  organization Organization @relation(fields: [orgId], references: [id], onDelete: Cascade)
+  member       Member?      @relation(fields: [memberId], references: [id], onDelete: SetNull)
+
+  @@index([orgId, createdAt]) // admin activity view
+  @@index([orgId, status]) // admin "failed emails" filter
+  @@index([status, createdAt]) // queue drain: oldest QUEUED first
+  @@map("email_logs")
+}
+
+/// PER-MEMBER — notification opt-outs. One row per member (auto-created with all
+/// categories enabled on first read). TRANSACTIONAL mail ignores this.
+model NotificationPreference {
+  id                    String   @id @default(cuid())
+  orgId                 String // TENANT BINDING (denormalized for org-scoped reads)
+  memberId              String   @unique
+  dailyDigest           Boolean  @default(true)
+  proposalNotifications Boolean  @default(true)
+  approvalNotifications Boolean  @default(true)
+  billingNotifications  Boolean  @default(true)
+  createdAt             DateTime @default(now())
+  updatedAt             DateTime @updatedAt
+
+  organization Organization @relation(fields: [orgId], references: [id], onDelete: Cascade)
+  member       Member       @relation(fields: [memberId], references: [id], onDelete: Cascade)
+
+  @@index([orgId])
+  @@map("notification_preferences")
 }
