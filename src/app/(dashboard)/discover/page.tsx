@@ -1,7 +1,9 @@
 import { Suspense } from "react";
+import Link from "next/link";
 import { after } from "next/server";
-import { Compass } from "lucide-react";
+import { Compass, BarChart3 } from "lucide-react";
 import { PageHeader } from "@/components/ui/page-header";
+import { Button } from "@/components/ui/button";
 import { PageSkeleton } from "@/components/ui/page-skeleton";
 import { getAuthContext } from "@/lib/auth";
 import { db } from "@/lib/prisma";
@@ -73,7 +75,11 @@ export default function DiscoverPage() {
         title="Discover"
         titleAr="اكتشف"
         description="Government & infrastructure tenders, ranked for your company."
-      />
+      >
+        <Button asChild variant="outline" size="sm">
+          <Link href="/discover/insights"><BarChart3 className="h-4 w-4" /> Market insights</Link>
+        </Button>
+      </PageHeader>
       <Suspense fallback={<PageSkeleton />}>
         <DiscoverContent />
       </Suspense>
