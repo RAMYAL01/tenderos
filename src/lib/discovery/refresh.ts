@@ -4,6 +4,7 @@ import {
   ingestOpportunities,
   sweepExpiredOpportunities,
   sweepClosingSoonOpportunities,
+  recordSourceHealth,
 } from "@/lib/discovery/ingest";
 import { matchOpportunityDeltaForOrg } from "@/lib/discovery/match";
 import { ADAPTERS } from "@/lib/discovery/adapters";
@@ -78,8 +79,13 @@ export async function runDiscoveryRefresh(): Promise<RefreshSummary> {
       summary.ingested.inserted += res.inserted;
       summary.ingested.updated += res.updated;
       summary.ingested.unchanged += res.unchanged;
+      await recordSourceHealth(source.id, { ok: true, itemCount: items.length });
     } catch (err) {
       logger.error({ err, source: source.slug }, "discovery-refresh: ingest failed");
+      await recordSourceHealth(source.id, {
+        ok: false,
+        error: err instanceof Error ? err.message : String(err),
+      });
     }
   }
 

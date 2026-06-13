@@ -1275,18 +1275,23 @@ model WebhookDelivery {
 /// GLOBAL CATALOG — no orgId. A tender-publishing source (gov portal, aggregator).
 /// Written ONLY by src/lib/discovery/ingest.ts.
 model OpportunitySource {
-  id              String                @id @default(cuid())
-  name            String
-  slug            String                @unique
-  country         String?               @db.Char(2)
-  kind            OpportunitySourceKind
-  baseUrl         String?
-  adapterKey      String // resolves the ingestion adapter module
-  defaultLanguage ContentLanguage       @default(EN)
-  isActive        Boolean               @default(true)
-  lastPolledAt    DateTime?
-  createdAt       DateTime              @default(now())
-  updatedAt       DateTime              @updatedAt
+  id                  String                @id @default(cuid())
+  name                String
+  slug                String                @unique
+  country             String?               @db.Char(2)
+  kind                OpportunitySourceKind
+  baseUrl             String?
+  adapterKey          String // resolves the ingestion adapter module
+  defaultLanguage     ContentLanguage       @default(EN)
+  isActive            Boolean               @default(true)
+  lastPolledAt        DateTime?
+  // ── Source health monitoring (Phase 2/9) — written only by ingest.ts. ──
+  lastSuccessAt       DateTime? // last run that fetched + ingested without error
+  lastError           String?               @db.Text // last failure reason (truncated)
+  consecutiveFailures Int                   @default(0) // dead-source detection: N in a row
+  lastItemCount       Int? // items returned on the last successful fetch
+  createdAt           DateTime              @default(now())
+  updatedAt           DateTime              @updatedAt
 
   opportunities Opportunity[]
 

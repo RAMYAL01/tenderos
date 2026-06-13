@@ -177,3 +177,52 @@ export async function upsertSource(input: {
   });
   return row;
 }
+
+/**
+ * Source health (Phase 2/9) — recorded HERE because ingest.ts is the only module
+ * permitted to write OpportunitySource. A successful run stamps lastSuccessAt and
+ * resets the failure counter; a failure records the reason and increments
+ * consecutiveFailures (which feeds dead-source detection). Never throws.
+ */
+export async function recordSourceHealth(
+  sourceId: string,
+  result: { ok: true; itemCount: number } | { ok: false; error: string }
+): Promise<void> {
+  try {
+    if (result.ok) {
+      await db.opportunitySource.update({
+        where: { id: sourceId },
+        data: {
+          lastPolledAt: new Date(),
+          lastSuccessAt: new Date(),
+          lastItemCount: result.itemCount,
+          consecutiveFailures: 0,
+          lastError: null,
+        },
+      });
+    } else {
+      await db.opportunitySource.update({
+        where: { id: sourceId },
+        data: {
+          lastPolledAt: new Date(),
+          lastError: result.error.slice(0, 1000),
+          consecutiveFailures: { increment: 1 },
+        },
+      });
+    }
+  } catch {
+    // Health bookkeeping must never break the ingest run.
+  }
+}
+
+export type SourceHealth = "HEALTHY" | "DEGRADED" | "DEAD";
+
+/** Dead-source detection: 5 consecutive daily failures ⇒ DEAD (alert/disable). */
+export function deriveSourceHealth(s: {
+  consecutiveFailures: number;
+  lastSuccessAt: Date | null;
+}): SourceHealth {
+  if (s.consecutiveFailures >= 5) return "DEAD";
+  if (s.consecutiveFailures >= 1) return "DEGRADED";
+  return "HEALTHY";
+}
