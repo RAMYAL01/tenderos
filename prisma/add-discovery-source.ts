@@ -22,11 +22,11 @@ const baseUrl = process.env.SOURCE_URL ?? null;
 const country = process.env.SOURCE_COUNTRY ?? null;
 
 if (!slug || !name || !adapterKey) {
-  console.error("Set SOURCE_SLUG, SOURCE_NAME, SOURCE_ADAPTER (rss|ocds|gcc-seed), and (for rss/ocds) SOURCE_URL.");
+  console.error("Set SOURCE_SLUG, SOURCE_NAME, SOURCE_ADAPTER (worldbank|rss|ocds|gcc-seed), and (for non-seed) SOURCE_URL.");
   process.exit(1);
 }
-if (!["rss", "ocds", "gcc-seed"].includes(adapterKey)) {
-  console.error(`Unknown adapter "${adapterKey}". Use one of: rss, ocds, gcc-seed.`);
+if (!["worldbank", "rss", "ocds", "gcc-seed"].includes(adapterKey)) {
+  console.error(`Unknown adapter "${adapterKey}". Use one of: worldbank, rss, ocds, gcc-seed.`);
   process.exit(1);
 }
 if (adapterKey !== "gcc-seed" && !baseUrl) {
@@ -37,7 +37,12 @@ if (adapterKey !== "gcc-seed" && !baseUrl) {
 upsertSource({
   slug,
   name,
-  kind: adapterKey === "rss" ? "RSS" : adapterKey === "ocds" ? "API" : "GOVERNMENT_PORTAL",
+  kind:
+    adapterKey === "rss"
+      ? "RSS"
+      : adapterKey === "ocds" || adapterKey === "worldbank"
+        ? "API"
+        : "GOVERNMENT_PORTAL",
   adapterKey,
   baseUrl,
   country,

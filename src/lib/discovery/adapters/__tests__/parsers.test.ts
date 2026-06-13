@@ -2,6 +2,7 @@ import { test } from "node:test";
 import assert from "node:assert/strict";
 import { parseRss, type AdapterSource } from "../rss";
 import { parseOcds } from "../ocds";
+import { parseWorldBank } from "../worldbank";
 
 const SOURCE: AdapterSource = {
   id: "src1",
@@ -104,4 +105,57 @@ test("OCDS: bare array + missing fields are tolerated", () => {
   const items = parseOcds(payload, SOURCE);
   assert.equal(items.length, 1);
   assert.equal(items[0].externalId, "y-1");
+});
+
+test("World Bank: maps MENA civil-works notice, filters non-MENA + non-published", () => {
+  const payload = {
+    rows: 3,
+    total: 3,
+    procnotices: [
+      {
+        id: "OP00439235",
+        notice_type: "Invitation for Bids",
+        notice_status: "Published",
+        noticedate: "12-Jun-2026",
+        submission_deadline_date: "2026-07-16T00:00:00Z",
+        project_ctry_name: "Egypt, Arab Republic of",
+        project_id: "P178176",
+        project_name: "Cairo Water Upgrade",
+        bid_reference_no: "EG-WATER-544171-CW-RFB",
+        bid_description: "Construction of a water treatment plant and pumping stations",
+        procurement_group: "CW",
+        procurement_method_name: "Request for Bids",
+        contact_organization: "National Water Company",
+        notice_text: "<p>Detailed <b>works</b> scope &amp; conditions.</p>",
+      },
+      {
+        // Non-MENA → filtered out.
+        id: "OP00400000",
+        notice_status: "Published",
+        project_ctry_name: "Congo, Democratic Republic of",
+        bid_description: "Some other works",
+        procurement_group: "CW",
+      },
+      {
+        // Cancelled in MENA → filtered out (not Published).
+        id: "OP00411111",
+        notice_status: "Cancelled",
+        project_ctry_name: "Saudi Arabia",
+        bid_description: "A cancelled tender",
+        procurement_group: "CW",
+      },
+    ],
+  };
+  const items = parseWorldBank(payload, SOURCE);
+  assert.equal(items.length, 1);
+  const it = items[0];
+  assert.equal(it.externalId, "OP00439235");
+  assert.equal(it.country, "EG");
+  assert.equal(it.sector, "construction"); // CW → construction
+  assert.equal(it.buyerName, "National Water Company");
+  assert.equal(it.referenceNo, "EG-WATER-544171-CW-RFB");
+  assert.ok(it.descriptionEn?.includes("works scope & conditions")); // HTML stripped + entities decoded
+  assert.ok(it.closingDate instanceof Date);
+  assert.ok(it.publishedAt instanceof Date); // "12-Jun-2026" parsed
+  assert.ok(it.sourceUrl?.includes("P178176"));
 });
