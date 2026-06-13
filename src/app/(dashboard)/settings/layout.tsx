@@ -34,6 +34,12 @@ const settingsTabs = [
     roles: ["OWNER", "ADMIN"],
   },
   {
+    label: "Email",
+    href: "/settings/email",
+    icon: "Mail",
+    roles: ["OWNER", "ADMIN"],
+  },
+  {
     label: "Audit Log",
     href: "/settings/audit",
     icon: "ScrollText",
