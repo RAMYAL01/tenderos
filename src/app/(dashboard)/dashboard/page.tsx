@@ -8,12 +8,14 @@ import { StatsCards } from "@/components/dashboard/stats-cards";
 import { DashboardHero } from "@/components/dashboard/dashboard-hero";
 import { RecentTenders } from "@/components/dashboard/recent-tenders";
 import { UpcomingDeadlines } from "@/components/dashboard/upcoming-deadlines";
+import { ActivationChecklist } from "@/components/dashboard/activation-checklist";
 import { getAuthContext } from "@/lib/auth";
 import {
   getDashboardStats,
   getRecentTenders,
   getUpcomingDeadlines,
 } from "@/lib/data/dashboard";
+import { getActivationProgress } from "@/lib/data/activation";
 
 export const metadata = { title: "Dashboard" };
 
@@ -22,16 +24,20 @@ export const metadata = { title: "Dashboard" };
 async function DashboardContent() {
   const { org, member } = await getAuthContext();
 
-  const [stats, recentTenders, upcomingDeadlines] = await Promise.all([
+  const [stats, recentTenders, upcomingDeadlines, activation] = await Promise.all([
     getDashboardStats(org.id),
     getRecentTenders(org.id, 8),
     getUpcomingDeadlines(org.id, 5),
+    getActivationProgress(org),
   ]);
 
   const firstName = member.name.split(" ")[0];
 
   return (
     <div className="flex flex-col gap-6 p-6">
+      {/* New-org activation checklist — disappears once every milestone is done. */}
+      {!activation.complete && <ActivationChecklist progress={activation} orgId={org.id} />}
+
       {/* Premium hero banner */}
       <DashboardHero firstName={firstName} stats={stats} />
 
