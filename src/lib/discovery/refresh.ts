@@ -6,8 +6,7 @@ import {
   sweepClosingSoonOpportunities,
 } from "@/lib/discovery/ingest";
 import { matchOpportunityDeltaForOrg } from "@/lib/discovery/match";
-import { fetchGccSeedOpportunities } from "@/lib/discovery/adapters/gcc-seed";
-import type { NormalizedOpportunity } from "@/lib/discovery/ingest";
+import { ADAPTERS } from "@/lib/discovery/adapters";
 
 /**
  * Daily discovery refresh (the cron's brain). Three bounded phases:
@@ -34,11 +33,6 @@ const MAX_ORGS_PER_RUN = 50;
 const ALERT_MIN_SCORE = 0.35;
 const ALERT_MAX_ITEMS = 10;
 
-/** Adapter registry — maps OpportunitySource.adapterKey to its fetcher. */
-const ADAPTERS: Record<string, () => Promise<NormalizedOpportunity[]> | NormalizedOpportunity[]> = {
-  "gcc-seed": fetchGccSeedOpportunities,
-};
-
 export interface RefreshSummary {
   sources: number;
   ingested: { inserted: number; updated: number; unchanged: number };
@@ -63,7 +57,7 @@ export async function runDiscoveryRefresh(): Promise<RefreshSummary> {
   // ── 1. INGEST ────────────────────────────────────────────────────────────────
   const sources = await db.opportunitySource.findMany({
     where: { isActive: true },
-    select: { id: true, slug: true, adapterKey: true },
+    select: { id: true, slug: true, adapterKey: true, baseUrl: true, country: true, defaultLanguage: true },
   });
   for (const source of sources) {
     const adapter = ADAPTERS[source.adapterKey];
@@ -72,7 +66,7 @@ export async function runDiscoveryRefresh(): Promise<RefreshSummary> {
       continue;
     }
     try {
-      const items = await adapter();
+      const items = await adapter(source);
       const res = await ingestOpportunities(source.id, items);
       summary.sources++;
       summary.ingested.inserted += res.inserted;

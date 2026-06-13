@@ -61,6 +61,9 @@ jobs:
       - name: Discovery catalog isolation guard (only ingest.ts writes global tables)
         run: npm run test:discovery
 
+      - name: Discovery ingestion adapter parsers (RSS/Atom/OCDS, network-free)
+        run: npm run test:adapters
+
       - name: Bid/No-Bid deterministic factor engine tests
         run: npm run test:bid
 
