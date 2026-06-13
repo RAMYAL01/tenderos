@@ -32,6 +32,11 @@ export interface DiscoverItem {
   sourceUrl: string | null;
   language: ContentLanguage;
   status: OpportunityStatus;
+  // AI enrichment (Phase 4) — null until the cron's enrich phase processes it.
+  summary: string | null;
+  riskNotes: { note: string; severity: string }[] | null;
+  requiredCertifications: string[];
+  eligibilityNotes: string | null;
 }
 
 /** The personalized feed: this org's matches, highest-relevance first. */
@@ -62,6 +67,10 @@ export async function getDiscoverFeed(orgId: string, limit = 100): Promise<Disco
           sourceUrl: true,
           language: true,
           status: true,
+          summaryEn: true,
+          riskNotes: true,
+          requiredCertifications: true,
+          eligibilityNotes: true,
         },
       },
     },
@@ -87,6 +96,11 @@ export async function getDiscoverFeed(orgId: string, limit = 100): Promise<Disco
     sourceUrl: r.opportunity.sourceUrl,
     language: r.opportunity.language,
     status: r.opportunity.status,
+    summary: r.opportunity.summaryEn,
+    riskNotes:
+      (r.opportunity.riskNotes as { note: string; severity: string }[] | null) ?? null,
+    requiredCertifications: r.opportunity.requiredCertifications,
+    eligibilityNotes: r.opportunity.eligibilityNotes,
   }));
 }
 

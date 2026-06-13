@@ -1303,30 +1303,38 @@ model OpportunitySource {
 /// Written ONLY by src/lib/discovery/ingest.ts. Embedding (semantic match) is
 /// deferred to the P2 sprint and intentionally NOT present yet.
 model Opportunity {
-  id             String            @id @default(cuid())
-  sourceId       String
-  externalId     String // stable id within the source
-  titleEn        String
-  titleAr        String?
-  descriptionEn  String?           @db.Text
-  descriptionAr  String?           @db.Text
-  buyerName      String?
-  buyerNameAr    String?
-  country        String?           @db.Char(2)
-  sector         String? // normalized: construction | facilities | oil_gas | infrastructure | ...
-  tenderType     String? // free text from source; normalized to enum on convert
-  referenceNo    String?
-  estimatedValue Decimal?          @db.Decimal(18, 2)
-  currency       String?           @db.Char(3)
-  publishedAt    DateTime?
-  closingDate    DateTime?
-  sourceUrl      String?
-  language       ContentLanguage   @default(EN)
-  contentHash    String // change-detection on re-ingest
-  status         OpportunityStatus @default(OPEN)
-  rawPayload     Json // original source payload (NEVER tenant-derived data)
-  createdAt      DateTime          @default(now())
-  updatedAt      DateTime          @updatedAt
+  id                     String            @id @default(cuid())
+  sourceId               String
+  externalId             String // stable id within the source
+  titleEn                String
+  titleAr                String?
+  descriptionEn          String?           @db.Text
+  descriptionAr          String?           @db.Text
+  buyerName              String?
+  buyerNameAr            String?
+  country                String?           @db.Char(2)
+  sector                 String? // normalized: construction | facilities | oil_gas | infrastructure | ...
+  tenderType             String? // free text from source; normalized to enum on convert
+  referenceNo            String?
+  estimatedValue         Decimal?          @db.Decimal(18, 2)
+  currency               String?           @db.Char(3)
+  publishedAt            DateTime?
+  closingDate            DateTime?
+  sourceUrl              String?
+  language               ContentLanguage   @default(EN)
+  contentHash            String // change-detection on re-ingest
+  status                 OpportunityStatus @default(OPEN)
+  rawPayload             Json // original source payload (NEVER tenant-derived data)
+  // ── AI enrichment (Phase 4) — computed ONCE per opportunity (shared, global;
+  //    public tender text only → no tenant data). Written only by ingest.ts. ──
+  summaryEn              String?           @db.Text // plain-English 1-2 sentence summary
+  riskNotes              Json? // [{ note, severity: low|medium|high }]
+  requiredCertifications String[]          @default([]) // extracted certs/registrations
+  eligibilityNotes       String?           @db.Text // who's eligible / key prerequisites
+  enrichedAt             DateTime? // idempotency marker (null = not yet enriched)
+  enrichmentModel        String? // model provenance
+  createdAt              DateTime          @default(now())
+  updatedAt              DateTime          @updatedAt
 
   source  OpportunitySource  @relation(fields: [sourceId], references: [id])
   matches OpportunityMatch[] // one-way: the per-tenant join points IN
@@ -1335,6 +1343,7 @@ model Opportunity {
   @@index([country, sector])
   @@index([status, closingDate])
   @@index([closingDate])
+  @@index([enrichedAt]) // the "needs enrichment" sweep (Phase 4)
   @@map("opportunities")
 }
 

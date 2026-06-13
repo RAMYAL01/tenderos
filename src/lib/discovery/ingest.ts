@@ -1,5 +1,5 @@
 import { createHash } from "crypto";
-import type { ContentLanguage, OpportunityStatus } from "@prisma/client";
+import type { ContentLanguage, OpportunityStatus, Prisma } from "@prisma/client";
 import { db } from "@/lib/prisma";
 
 /**
@@ -225,4 +225,63 @@ export function deriveSourceHealth(s: {
   if (s.consecutiveFailures >= 5) return "DEAD";
   if (s.consecutiveFailures >= 1) return "DEGRADED";
   return "HEALTHY";
+}
+
+// ── AI enrichment (Phase 4) — writer side (catalog isolation) ──────────────────
+
+export interface UnenrichedOpportunity {
+  id: string;
+  titleEn: string;
+  descriptionEn: string | null;
+  buyerName: string | null;
+  country: string | null;
+  sector: string | null;
+  tenderType: string | null;
+}
+
+/** Open opportunities awaiting enrichment, newest first, bounded for the cron. */
+export async function getUnenrichedOpportunities(limit: number): Promise<UnenrichedOpportunity[]> {
+  return db.opportunity.findMany({
+    where: { enrichedAt: null, status: { in: ["OPEN", "CLOSING_SOON"] } },
+    orderBy: { createdAt: "desc" },
+    take: limit,
+    select: {
+      id: true,
+      titleEn: true,
+      descriptionEn: true,
+      buyerName: true,
+      country: true,
+      sector: true,
+      tenderType: true,
+    },
+  });
+}
+
+/** Persist an enrichment result. ONLY catalog writer (isolation contract). */
+export async function saveOpportunityEnrichment(
+  id: string,
+  e: {
+    summary: string;
+    riskNotes: { note: string; severity: string }[];
+    requiredCertifications: string[];
+    eligibilityNotes: string | null;
+    sector: string | null;
+    model: string;
+  }
+): Promise<void> {
+  await db.opportunity
+    .update({
+      where: { id },
+      data: {
+        summaryEn: e.summary,
+        riskNotes: e.riskNotes as unknown as Prisma.InputJsonValue,
+        requiredCertifications: e.requiredCertifications,
+        eligibilityNotes: e.eligibilityNotes,
+        // Refine the coarse sector only when the model supplied a confident one.
+        ...(e.sector ? { sector: e.sector } : {}),
+        enrichedAt: new Date(),
+        enrichmentModel: e.model,
+      },
+    })
+    .catch(() => {});
 }

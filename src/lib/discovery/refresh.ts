@@ -5,7 +5,10 @@ import {
   sweepExpiredOpportunities,
   sweepClosingSoonOpportunities,
   recordSourceHealth,
+  getUnenrichedOpportunities,
+  saveOpportunityEnrichment,
 } from "@/lib/discovery/ingest";
+import { enrichOpportunity } from "@/lib/discovery/enrich";
 import { matchOpportunityDeltaForOrg } from "@/lib/discovery/match";
 import { ADAPTERS } from "@/lib/discovery/adapters";
 import { enqueueOrgDigest } from "@/lib/email/digest";
@@ -35,6 +38,7 @@ const MAX_DELTA_OPPS = 300;
 const MAX_ORGS_PER_RUN = 50;
 const ALERT_MIN_SCORE = 0.35;
 const ALERT_MAX_ITEMS = 10;
+const MAX_ENRICH_PER_RUN = 20; // bounded LLM calls per cron run (cost + 300s budget)
 
 export interface RefreshSummary {
   sources: number;
@@ -46,6 +50,7 @@ export interface RefreshSummary {
   alertsCreated: number;
   digestEmailsQueued: number;
   digestEmailsSent: number;
+  enriched: number;
 }
 
 export async function runDiscoveryRefresh(): Promise<RefreshSummary> {
@@ -59,6 +64,7 @@ export async function runDiscoveryRefresh(): Promise<RefreshSummary> {
     alertsCreated: 0,
     digestEmailsQueued: 0,
     digestEmailsSent: 0,
+    enriched: 0,
   };
 
   // ── 1. INGEST ────────────────────────────────────────────────────────────────
@@ -91,6 +97,23 @@ export async function runDiscoveryRefresh(): Promise<RefreshSummary> {
 
   summary.swept.closed = await sweepExpiredOpportunities();
   summary.swept.closingSoon = await sweepClosingSoonOpportunities();
+
+  // ── 1.5 ENRICH (Phase 4) — AI summary / risks / certs, bounded + idempotent ──
+  // Runs BEFORE match so the matcher can use the refined sector. Enriches the
+  // GLOBAL row once (public text only); shared across all tenants. Best-effort
+  // per item — a failure just leaves enrichedAt null to retry next run.
+  const toEnrich = await getUnenrichedOpportunities(MAX_ENRICH_PER_RUN);
+  for (const opp of toEnrich) {
+    try {
+      const enrichment = await enrichOpportunity(opp);
+      if (enrichment) {
+        await saveOpportunityEnrichment(opp.id, enrichment);
+        summary.enriched++;
+      }
+    } catch (err) {
+      logger.error({ err, oppId: opp.id }, "discovery-refresh: enrich failed");
+    }
+  }
 
   // ── 2. MATCH (delta only, M7) ────────────────────────────────────────────────
   const since = new Date(Date.now() - DELTA_WINDOW_MS);

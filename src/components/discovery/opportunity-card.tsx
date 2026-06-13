@@ -3,6 +3,7 @@
 import Link from "next/link";
 import {
   Globe, CalendarClock, Building2, Bookmark, X, ArrowRight, Check, Loader2, ExternalLink,
+  Sparkles, AlertTriangle, Award,
 } from "lucide-react";
 import { cn, formatCurrency } from "@/lib/utils";
 import { Button } from "@/components/ui/button";
@@ -76,6 +77,47 @@ export function OpportunityCard({
           )}
           {close && <span className={cn("inline-flex items-center gap-1.5", close.cls)}><CalendarClock className="h-3.5 w-3.5" />{close.text}</span>}
         </div>
+
+        {/* AI enrichment (Phase 4): summary + risk/cert intelligence. */}
+        {item.summary && (
+          <div className="mt-3 rounded-lg bg-blue-50/60 p-3 dark:bg-blue-950/20">
+            <p className="flex gap-1.5 text-xs leading-relaxed text-slate-600 dark:text-slate-300">
+              <Sparkles className="mt-0.5 h-3.5 w-3.5 shrink-0 text-blue-500" />
+              <span>{item.summary}</span>
+            </p>
+            {(item.riskNotes?.length || item.requiredCertifications.length > 0) && (
+              <div className="mt-2 flex flex-wrap items-center gap-1.5">
+                {item.riskNotes?.slice(0, 2).map((r, i) => (
+                  <span
+                    key={i}
+                    className={cn(
+                      "inline-flex items-center gap-1 rounded-full px-2 py-0.5 text-[11px] font-medium",
+                      r.severity === "high"
+                        ? "bg-red-50 text-red-700 dark:bg-red-950/40 dark:text-red-300"
+                        : r.severity === "medium"
+                          ? "bg-amber-50 text-amber-700 dark:bg-amber-950/40 dark:text-amber-300"
+                          : "bg-slate-100 text-slate-600 dark:bg-slate-800 dark:text-slate-300"
+                    )}
+                    title={r.note}
+                  >
+                    <AlertTriangle className="h-3 w-3" />
+                    {r.note.length > 42 ? r.note.slice(0, 42) + "…" : r.note}
+                  </span>
+                ))}
+                {item.requiredCertifications.length > 0 && (
+                  <span
+                    className="inline-flex items-center gap-1 rounded-full bg-violet-50 px-2 py-0.5 text-[11px] font-medium text-violet-700 dark:bg-violet-950/40 dark:text-violet-300"
+                    title={item.requiredCertifications.join(", ")}
+                  >
+                    <Award className="h-3 w-3" />
+                    {item.requiredCertifications.length} cert
+                    {item.requiredCertifications.length === 1 ? "" : "s"}
+                  </span>
+                )}
+              </div>
+            )}
+          </div>
+        )}
 
         <div className="mt-4 flex items-center gap-2">
           {converted ? (
