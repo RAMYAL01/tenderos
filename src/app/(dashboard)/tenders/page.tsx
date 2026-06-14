@@ -66,6 +66,7 @@ export default function TendersPage() {
         title="Tenders"
         description="Manage all your bid projects and RFP responses."
       >
+        <TrySampleTenderButton variant="outline" size="sm" label="Sample tender" />
         <Button variant="outline" size="sm" asChild>
           <Link href="/tenders/new?step=upload">
             <Upload className="mr-2 h-4 w-4" />

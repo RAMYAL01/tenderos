@@ -115,7 +115,7 @@ export function BrandPanel() {
       {/* Top: Logo */}
       <div className="relative z-10" style={layer(8)}>
         <Link href="/" aria-label="Back to home" className="inline-block transition-opacity hover:opacity-80">
-          <Logo variant="dark" size={40} />
+          <Logo variant="dark" size={52} />
         </Link>
       </div>
 

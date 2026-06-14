@@ -29,7 +29,7 @@ export default function SignInPage() {
 
         {/* Mobile-only logo (hidden when brand panel is visible) */}
         <Link href="/" className="mb-8 lg:hidden">
-          <Logo size={34} />
+          <Logo size={46} />
         </Link>
 
         <div className="w-full max-w-[400px]">
