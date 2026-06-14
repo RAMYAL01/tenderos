@@ -43,9 +43,15 @@ export default function SignUpPage() {
             forceRedirectUrl="/onboarding"
             signInUrl="/sign-in"
             appearance={{
+              layout: {
+                logoImageUrl: "/images/logo-light.png",
+                logoLinkUrl: "/",
+              },
               elements: {
                 rootBox: "w-full",
-                card: "shadow-sm border border-slate-200 dark:border-slate-800 bg-white dark:bg-slate-900 rounded-xl w-full",
+                card: "shadow-sm border border-slate-200 dark:border-slate-800 bg-white rounded-xl w-full",
+                logoBox: "h-16 justify-center mb-1",
+                logoImage: "h-16 w-auto object-contain",
                 headerTitle:
                   "text-2xl font-bold text-slate-900 dark:text-slate-100",
                 headerSubtitle: "text-slate-500 dark:text-slate-400",
