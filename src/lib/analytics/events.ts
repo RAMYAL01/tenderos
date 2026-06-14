@@ -39,6 +39,7 @@ export const ANALYTICS_EVENTS = {
   DIGEST_ENGAGED: "digest_engaged", // action: clicked
   MARKETPLACE_CONNECTION_REQUESTED: "marketplace_connection_requested",
   // ── Demo mode (activation funnel for no-upload prospects) ───────────
+  PUBLIC_DEMO_VIEWED: "public_demo_viewed", // anonymous /demo page view (top of funnel)
   DEMO_MODE_STARTED: "demo_mode_started",
   DEMO_TENDER_VIEWED: "demo_tender_viewed",
   DEMO_BID_SCORE_VIEWED: "demo_bid_score_viewed",

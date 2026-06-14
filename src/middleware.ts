@@ -11,6 +11,7 @@ const isPublicRoute = createRouteMatcher([
   "/about(.*)",            // Marketing — public
   "/pricing(.*)",          // Marketing — public
   "/contact(.*)",          // Marketing — public
+  "/demo(.*)",             // Public no-login product demo — public
   "/blog(.*)",             // Blog — public
   "/solutions(.*)",        // SEO pillar pages — public
   "/tender-software(.*)",  // Programmatic SEO pages — public
