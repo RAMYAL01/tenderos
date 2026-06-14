@@ -3,6 +3,8 @@ import { getAuthContext, hasRole } from "@/lib/auth";
 import { db } from "@/lib/prisma";
 import { ProposalEditor } from "@/components/proposals/proposal-editor";
 import { ReviewBar, type ReviewTrailItem } from "@/components/proposals/review-bar";
+import { CaptureEvent } from "@/components/providers/analytics-capture";
+import { ANALYTICS_EVENTS } from "@/lib/analytics/events";
 
 export const metadata = { title: "Proposal Editor" };
 
@@ -23,7 +25,7 @@ export default async function ProposalEditorPage({
       },
       tender: {
         select: {
-          id: true, titleEn: true, clientName: true, tenderType: true, primaryLanguage: true,
+          id: true, titleEn: true, clientName: true, tenderType: true, primaryLanguage: true, isSample: true,
         },
       },
       createdBy: { select: { id: true, name: true } },
@@ -77,6 +79,7 @@ export default async function ProposalEditorPage({
 
   return (
     <>
+      {proposal.tender.isSample && <CaptureEvent event={ANALYTICS_EVENTS.DEMO_PROPOSAL_VIEWED} />}
       <ReviewBar
         proposalId={proposal.id}
         status={proposal.status}

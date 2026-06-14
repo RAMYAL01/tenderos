@@ -160,6 +160,7 @@ export default async function TenderDetailPage({
             decision={bidDecision}
             canRun={hasRole(member.role, "WRITER")}
             canDecide={hasRole(member.role, "MANAGER")}
+            isSample={tender.isSample}
           />
 
           {/* Details card */}

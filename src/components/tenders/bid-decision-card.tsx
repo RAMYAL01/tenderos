@@ -1,6 +1,8 @@
 "use client";
 
-import { useState, useTransition } from "react";
+import { useRef, useState, useTransition } from "react";
+import { isClientAnalyticsConfigured, posthog } from "@/lib/analytics/posthog-client";
+import { ANALYTICS_EVENTS } from "@/lib/analytics/events";
 import { useRouter } from "next/navigation";
 import {
   Scale, Loader2, Sparkles, ThumbsUp, ThumbsDown, AlertTriangle,
@@ -55,14 +57,17 @@ export function BidDecisionCard({
   decision,
   canRun,
   canDecide,
+  isSample = false,
 }: {
   tenderId: string;
   decision: BidDecisionData | null;
   canRun: boolean; // WRITER+
   canDecide: boolean; // MANAGER+
+  isSample?: boolean; // demo tender — fires demo_bid_score_viewed on first expand
 }) {
   const router = useRouter();
   const [expanded, setExpanded] = useState(false);
+  const firedBidView = useRef(false);
   const [notes, setNotes] = useState("");
   const [deciding, startDecide] = useTransition();
   const { run, isRunning, state } = useAIJob({
@@ -193,7 +198,14 @@ export function BidDecisionCard({
       {/* Rationale + risks (collapsible) */}
       <button
         type="button"
-        onClick={() => setExpanded((e) => !e)}
+        onClick={() => {
+          const next = !expanded;
+          setExpanded(next);
+          if (next && isSample && !firedBidView.current && isClientAnalyticsConfigured()) {
+            firedBidView.current = true;
+            posthog.capture(ANALYTICS_EVENTS.DEMO_BID_SCORE_VIEWED);
+          }
+        }}
         className="mb-2 flex w-full items-center justify-between text-xs font-medium text-blue-600 hover:text-blue-700"
       >
         {expanded ? "Hide assessment" : "Read full assessment"}
