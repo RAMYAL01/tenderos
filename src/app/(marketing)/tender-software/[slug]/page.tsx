@@ -96,7 +96,7 @@ export default async function ProgrammaticSolutionPage({ params }: { params: Pro
           { icon: FileSearch, title: "RFP & BOQ Extraction", body: `Ingest scanned, watermarked PDFs from ${country.portal} and get structured requirements and BOQ lines fast.` },
           { icon: Languages, title: "Bilingual by Design", body: "Arabic and English on the same line — RTL/LTR handled, not broken like standard parsers." },
           { icon: Calculator, title: "Deterministic Pricing", body: `Float-safe arithmetic in ${country.currency} from your internal rate cards. 100% reproducible, audit-ready.` },
-          { icon: ShieldCheck, title: "Compliance Matrix", body: `Track mandatory clauses and ${country.localContent} coverage with AI gap analysis.` },
+          { icon: ShieldCheck, title: "Compliance Matrix", body: `Track mandatory clauses and ${country.localContent} coverage — every gap flagged before you submit.` },
           { icon: Brain, title: "Corporate Knowledge Brain", body: "Search your past proposals, ISO certs, and CVs — tenant-isolated, never used to train external models." },
           { icon: Workflow, title: "ERP Integration", body: "Sync vendor and material catalogues from SAP/Oracle and push awarded tenders back as webhooks." },
         ]}
