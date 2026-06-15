@@ -30,17 +30,6 @@ export function Hero() {
 
       <div className="mx-auto max-w-6xl px-4 pb-24 pt-20 sm:px-6 sm:pt-28">
         <div className="mx-auto max-w-3xl text-center">
-          {/* Badge */}
-          <Reveal>
-            <div className="mb-6 inline-flex items-center gap-2 rounded-full border border-blue-100 bg-blue-50/80 px-4 py-1.5 text-xs font-medium text-blue-700 backdrop-blur dark:border-blue-900 dark:bg-blue-950/50 dark:text-blue-300">
-              <span className="relative flex h-2 w-2">
-                <span className="absolute inline-flex h-full w-full animate-ping rounded-full bg-blue-400 opacity-75" />
-                <span className="relative inline-flex h-2 w-2 rounded-full bg-blue-500" />
-              </span>
-              Powered by Claude AI · Arabic & English
-            </div>
-          </Reveal>
-
           {/* Headline */}
           <Reveal delay={80}>
             <h1 className="text-balance text-4xl font-bold leading-[1.05] tracking-tight text-slate-900 dark:text-white sm:text-6xl lg:text-7xl">

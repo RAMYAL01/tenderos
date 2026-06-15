@@ -15,7 +15,7 @@ const faqs = [
   },
   {
     q: "How does AI proposal generation work?",
-    a: "TenderOS uses Anthropic Claude, one of the most capable AI models for professional writing. It reads your RFP requirements, references your content library of past performance and methodology, and generates draft proposal sections calibrated to procurement scoring criteria.",
+    a: "TenderOS uses a leading large language model, fitted for professional bid writing. It reads your RFP requirements, references your content library of past performance and methodology, and generates draft proposal sections calibrated to procurement scoring criteria.",
   },
   {
     q: "Is my data secure?",

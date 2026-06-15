@@ -28,7 +28,7 @@ import { cn } from "@/lib/utils";
 const productMenu = [
   { icon: FileSearch, title: "Requirement Extraction", desc: "Parse any RFP in 90 seconds", href: "/#features", color: "text-blue-600", bg: "bg-blue-50 dark:bg-blue-950" },
   { icon: CheckSquare, title: "Compliance Matrix", desc: "AI-powered gap analysis", href: "/#features", color: "text-emerald-600", bg: "bg-emerald-50 dark:bg-emerald-950" },
-  { icon: PenTool, title: "Proposal Generation", desc: "Draft sections with Claude AI", href: "/#features", color: "text-violet-600", bg: "bg-violet-50 dark:bg-violet-950" },
+  { icon: PenTool, title: "Proposal Generation", desc: "Draft sections with AI", href: "/#features", color: "text-violet-600", bg: "bg-violet-50 dark:bg-violet-950" },
   { icon: Languages, title: "Bilingual (AR/EN)", desc: "Native Arabic & English", href: "/#features", color: "text-amber-600", bg: "bg-amber-50 dark:bg-amber-950" },
   { icon: Library, title: "Content Library", desc: "Reuse past performance", href: "/#features", color: "text-rose-600", bg: "bg-rose-50 dark:bg-rose-950" },
   { icon: ShieldCheck, title: "Enterprise Security", desc: "Encrypted, isolated workspaces", href: "/#features", color: "text-cyan-600", bg: "bg-cyan-50 dark:bg-cyan-950" },

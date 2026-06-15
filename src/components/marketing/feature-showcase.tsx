@@ -52,7 +52,7 @@ const tabs = [
     icon: PenTool,
     label: "Proposal Generation",
     blurb:
-      "Draft technical sections with Claude AI — grounded in your past performance and calibrated to the tender's scoring criteria.",
+      "Draft technical sections with AI — grounded in your past performance and calibrated to the tender's scoring criteria.",
     color: "text-violet-600",
     bg: "bg-violet-50 dark:bg-violet-950",
   },

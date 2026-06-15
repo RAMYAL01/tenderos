@@ -14,7 +14,7 @@ const steps = [
     icon: FileSearch,
     title: "Extract & Map Compliance",
     description:
-      "Claude AI reads every requirement, builds a compliance matrix, and flags gaps in your capabilities within minutes.",
+      "The AI reads every requirement, builds a compliance matrix, and flags gaps in your capabilities within minutes.",
   },
   {
     number: "03",

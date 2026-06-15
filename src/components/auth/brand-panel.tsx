@@ -123,7 +123,7 @@ export function BrandPanel() {
       <div className="relative z-10 max-w-md" style={layer(22)}>
         <div className="mb-5 inline-flex items-center gap-2 rounded-full border border-white/10 bg-white/5 px-3 py-1 text-xs font-medium text-blue-200 backdrop-blur">
           <Sparkles className="h-3.5 w-3.5" />
-          Powered by Claude AI
+          Bid-to-award intelligence
         </div>
         <h1 className="text-3xl font-bold leading-tight tracking-tight text-white xl:text-4xl">
           Win more contracts.

@@ -59,7 +59,7 @@ const features = [
     icon: PenTool,
     title: "Proposal Generation",
     description:
-      "Draft technical sections with Claude AI, calibrated to scoring criteria.",
+      "Draft technical sections with AI, calibrated to scoring criteria.",
     color: "text-violet-600",
     bg: "bg-violet-50 dark:bg-violet-950/60",
     ring: "group-hover:ring-violet-200 dark:group-hover:ring-violet-900",
