@@ -19,7 +19,7 @@ const faqs = [
   },
   {
     q: "Is my data secure?",
-    a: "Your documents are encrypted in transit (TLS 1.3) and at rest (AES-256 via AWS S3). Each organization's data is fully isolated. We use Clerk for enterprise-grade authentication with SOC 2 Type II compliance. We never use your data to train AI models.",
+    a: "Your documents are encrypted in transit (TLS 1.3) and at rest (AES-256). Each organization's data is isolated in the data layer — enforced in code, not by convention. Authentication is handled by Clerk, which is SOC 2 Type II certified. We never use your data to train AI models. See our Trust Center for our full security posture.",
   },
   {
     q: "Can I export proposals to Word or PDF?",
