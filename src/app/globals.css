@@ -333,6 +333,16 @@
   animation: shimmer 4.5s ease-in-out infinite;
 }
 
+/* Feature-showcase auto-advance bar — compositor-only (scaleX), no JS per frame. */
+@keyframes fs-progress {
+  from {
+    transform: scaleX(0);
+  }
+  to {
+    transform: scaleX(1);
+  }
+}
+
 /* Rising particles for the login scene */
 @keyframes rise {
   0% {

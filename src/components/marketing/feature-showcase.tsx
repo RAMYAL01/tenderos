@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useRef, useState } from "react";
+import { useEffect, useState } from "react";
 import {
   FileSearch,
   CheckSquare,
@@ -90,33 +90,18 @@ const AUTO_MS = 5000;
 export function FeatureShowcase() {
   const [active, setActive] = useState(0);
   const [paused, setPaused] = useState(false);
-  const startRef = useRef(0);
-  const [tick, setTick] = useState(0);
 
-  // Auto-advance with a progress ring
+  // Auto-advance one tab every AUTO_MS — a SINGLE timer, not a 60fps render loop.
+  // The progress bar is animated purely in CSS (compositor), so this triggers no
+  // per-frame React re-renders (which were taxing the main thread the whole time
+  // the landing page was open and competing with scroll).
   useEffect(() => {
     if (paused) return;
-    startRef.current = performance.now();
-    let raf = 0;
-    const loop = (now: number) => {
-      const elapsed = now - startRef.current;
-      setTick(Math.min(elapsed / AUTO_MS, 1));
-      if (elapsed >= AUTO_MS) {
-        setActive((a) => (a + 1) % tabs.length);
-        startRef.current = now;
-        setTick(0);
-      }
-      raf = requestAnimationFrame(loop);
-    };
-    raf = requestAnimationFrame(loop);
-    return () => cancelAnimationFrame(raf);
-  }, [paused, active]);
+    const t = setTimeout(() => setActive((a) => (a + 1) % tabs.length), AUTO_MS);
+    return () => clearTimeout(t);
+  }, [active, paused]);
 
-  const select = (i: number) => {
-    setActive(i);
-    setTick(0);
-    startRef.current = performance.now();
-  };
+  const select = (i: number) => setActive(i);
 
   return (
     <section
@@ -183,8 +168,12 @@ export function FeatureShowcase() {
                   {isActive && (
                     <div className="absolute inset-x-0 bottom-0 h-0.5 bg-blue-100 dark:bg-blue-950">
                       <div
-                        className="h-full bg-blue-600"
-                        style={{ width: `${(paused ? 0 : tick) * 100}%` }}
+                        key={active}
+                        className="h-full w-full origin-left bg-blue-600"
+                        style={{
+                          animation: `fs-progress ${AUTO_MS}ms linear forwards`,
+                          animationPlayState: paused ? "paused" : "running",
+                        }}
                       />
                     </div>
                   )}
