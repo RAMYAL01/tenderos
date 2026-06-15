@@ -9,7 +9,7 @@ import { FeatureShowcase } from "@/components/marketing/feature-showcase";
 import { HowItWorks } from "@/components/marketing/how-it-works";
 import { Industries } from "@/components/marketing/industries";
 import { StatsBand } from "@/components/marketing/stats-band";
-import { Testimonials } from "@/components/marketing/testimonials";
+import { FoundingPartners } from "@/components/marketing/founding-partners";
 import { FAQ } from "@/components/marketing/faq";
 import { CTASection } from "@/components/marketing/cta-section";
 import { Footer } from "@/components/marketing/footer";
@@ -44,7 +44,7 @@ export default async function LandingPage() {
         <HowItWorks />
         <Industries />
         <StatsBand />
-        <Testimonials />
+        <FoundingPartners />
         <FAQ />
         <CTASection />
       </main>

@@ -1,4 +1,4 @@
-import { ArrowRight, Play, Star } from "lucide-react";
+import { ArrowRight, Play } from "lucide-react";
 import { HeroStage } from "./hero-stage";
 import { Reveal } from "./reveal";
 import { ShinyButton } from "./shiny-button";
@@ -75,12 +75,13 @@ export function Hero() {
 
             {/* Trust line */}
             <div className="mt-6 flex flex-col items-center justify-center gap-2 text-xs text-slate-500 sm:flex-row sm:gap-4">
-              <div className="flex items-center gap-1">
-                {Array.from({ length: 5 }).map((_, i) => (
-                  <Star key={i} className="h-3.5 w-3.5 fill-amber-400 text-amber-400" />
-                ))}
-                <span className="ml-1 font-medium">4.8/5 pilot rating</span>
-              </div>
+              <span className="flex items-center gap-1.5 font-medium text-slate-600 dark:text-slate-300">
+                <span className="relative flex h-2 w-2">
+                  <span className="absolute inline-flex h-full w-full animate-ping rounded-full bg-emerald-400 opacity-75" />
+                  <span className="relative inline-flex h-2 w-2 rounded-full bg-emerald-500" />
+                </span>
+                Now onboarding founding customers
+              </span>
               <span className="hidden sm:inline">·</span>
               <span>14-day free trial · No credit card required</span>
             </div>

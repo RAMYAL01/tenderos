@@ -2,10 +2,10 @@ import { AnimatedCounter } from "./animated-counter";
 import { Reveal } from "./reveal";
 
 const stats = [
-  { value: 200, suffix: "+", label: "Proposals generated", sub: "across pilot customers" },
   { value: 90, suffix: "s", label: "To extract requirements", sub: "from a full RFP" },
-  { value: 30, suffix: "%", label: "Faster submission", sub: "vs. manual process" },
-  { value: 2, suffix: "", prefix: "", label: "Languages", sub: "Arabic & English, native" },
+  { value: 100, suffix: "+", label: "Page RFPs, structured", sub: "scanned & bilingual" },
+  { value: 0, suffix: "", label: "Invented prices", sub: "deterministic pricing engine" },
+  { value: 2, suffix: "", prefix: "", label: "Languages, native", sub: "Arabic & English, side by side" },
 ];
 
 export function StatsBand() {
