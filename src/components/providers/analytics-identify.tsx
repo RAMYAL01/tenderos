@@ -27,6 +27,9 @@ export function AnalyticsIdentify({
     if (!isClientAnalyticsConfigured() || !userId) return;
     posthog.identify(userId, { role });
     posthog.group("organization", organizationId, { name: organizationName, plan });
+    // Start session recording only here, inside the authenticated app — keeps
+    // the recorder off the heavy public/marketing pages (perf).
+    posthog.startSessionRecording?.();
   }, [userId, organizationId, organizationName, plan, role]);
 
   return null;

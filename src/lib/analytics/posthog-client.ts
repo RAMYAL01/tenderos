@@ -31,6 +31,11 @@ export function initPostHogClient(): void {
     capture_pageleave: true,
     autocapture: false, // SECURITY: no auto-capture of inputs/clicks → no content/PII
     person_profiles: "identified_only",
+    // PERF: do NOT record by default. The recorder instruments every DOM
+    // mutation; on the animated marketing pages that's continuous overhead for
+    // zero value. Recording is started only inside the app (AnalyticsIdentify),
+    // where it's both useful and on calmer pages.
+    disable_session_recording: true,
     session_recording: {
       maskAllInputs: true, // SECURITY: every input value masked
       maskTextSelector: "*", // SECURITY: mask all text (tender/proposal content)
