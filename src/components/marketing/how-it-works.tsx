@@ -1,13 +1,13 @@
-import { Upload, FileSearch, Brain, Calculator, Target, FileCheck } from "lucide-react";
+import { Compass, FileSearch, Brain, Calculator, Target, FileCheck } from "lucide-react";
 import { Reveal } from "./reveal";
 
 const steps = [
   {
     number: "01",
-    icon: Upload,
-    title: "Upload Your RFP",
+    icon: Compass,
+    title: "Find or Upload a Tender",
     description:
-      "Drag and drop your tender documents — PDF, DOCX, or scanned. Arabic and English are both supported out of the box.",
+      "Pull a ranked opportunity from your Discover feed, or drag and drop your own RFP — PDF, DOCX, or scanned, Arabic or English.",
   },
   {
     number: "02",

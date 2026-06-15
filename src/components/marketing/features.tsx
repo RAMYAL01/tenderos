@@ -1,10 +1,12 @@
 import {
+  Compass,
   FileSearch,
   CheckSquare,
   Brain,
   PenTool,
   Calculator,
   Target,
+  SquareKanban,
   Languages,
   ShieldCheck,
 } from "lucide-react";
@@ -13,6 +15,17 @@ import { TiltCard } from "./tilt-card";
 
 const features = [
   {
+    icon: Compass,
+    title: "Tender Discovery",
+    description:
+      "Find government and infrastructure tenders ranked for your company — with daily alerts, plus market intelligence on who's buying and which sectors are moving.",
+    color: "text-sky-600",
+    bg: "bg-sky-50 dark:bg-sky-950/60",
+    ring: "group-hover:ring-sky-200 dark:group-hover:ring-sky-900",
+    span: "lg:col-span-2",
+    accent: true,
+  },
+  {
     icon: FileSearch,
     title: "AI Requirement Extraction",
     description:
@@ -20,14 +33,13 @@ const features = [
     color: "text-blue-600",
     bg: "bg-blue-50 dark:bg-blue-950/60",
     ring: "group-hover:ring-blue-200 dark:group-hover:ring-blue-900",
-    span: "lg:col-span-2",
-    accent: true,
+    span: "",
   },
   {
     icon: CheckSquare,
-    title: "Smart Compliance Matrix",
+    title: "Compliance Matrix",
     description:
-      "Auto-map requirements to your capabilities with AI gap analysis.",
+      "Map every requirement to your capabilities and flag the gaps before you commit to a bid.",
     color: "text-emerald-600",
     bg: "bg-emerald-50 dark:bg-emerald-950/60",
     ring: "group-hover:ring-emerald-200 dark:group-hover:ring-emerald-900",
@@ -74,6 +86,16 @@ const features = [
     span: "",
   },
   {
+    icon: SquareKanban,
+    title: "Pipeline & Win-Loss Analytics",
+    description:
+      "Track every bid from discovery to decision on one board, then see your win rate by sector to focus on what you actually win.",
+    color: "text-fuchsia-600",
+    bg: "bg-fuchsia-50 dark:bg-fuchsia-950/60",
+    ring: "group-hover:ring-fuchsia-200 dark:group-hover:ring-fuchsia-900",
+    span: "",
+  },
+  {
     icon: Languages,
     title: "Truly Bilingual",
     description:
@@ -107,8 +129,7 @@ export function Features() {
             Everything you need to win more bids
           </h2>
           <p className="mt-4 text-lg text-slate-600 dark:text-slate-400">
-            From RFP upload to final export — AI assistance at every step of the
-            bid lifecycle.
+            One workspace for the whole bid — from RFP upload to final export.
           </p>
         </Reveal>
 

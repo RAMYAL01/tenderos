@@ -21,7 +21,7 @@ const tiers: PricingTier[] = [
   {
     name: "Starter",
     monthly: 149,
-    description: "For small contractors getting started with AI proposals.",
+    description: "For small contractors with a handful of bids each month.",
     icon: Rocket,
     iconColor: "text-blue-600",
     iconBg: "bg-blue-50 dark:bg-blue-950",

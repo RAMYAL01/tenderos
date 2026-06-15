@@ -55,9 +55,9 @@ export function Hero() {
           <Reveal delay={160}>
             <p className="mx-auto mt-6 max-w-2xl text-pretty text-lg leading-relaxed text-slate-600 dark:text-slate-400">
               Upload any RFP — Arabic or English — and TenderOS extracts every
-              requirement, builds your compliance matrix, and drafts winning
-              proposals with AI. Purpose-built for government contractors, EPC
-              firms, and defense companies.
+              requirement, builds your compliance matrix, and drafts a first
+              proposal from your own past work. Purpose-built for contractors
+              and consultancies bidding on government and infrastructure work.
             </p>          </Reveal>
 
           {/* CTAs */}

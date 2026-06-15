@@ -7,6 +7,7 @@ import { LogoMarquee } from "@/components/marketing/logo-marquee";
 import { Features } from "@/components/marketing/features";
 import { FeatureShowcase } from "@/components/marketing/feature-showcase";
 import { HowItWorks } from "@/components/marketing/how-it-works";
+import { Industries } from "@/components/marketing/industries";
 import { StatsBand } from "@/components/marketing/stats-band";
 import { Testimonials } from "@/components/marketing/testimonials";
 import { FAQ } from "@/components/marketing/faq";
@@ -16,7 +17,7 @@ import { Footer } from "@/components/marketing/footer";
 export const metadata = {
   title: "TenderOS — The Operating System for Winning Contracts",
   description:
-    "AI-powered bilingual proposal intelligence for government contractors. Upload RFPs, extract requirements, and generate winning proposals 10x faster.",
+    "Bilingual tender intelligence for contractors across MENA. Find government and infrastructure tenders, extract every requirement, build the compliance matrix, and draft a first proposal from your own past work.",
 };
 
 /**
@@ -41,6 +42,7 @@ export default async function LandingPage() {
         <Features />
         <FeatureShowcase />
         <HowItWorks />
+        <Industries />
         <StatsBand />
         <Testimonials />
         <FAQ />
@@ -89,6 +91,8 @@ function buildLandingJsonLd() {
         description:
           "Extract requirements and compliance matrices from 100+ page Arabic/English RFPs and BOQs in 90 seconds, then price bids with a deterministic, float-safe engine that never hallucinates a number.",
         featureList: [
+          "Tender discovery and bid-fit ranking across government & infrastructure sources",
+          "Bid pipeline tracking with win-loss analytics by sector",
           "AI requirement extraction from scanned Arabic/English RFPs & BOQs",
           "Cross-page BOQ table stitching and structuring",
           "Deterministic, float-safe financial proposal pricing (zero AI math hallucination)",
