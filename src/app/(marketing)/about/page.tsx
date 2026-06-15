@@ -151,8 +151,8 @@ export default function AboutPage() {
                   performance.
                 </p>
                 <p>
-                  Today, contractors across construction, facilities management,
-                  defense, and infrastructure use TenderOS to submit better
+                  Today, firms across construction, EPC, engineering, and
+                  facilities management use TenderOS to submit better
                   proposals, faster — and to pursue opportunities they would have
                   had to walk away from before.
                 </p>

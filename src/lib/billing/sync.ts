@@ -133,7 +133,7 @@ export async function syncSubscription(sub: Stripe.Subscription): Promise<void> 
 
 /**
  * Handle a fully-cancelled subscription: mark cancelled and revert the org to
- * the free Starter limits so access is downgraded cleanly.
+ * the Starter-tier limits so access is downgraded cleanly (billing has stopped).
  */
 export async function handleSubscriptionCancelled(
   sub: Stripe.Subscription

@@ -51,9 +51,9 @@ export default function SubscriptionChangeEmail(p: SubscriptionChangePayload) {
           <Heading>Your subscription was cancelled</Heading>
           <Paragraph>Hi {p.recipientName},</Paragraph>
           <Paragraph>
-            <strong>{p.organizationName}</strong>&apos;s subscription has been cancelled and the
-            workspace has reverted to the free Starter limits. Your data is retained — you can
-            re-subscribe anytime to restore full access.
+            <strong>{p.organizationName}</strong>&apos;s subscription has been cancelled and
+            billing has stopped. Your workspace stays open on the entry-level Starter limits,
+            and all your data is retained — re-subscribe anytime to restore full access.
           </Paragraph>
           <CtaButton href={billingUrl} label="Re-subscribe" />
         </>
