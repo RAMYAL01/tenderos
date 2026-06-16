@@ -68,7 +68,6 @@ const values = [
 const stats = [
   { value: 90, suffix: "s", label: "To extract requirements" },
   { value: 100, suffix: "+", label: "Page RFPs handled" },
-  { value: 0, suffix: "", label: "Invented prices" },
   { value: 2, suffix: "", label: "Languages, native" },
 ];
 
@@ -110,7 +109,7 @@ export default function AboutPage() {
 
         {/* Stats band */}
         <section className="border-y border-slate-100 bg-slate-50/60 py-14 dark:border-slate-800 dark:bg-slate-900/30">
-          <div className="mx-auto grid max-w-5xl grid-cols-2 gap-8 px-4 sm:px-6 lg:grid-cols-4">
+          <div className="mx-auto grid max-w-5xl grid-cols-1 gap-8 px-4 sm:px-6 sm:grid-cols-3">
             {stats.map((s, i) => (
               <Reveal key={s.label} delay={i * 80} className="text-center">
                 <div className="text-4xl font-bold tracking-tight text-slate-900 dark:text-white sm:text-5xl">

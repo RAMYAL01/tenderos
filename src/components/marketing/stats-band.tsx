@@ -4,7 +4,6 @@ import { Reveal } from "./reveal";
 const stats = [
   { value: 90, suffix: "s", label: "To extract requirements", sub: "from a full RFP" },
   { value: 100, suffix: "+", label: "Page RFPs, structured", sub: "scanned & bilingual" },
-  { value: 0, suffix: "", label: "Invented prices", sub: "deterministic pricing engine" },
   { value: 2, suffix: "", prefix: "", label: "Languages, native", sub: "Arabic & English, side by side" },
 ];
 
@@ -14,7 +13,7 @@ export function StatsBand() {
       <div className="mx-auto max-w-6xl px-4 sm:px-6">
         <Reveal>
           <div className="rounded-3xl border border-slate-200 bg-gradient-to-br from-slate-900 to-[#0c1a35] px-6 py-12 shadow-xl dark:border-slate-800 sm:px-12">
-            <div className="grid grid-cols-2 gap-8 lg:grid-cols-4">
+            <div className="grid grid-cols-1 gap-8 sm:grid-cols-3">
               {stats.map((stat) => (
                 <div key={stat.label} className="text-center">
                   <div className="text-4xl font-bold tracking-tight text-white sm:text-5xl">

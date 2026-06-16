@@ -14,7 +14,7 @@ import {
 const stats = [
   { value: "90s", label: "RFP to requirements" },
   { value: "100+", label: "Page RFPs handled" },
-  { value: "0", label: "Invented prices" },
+  { value: "2", label: "Languages, native" },
 ];
 
 /**
@@ -131,12 +131,12 @@ export function BrandPanel() {
           Write better proposals.
           <br />
           <span className="bg-gradient-to-r from-blue-300 to-cyan-300 bg-clip-text text-transparent">
-            10x faster.
+            In Arabic &amp; English.
           </span>
         </h1>
         <p className="mt-4 text-base leading-relaxed text-slate-300/80">
-          AI-powered bilingual proposal intelligence for government contractors,
-          EPC firms, and defense companies across MENA and globally.
+          Bilingual bid-to-award intelligence for government, EPC, construction,
+          and engineering teams across MENA.
         </p>
         {/* Social proof stats */}
         <div className="mt-9 grid grid-cols-3 gap-6">
