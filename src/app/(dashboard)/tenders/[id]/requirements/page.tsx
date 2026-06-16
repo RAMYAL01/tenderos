@@ -93,7 +93,7 @@ export default async function RequirementsPage({
             </h3>
             <p className="mb-5 text-sm text-slate-600 dark:text-slate-400">
               {readyDocuments.length} document{readyDocuments.length > 1 ? "s" : ""} ready.
-              Claude will analyze{" "}
+              The AI will analyze{" "}
               {readyDocuments.map((d) => `"${d.originalFilename}"`).join(", ")}{" "}
               and extract all mandatory and optional requirements.
             </p>

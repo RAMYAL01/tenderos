@@ -208,7 +208,7 @@ export function AIAssistantPanel({
           <p className="text-sm font-semibold text-slate-900 dark:text-slate-100">
             AI Assistant
           </p>
-          <p className="text-[10px] text-slate-500">Claude 3.5 Sonnet</p>
+          <p className="text-[10px] text-slate-500">Grounded in your content</p>
         </div>
       </div>
 

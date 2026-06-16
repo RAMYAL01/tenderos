@@ -101,7 +101,7 @@ export function ExtractRequirementsButton({
         <div className="space-y-1">
           <Progress value={state.progress} className="h-1.5" />
           <p className="text-xs text-slate-500">
-            {state.progress}% — Claude is analyzing the document...
+            {state.progress}% — Analyzing the document...
           </p>
         </div>
       )}
