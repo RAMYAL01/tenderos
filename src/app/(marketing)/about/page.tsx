@@ -66,9 +66,9 @@ const values = [
 ];
 
 const stats = [
-  { value: 200, suffix: "+", label: "Proposals generated" },
-  { value: 50, suffix: "+", label: "Contractors onboarded" },
-  { value: 30, suffix: "%", label: "Faster submissions" },
+  { value: 90, suffix: "s", label: "To extract requirements" },
+  { value: 100, suffix: "+", label: "Page RFPs handled" },
+  { value: 0, suffix: "", label: "Invented prices" },
   { value: 2, suffix: "", label: "Languages, native" },
 ];
 

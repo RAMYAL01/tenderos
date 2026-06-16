@@ -12,9 +12,9 @@ import {
 } from "lucide-react";
 
 const stats = [
-  { value: "200+", label: "Proposals Generated" },
-  { value: "4.8/5", label: "Pilot Satisfaction" },
-  { value: "30%", label: "Faster Submission" },
+  { value: "90s", label: "RFP to requirements" },
+  { value: "100+", label: "Page RFPs handled" },
+  { value: "0", label: "Invented prices" },
 ];
 
 /**
