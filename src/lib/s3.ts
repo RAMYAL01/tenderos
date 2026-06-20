@@ -8,24 +8,31 @@ import {
 import { getSignedUrl } from "@aws-sdk/s3-request-presigner";
 import { randomUUID } from "crypto";
 
-// ── S3 client singleton ────────────────────────────────────────────────────────
+// ── S3 / R2 client singleton ────────────────────────────────────────────────────
+
+// Optional S3-compatible endpoint (e.g. Cloudflare R2). When S3_ENDPOINT is set
+// we point the AWS SDK at it and run in "R2 mode": region defaults to "auto" and
+// the SSE header is omitted (R2 encrypts at rest automatically and rejects
+// x-amz-server-side-encryption). Unset → plain AWS S3, unchanged behavior.
+const STORAGE_ENDPOINT = process.env.S3_ENDPOINT || undefined;
 
 // Lazy singleton — initialized on first use so Next.js build doesn't
-// throw when AWS env vars aren't present at build time.
+// throw when storage env vars aren't present at build time.
 let _s3: S3Client | null = null;
 export function getS3(): S3Client {
   if (!_s3) {
     if (!process.env.AWS_ACCESS_KEY_ID) throw new Error("AWS_ACCESS_KEY_ID is not set");
     if (!process.env.AWS_SECRET_ACCESS_KEY) throw new Error("AWS_SECRET_ACCESS_KEY is not set");
-    if (!process.env.AWS_REGION) throw new Error("AWS_REGION is not set");
+    if (!STORAGE_ENDPOINT && !process.env.AWS_REGION) throw new Error("AWS_REGION is not set");
     _s3 = new S3Client({
-      region: process.env.AWS_REGION,
+      region: process.env.AWS_REGION ?? "auto",
+      endpoint: STORAGE_ENDPOINT, // undefined → default AWS S3 endpoints
       credentials: {
         accessKeyId: process.env.AWS_ACCESS_KEY_ID,
         secretAccessKey: process.env.AWS_SECRET_ACCESS_KEY,
       },
-      // Newer AWS SDK versions auto-add x-amz-checksum-crc32 to signed
-      // requests, which breaks browser presigned PUT (the XHR can't send it).
+      // Newer AWS SDK versions auto-add x-amz-checksum-crc32 to signed requests,
+      // which breaks browser presigned PUT (the XHR can't send it) and R2.
       // Only compute checksums when a command explicitly requires one.
       requestChecksumCalculation: "WHEN_REQUIRED",
     });
@@ -157,7 +164,9 @@ export async function uploadToS3(
     Key: key,
     Body: body,
     ContentType: contentType,
-    ServerSideEncryption: "AES256",
+    // AWS S3 enforces SSE-AES256; R2 encrypts at rest automatically and rejects
+    // the header, so omit it when pointed at a custom endpoint (R2).
+    ServerSideEncryption: STORAGE_ENDPOINT ? undefined : "AES256",
   });
   await s3.send(command);
 }
