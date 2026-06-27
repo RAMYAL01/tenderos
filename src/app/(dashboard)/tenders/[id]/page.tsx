@@ -19,7 +19,10 @@ import { TenderDocumentsPanel } from "@/components/tenders/tender-documents-pane
 import { BidDecisionCard, type BidDecisionData } from "@/components/tenders/bid-decision-card";
 import { RecordOutcomeDialog } from "@/components/tenders/record-outcome-dialog";
 import { SampleBanner } from "@/components/demo/sample-banner";
+import { BenchmarkPanel } from "@/components/benchmark/benchmark-panel";
 import { getAuthContext, hasRole } from "@/lib/auth";
+import { getAwardBenchmark, canReadBenchmarks } from "@/lib/benchmark/read";
+import { toValueBand } from "@/lib/benchmark/bands";
 import { db } from "@/lib/prisma";
 import { formatDeadline, cn } from "@/lib/utils";
 
@@ -94,6 +97,20 @@ export default async function TenderDetailPage({
       }
     : null;
 
+  // Market benchmark for this tender's cell — k-anonymized cross-customer pool,
+  // gated to paid tiers. Pure read; the panel renders gated/suppressed/data states.
+  const canBenchmark = canReadBenchmarks(org.planTier);
+  const valueBand = tender.estimatedValue
+    ? toValueBand(BigInt(Math.round(Number(tender.estimatedValue) * 100)))
+    : null;
+  const benchmark = canBenchmark
+    ? await getAwardBenchmark({
+        sector: tender.sector,
+        country: tender.clientCountry,
+        valueBand: valueBand && valueBand !== "UNKNOWN" ? valueBand : null,
+      })
+    : null;
+
   const hasDocuments = tender.documents.length > 0;
   const readyDocuments = tender.documents.filter(
     (d) => d.processingStatus === "READY"
@@ -161,6 +178,13 @@ export default async function TenderDetailPage({
             canRun={hasRole(member.role, "WRITER")}
             canDecide={hasRole(member.role, "MANAGER")}
             isSample={tender.isSample}
+          />
+
+          {/* Market benchmark — cross-customer award pool for this tender's cell */}
+          <BenchmarkPanel
+            gated={!canBenchmark}
+            benchmark={benchmark}
+            cell={{ sector: tender.sector, country: tender.clientCountry, valueBand }}
           />
 
           {/* Details card */}
