@@ -17,11 +17,17 @@ import { join, relative } from "node:path";
  */
 
 const SRC = join(__dirname, "..", "..", ".."); // -> tenderos/src
-const ALLOWED = ["lib/discovery/ingest.ts"]; // the one sanctioned writer
+const ALLOWED = [
+  "lib/discovery/ingest.ts", // Discovery catalog (Opportunity/OpportunitySource)
+  "lib/benchmark/contribute.ts", // Benchmark network: AwardOutcome writer
+  "lib/benchmark/entities.ts", // Benchmark network: Competitor/Buyer writer
+]; // the sanctioned global-catalog writers
 const WRITE_OPS = "(create|createMany|update|updateMany|upsert|delete|deleteMany)";
-const PATTERN = new RegExp(`db\\.(opportunity|opportunitySource)\\.${WRITE_OPS}\\b`);
-// tx.opportunity.* inside transactions too:
-const TX_PATTERN = new RegExp(`\\.(opportunity|opportunitySource)\\.${WRITE_OPS}\\b`);
+// Global, orgId-free catalogs: the Discovery catalog AND the Benchmark network.
+const MODELS = "(opportunity|opportunitySource|awardOutcome|competitor|buyer)";
+const PATTERN = new RegExp(`db\\.${MODELS}\\.${WRITE_OPS}\\b`);
+// tx.<model>.* inside transactions too:
+const TX_PATTERN = new RegExp(`\\.${MODELS}\\.${WRITE_OPS}\\b`);
 
 function walk(dir: string): string[] {
   const out: string[] = [];
@@ -35,7 +41,7 @@ function walk(dir: string): string[] {
   return out;
 }
 
-test("only ingest.ts writes the global Opportunity catalog (M1)", () => {
+test("only sanctioned writers touch the global catalogs — Discovery + Benchmark (M1)", () => {
   const offenders: string[] = [];
   for (const file of walk(SRC)) {
     const rel = relative(SRC, file).replace(/\\/g, "/");

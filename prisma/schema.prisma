@@ -325,6 +325,9 @@ model Organization {
   // Discovery plan limits (standing-inventory caps; -1 = unlimited per quota.ts).
   maxSavedSearches        Int               @default(1)
   maxTrackedOpportunities Int               @default(10)
+  // Benchmark network: opt OUT of contributing anonymized award outcomes to the
+  // cross-customer pool. Contribution is ON by default; reads are tier-gated.
+  benchmarkOptOut         Boolean           @default(false)
   // Org-first onboarding: null until the workspace wizard is completed.
   onboardingCompletedAt   DateTime?
   createdAt               DateTime          @default(now())
@@ -1615,4 +1618,109 @@ model NotificationPreference {
 
   @@index([orgId])
   @@map("notification_preferences")
+}
+
+// ─────────────────────────────────────────────────────────────────────────────
+// BENCHMARK NETWORK (Wave 1 — the cross-customer data moat)
+//
+// GLOBAL, orgId-free catalog of award outcomes pooled across every tenant, plus
+// the canonical Competitor / Buyer entities that make the pool joinable across
+// Arabic/English name variants. Modelled exactly like the Opportunity catalog:
+// no orgId, no relations to tenant tables, written ONLY by the sanctioned
+// benchmark writers (src/lib/benchmark/*), enforced by the isolation guard.
+// Reads are k-anonymized aggregates (src/lib/benchmark/read.ts); sourceTenderId
+// is provenance only (idempotent contribution + opt-out retraction) and is NEVER
+// returned in a benchmark read.
+// ─────────────────────────────────────────────────────────────────────────────
+
+enum AwardOutcomeType {
+  WON // the (anonymous) contributor won this award
+  LOST // the contributor lost — winnerName/competitor is someone else
+  AWARDED // ingested from a public award gazette (no contributor perspective)
+}
+
+enum AwardSourceType {
+  CUSTOMER_DEBRIEF // contributed from a tenant's recorded WON/LOST outcome
+  GAZETTE // parsed from a public award-result notice (Wave 1, item 4)
+}
+
+enum ValueBand {
+  UNDER_1M
+  FROM_1M_5M
+  FROM_5M_25M
+  FROM_25M_100M
+  OVER_100M
+  UNKNOWN
+}
+
+/// GLOBAL CATALOG — no orgId. One anonymized award outcome pooled across tenants.
+/// Written ONLY by src/lib/benchmark/contribute.ts (+ the future gazette adapter).
+/// k-anonymized at read time; sourceTenderId is provenance only, never in reads.
+model AwardOutcome {
+  id                  String           @id @default(cuid())
+  outcomeType         AwardOutcomeType
+  sourceType          AwardSourceType  @default(CUSTOMER_DEBRIEF)
+  // Market cell — the join keys for benchmark aggregation.
+  sector              String?
+  country             String?          @db.Char(2)
+  buyerId             String? // → canonical Buyer (resolved)
+  buyerNameRaw        String? // original free-text, kept for re-resolution
+  // The winner (LOST/AWARDED). Null when the contributor won and stays anonymous.
+  competitorId        String? // → canonical Competitor (resolved winner)
+  winnerNameRaw       String?
+  // Money — integer minor units (deterministic-money discipline, like the BOQ engine).
+  awardedValueMinor   BigInt?
+  currency            String?          @db.Char(3)
+  valueBand           ValueBand        @default(UNKNOWN)
+  bidderCount         Int? // number of bidders, when known
+  lossReason          LossReason? // why the contributor lost (LOST only)
+  // Provenance — NEVER returned in a read. Idempotency + opt-out retraction key.
+  sourceTenderId      String?          @unique // one outcome per contributing tender
+  sourceOpportunityId String? // link to the global Opportunity, when known
+  awardedAt           DateTime?
+  createdAt           DateTime         @default(now())
+
+  buyer      Buyer?      @relation(fields: [buyerId], references: [id])
+  competitor Competitor? @relation(fields: [competitorId], references: [id])
+
+  @@index([sector, country, valueBand])
+  @@index([buyerId])
+  @@index([competitorId])
+  @@map("award_outcomes")
+}
+
+/// GLOBAL CATALOG — canonical bidding firm, deduped across AR/EN name variants.
+/// normalizedKey is the dedup natural key (see normalizeEntityName). Written ONLY
+/// by src/lib/benchmark/entities.ts.
+model Competitor {
+  id              String   @id @default(cuid())
+  canonicalName   String
+  canonicalNameAr String?
+  normalizedKey   String   @unique // normalized form used for dedup/matching
+  aliases         String[] @default([]) // every raw spelling folded in
+  country         String?  @db.Char(2)
+  createdAt       DateTime @default(now())
+  updatedAt       DateTime @updatedAt
+
+  awardOutcomes AwardOutcome[]
+
+  @@map("competitors")
+}
+
+/// GLOBAL CATALOG — canonical buying entity (gov body / ministry), deduped across
+/// AR/EN variants. Written ONLY by src/lib/benchmark/entities.ts.
+model Buyer {
+  id              String   @id @default(cuid())
+  canonicalName   String
+  canonicalNameAr String?
+  normalizedKey   String   @unique
+  aliases         String[] @default([])
+  country         String?  @db.Char(2)
+  sector          String?
+  createdAt       DateTime @default(now())
+  updatedAt       DateTime @updatedAt
+
+  awardOutcomes AwardOutcome[]
+
+  @@map("buyers")
 }

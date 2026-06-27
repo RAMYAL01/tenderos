@@ -1,11 +1,13 @@
 "use server";
 
 import { revalidatePath } from "next/cache";
+import { after } from "next/server";
 import { z } from "zod";
 import { LossReason, TenderStatus } from "@prisma/client";
 import { db } from "@/lib/prisma";
 import { getAuthContext, requireRole } from "@/lib/auth";
 import { logAudit } from "@/lib/security/audit";
+import { contributeAwardOutcome } from "@/lib/benchmark/contribute";
 
 /**
  * Outcome debrief — the Win/Loss Intelligence producer.
@@ -58,6 +60,12 @@ export async function recordTenderOutcome(input: RecordOutcomeInput): Promise<Re
       where: { id: d.tenderId, orgId: org.id, deletedAt: null },
       select: {
         id: true,
+        sector: true,
+        clientCountry: true,
+        clientName: true,
+        currency: true,
+        sourceOpportunityId: true,
+        organization: { select: { benchmarkOptOut: true } },
         bidDecision: {
           select: {
             id: true,
@@ -84,6 +92,26 @@ export async function recordTenderOutcome(input: RecordOutcomeInput): Promise<Re
         outcomeRecordedById: member.id,
       },
     });
+
+    // Pool the outcome into the global benchmark network — anonymized, entity-
+    // resolved, opt-out-respecting. after() so it never blocks the debrief response.
+    if ((d.status === "WON" || d.status === "LOST") && !tender.organization?.benchmarkOptOut) {
+      const status = d.status;
+      after(() =>
+        contributeAwardOutcome({
+          sourceTenderId: d.tenderId,
+          outcome: status,
+          sector: tender.sector,
+          country: tender.clientCountry,
+          buyerName: tender.clientName,
+          awardedValue: status === "WON" ? d.awardedValue ?? null : null,
+          currency: tender.currency,
+          winningCompetitor: status === "LOST" ? d.winningCompetitor?.trim() || null : null,
+          lossReason: status === "LOST" ? d.lossReason ?? null : null,
+          sourceOpportunityId: tender.sourceOpportunityId,
+        }),
+      );
+    }
 
     // Ground-truth calibration of the bid qualifier (best-effort, never blocks).
     const analysis = tender.bidDecision;
