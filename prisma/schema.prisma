@@ -1675,7 +1675,9 @@ model AwardOutcome {
   bidderCount         Int? // number of bidders, when known
   lossReason          LossReason? // why the contributor lost (LOST only)
   // Provenance — NEVER returned in a read. Idempotency + opt-out retraction key.
-  sourceTenderId      String?          @unique // one outcome per contributing tender
+  sourceTenderId      String?          @unique // one outcome per contributing tender (debrief)
+  externalKey         String?          @unique // one outcome per gazette award notice (GAZETTE)
+  gazetteSourceId     String? // the GazetteSource this was ingested from (GAZETTE)
   sourceOpportunityId String? // link to the global Opportunity, when known
   awardedAt           DateTime?
   createdAt           DateTime         @default(now())
@@ -1723,4 +1725,28 @@ model Buyer {
   awardOutcomes AwardOutcome[]
 
   @@map("buyers")
+}
+
+/// GLOBAL — a public award-gazette feed that flows into the AwardOutcome pool
+/// (sourceType=GAZETTE). Mirrors OpportunitySource: adding an award source is a
+/// DATA operation (insert a row with an adapterKey + baseUrl). Health fields feed
+/// dead-source detection. Written ONLY by src/lib/benchmark/ingest-gazette.ts.
+model GazetteSource {
+  id                  String          @id @default(cuid())
+  name                String
+  slug                String          @unique
+  country             String?         @db.Char(2)
+  adapterKey          String // resolves the gazette adapter (e.g. "ocds-awards")
+  baseUrl             String?
+  defaultLanguage     ContentLanguage @default(EN)
+  isActive            Boolean         @default(true)
+  lastPolledAt        DateTime?
+  lastSuccessAt       DateTime?
+  lastError           String?         @db.Text
+  consecutiveFailures Int             @default(0)
+  lastItemCount       Int?
+  createdAt           DateTime        @default(now())
+  updatedAt           DateTime        @updatedAt
+
+  @@map("gazette_sources")
 }

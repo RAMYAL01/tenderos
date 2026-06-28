@@ -12,6 +12,7 @@ import { NextResponse } from "next/server";
 import { logger } from "@/lib/logger";
 import { runDiscoveryRefresh } from "@/lib/discovery/refresh";
 import { sendTrialExpiryWarnings } from "@/lib/email/trial";
+import { runGazetteIngestion } from "@/lib/benchmark/ingest-gazette";
 
 export const dynamic = "force-dynamic";
 export const maxDuration = 300;
@@ -28,10 +29,11 @@ export async function GET(req: Request) {
 
   try {
     const summary = await runDiscoveryRefresh();
-    // Piggyback the daily trial-expiry sweep (7/3/1-day warnings) here rather
-    // than spend one of Hobby's scarce cron slots on it.
+    // Piggyback the daily trial-expiry sweep + gazette award ingestion here rather
+    // than spend Hobby's scarce cron slots on them.
     const trials = await sendTrialExpiryWarnings();
-    return NextResponse.json({ success: true, ...summary, trials });
+    const gazette = await runGazetteIngestion();
+    return NextResponse.json({ success: true, ...summary, trials, gazette });
   } catch (err) {
     logger.error({ err }, "refresh-opportunities cron failed");
     return NextResponse.json({ error: "Refresh failed" }, { status: 500 });

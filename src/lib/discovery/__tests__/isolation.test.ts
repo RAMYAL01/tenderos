@@ -21,10 +21,11 @@ const ALLOWED = [
   "lib/discovery/ingest.ts", // Discovery catalog (Opportunity/OpportunitySource)
   "lib/benchmark/contribute.ts", // Benchmark network: AwardOutcome writer
   "lib/benchmark/entities.ts", // Benchmark network: Competitor/Buyer writer
+  "lib/benchmark/ingest-gazette.ts", // Benchmark network: gazette AwardOutcome + GazetteSource writer
 ]; // the sanctioned global-catalog writers
 const WRITE_OPS = "(create|createMany|update|updateMany|upsert|delete|deleteMany)";
 // Global, orgId-free catalogs: the Discovery catalog AND the Benchmark network.
-const MODELS = "(opportunity|opportunitySource|awardOutcome|competitor|buyer)";
+const MODELS = "(opportunity|opportunitySource|awardOutcome|competitor|buyer|gazetteSource)";
 const PATTERN = new RegExp(`db\\.${MODELS}\\.${WRITE_OPS}\\b`);
 // tx.<model>.* inside transactions too:
 const TX_PATTERN = new RegExp(`\\.${MODELS}\\.${WRITE_OPS}\\b`);

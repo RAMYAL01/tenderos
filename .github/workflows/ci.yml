@@ -67,6 +67,9 @@ jobs:
       - name: Bid/No-Bid deterministic factor engine tests
         run: npm run test:bid
 
+      - name: Benchmark gazette OCDS-award parser tests (network-free)
+        run: npm run test:awards
+
   # ── Job 2: Build ──────────────────────────────────────────────────────────
   build:
     name: Build
