@@ -1,4 +1,5 @@
 import { db } from "@/lib/prisma";
+import { DEAD_SOURCE_THRESHOLD } from "@/lib/discovery/ingest";
 import { resolveCompetitor, resolveBuyer } from "./entities";
 import { toValueBand } from "./bands";
 import { GAZETTE_ADAPTERS } from "./gazette";
@@ -105,4 +106,18 @@ export async function runGazetteIngestion(): Promise<GazetteRunSummary> {
   }
 
   return { sources: sources.length, awards, errors };
+}
+
+/** Auto-disable dead gazette sources (same policy as the discovery catalog). */
+export async function autoDisableDeadGazetteSources(): Promise<string[]> {
+  const dead = await db.gazetteSource.findMany({
+    where: { isActive: true, consecutiveFailures: { gte: DEAD_SOURCE_THRESHOLD } },
+    select: { id: true, slug: true },
+  });
+  if (dead.length === 0) return [];
+  await db.gazetteSource.updateMany({
+    where: { id: { in: dead.map((d) => d.id) } },
+    data: { isActive: false },
+  });
+  return dead.map((d) => d.slug);
 }

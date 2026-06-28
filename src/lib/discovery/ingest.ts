@@ -217,14 +217,36 @@ export async function recordSourceHealth(
 
 export type SourceHealth = "HEALTHY" | "DEGRADED" | "DEAD";
 
-/** Dead-source detection: 5 consecutive daily failures ⇒ DEAD (alert/disable). */
+/** N consecutive daily failures ⇒ DEAD (auto-disabled). */
+export const DEAD_SOURCE_THRESHOLD = 5;
+
+/** Dead-source detection from the health counters. */
 export function deriveSourceHealth(s: {
   consecutiveFailures: number;
   lastSuccessAt: Date | null;
 }): SourceHealth {
-  if (s.consecutiveFailures >= 5) return "DEAD";
+  if (s.consecutiveFailures >= DEAD_SOURCE_THRESHOLD) return "DEAD";
   if (s.consecutiveFailures >= 1) return "DEGRADED";
   return "HEALTHY";
+}
+
+/**
+ * Auto-disable dead sources — stops the cron hammering a broken adapter and
+ * prevents a silently-dead source from feeding stale data into the global catalog
+ * (and, downstream, the benchmark). Returns the disabled slugs so the cron can
+ * surface them. Sanctioned OpportunitySource writer.
+ */
+export async function autoDisableDeadSources(): Promise<string[]> {
+  const dead = await db.opportunitySource.findMany({
+    where: { isActive: true, consecutiveFailures: { gte: DEAD_SOURCE_THRESHOLD } },
+    select: { id: true, slug: true },
+  });
+  if (dead.length === 0) return [];
+  await db.opportunitySource.updateMany({
+    where: { id: { in: dead.map((d) => d.id) } },
+    data: { isActive: false },
+  });
+  return dead.map((d) => d.slug);
 }
 
 // ── AI enrichment (Phase 4) — writer side (catalog isolation) ──────────────────

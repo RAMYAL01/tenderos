@@ -12,7 +12,8 @@ import { NextResponse } from "next/server";
 import { logger } from "@/lib/logger";
 import { runDiscoveryRefresh } from "@/lib/discovery/refresh";
 import { sendTrialExpiryWarnings } from "@/lib/email/trial";
-import { runGazetteIngestion } from "@/lib/benchmark/ingest-gazette";
+import { runGazetteIngestion, autoDisableDeadGazetteSources } from "@/lib/benchmark/ingest-gazette";
+import { autoDisableDeadSources } from "@/lib/discovery/ingest";
 
 export const dynamic = "force-dynamic";
 export const maxDuration = 300;
@@ -33,7 +34,16 @@ export async function GET(req: Request) {
     // than spend Hobby's scarce cron slots on them.
     const trials = await sendTrialExpiryWarnings();
     const gazette = await runGazetteIngestion();
-    return NextResponse.json({ success: true, ...summary, trials, gazette });
+    // Dead-source auto-disable (both catalogs) — stop hammering broken adapters
+    // and prevent a silently-stale source from poisoning the catalog + benchmark.
+    const disabledSources = [
+      ...(await autoDisableDeadSources()),
+      ...(await autoDisableDeadGazetteSources()),
+    ];
+    if (disabledSources.length) {
+      logger.error({ disabledSources }, "auto-disabled dead ingestion sources");
+    }
+    return NextResponse.json({ success: true, ...summary, trials, gazette, disabledSources });
   } catch (err) {
     logger.error({ err }, "refresh-opportunities cron failed");
     return NextResponse.json({ error: "Refresh failed" }, { status: 500 });
