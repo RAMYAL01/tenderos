@@ -27,6 +27,7 @@ import { runExtractionAgent } from "@/lib/ai/agents/extract-requirements";
 import { runComplianceAgent } from "@/lib/ai/agents/generate-compliance";
 import { runBidQualifierAgent } from "@/lib/ai/agents/bid-qualifier";
 import { generateSectionDraft } from "@/lib/ai/agents/draft-section";
+import { sanitizeProposalHtml } from "@/lib/security/sanitize-proposal-html";
 
 const TERMINAL: BidWorkflowStatus[] = ["COMPLETED", "FAILED"];
 const MAX_ATTEMPTS_PER_STEP = 3;
@@ -249,14 +250,16 @@ async function stepDraftProposal(
     const credit = await checkAndConsumeAiCredit(orgId);
     if (!credit.ok) break;
 
-    const text = await generateSectionDraft({
-      sectionId: s.id,
-      sectionType: s.sectionType,
-      tenderId,
-      orgId,
-      language: lang,
-      tone: "formal_government",
-    });
+    const text = sanitizeProposalHtml(
+      await generateSectionDraft({
+        sectionId: s.id,
+        sectionType: s.sectionType,
+        tenderId,
+        orgId,
+        language: lang,
+        tone: "formal_government",
+      })
+    );
 
     await db.proposalSection.update({
       where: { id: s.id },

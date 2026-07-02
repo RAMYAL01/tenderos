@@ -2,6 +2,7 @@ import { auth } from "@clerk/nextjs/server";
 import { NextResponse } from "next/server";
 import { z } from "zod";
 import { db } from "@/lib/prisma";
+import { sanitizeProposalHtml } from "@/lib/security/sanitize-proposal-html";
 
 const UpdateSchema = z.object({
   titleEn: z.string().nullable().optional(),
@@ -40,9 +41,15 @@ export async function PATCH(
   const parsed = UpdateSchema.safeParse(body);
   if (!parsed.success) return NextResponse.json({ error: "Invalid" }, { status: 400 });
 
+  // Sanitize rich-text HTML at rest — defense-in-depth against stored XSS (the
+  // preview also sanitizes on render, which covers content stored before this).
+  const data = { ...parsed.data, lastEditedById: member.id };
+  if (typeof data.contentEn === "string") data.contentEn = sanitizeProposalHtml(data.contentEn);
+  if (typeof data.contentAr === "string") data.contentAr = sanitizeProposalHtml(data.contentAr);
+
   const updated = await db.proposalSection.update({
     where: { id },
-    data: { ...parsed.data, lastEditedById: member.id },
+    data,
   });
 
   return NextResponse.json(updated);

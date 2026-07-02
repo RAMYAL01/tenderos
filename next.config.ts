@@ -62,6 +62,9 @@ const securityHeaders = [
 ];
 
 const nextConfig: NextConfig = {
+  // Finding 4 — don't advertise the framework in an X-Powered-By header.
+  poweredByHeader: false,
+
   images: {
     remotePatterns: [
       { protocol: "https", hostname: "img.clerk.com" },

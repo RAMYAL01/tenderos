@@ -3,6 +3,7 @@ import { getAuthContext } from "@/lib/auth";
 import { db } from "@/lib/prisma";
 import { format } from "date-fns";
 import { SECTION_TYPE_LABELS } from "@/lib/constants";
+import { sanitizeProposalHtml } from "@/lib/security/sanitize-proposal-html";
 import type { SectionType } from "@prisma/client";
 
 export const metadata = { title: "Proposal Preview" };
@@ -152,7 +153,7 @@ export default async function ProposalPreviewPage({
 
                 {s.contentEn && (
                   <div
-                    dangerouslySetInnerHTML={{ __html: s.contentEn }}
+                    dangerouslySetInnerHTML={{ __html: sanitizeProposalHtml(s.contentEn) }}
                     className="section-content"
                   />
                 )}
@@ -160,7 +161,7 @@ export default async function ProposalPreviewPage({
                 {isBilingual && s.contentAr && (
                   <div
                     className="ar-content"
-                    dangerouslySetInnerHTML={{ __html: s.contentAr }}
+                    dangerouslySetInnerHTML={{ __html: sanitizeProposalHtml(s.contentAr) }}
                   />
                 )}
 
@@ -168,7 +169,7 @@ export default async function ProposalPreviewPage({
                   <div
                     className="ar-content"
                     style={{ marginTop: 0, paddingTop: 0, borderTop: "none" }}
-                    dangerouslySetInnerHTML={{ __html: s.contentAr }}
+                    dangerouslySetInnerHTML={{ __html: sanitizeProposalHtml(s.contentAr) }}
                   />
                 )}
               </div>

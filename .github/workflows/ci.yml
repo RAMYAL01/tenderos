@@ -79,6 +79,9 @@ jobs:
       - name: Reverse-planned deadline scheduler tests
         run: npm run test:timeline
 
+      - name: Proposal HTML sanitizer tests (stored-XSS guard)
+        run: npm run test:sanitize
+
   # ── Job 2: Build ──────────────────────────────────────────────────────────
   build:
     name: Build
