@@ -19,6 +19,7 @@ const FACTOR_LABELS: Record<string, string> = {
   geographyFit: "Geography",
   valueFit: "Value vs capacity",
   historyFit: "Track record",
+  competitiveIntensity: "Market openness",
   deadlinePressure: "Time to prepare",
   requirementsRisk: "Compliance load",
 };

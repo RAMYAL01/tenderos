@@ -25,6 +25,7 @@ import {
   type HistoryInput,
   type TenderFactsInput,
 } from "@/lib/bid-decision/factors";
+import { getAwardBenchmark, deriveConcentration } from "@/lib/benchmark/read";
 
 const QualifierSchema = z.object({
   rationale_en: z.string().describe("4-8 sentence professional bid/no-bid rationale in English"),
@@ -115,7 +116,7 @@ export async function runBidQualifierAgent(
     const sector = tender.sector ?? null;
     const country = tender.clientCountry ?? null;
 
-    const [outcomes, mandatoryCount, criticalCount, topRequirements] = await Promise.all([
+    const [outcomes, mandatoryCount, criticalCount, topRequirements, cellBenchmark] = await Promise.all([
       db.tender.findMany({
         where: { orgId, status: { in: ["WON", "LOST"] }, deletedAt: null },
         select: { status: true, sector: true, clientCountry: true, lossReason: true },
@@ -133,6 +134,9 @@ export async function runBidQualifierAgent(
         take: 20,
         select: { textEn: true, sectionRef: true },
       }),
+      // Competitor landscape for this cell — sector+country (broader cohort than the
+      // value-band cell) so the concentration read has enough awards to be meaningful.
+      getAwardBenchmark({ sector, country }),
     ]);
 
     const history: HistoryInput = {
@@ -147,6 +151,15 @@ export async function runBidQualifierAgent(
       ).length,
     };
 
+    // Competitive landscape (award-pool concentration) → the incumbency factor.
+    const competition = cellBenchmark.suppressed
+      ? null
+      : {
+          cohortSize: cellBenchmark.cohortSize,
+          ...deriveConcentration(cellBenchmark),
+          orgIsIncumbent: history.sectorWins >= 2,
+        };
+
     const facts: TenderFactsInput = {
       sector,
       clientCountry: country,
@@ -154,6 +167,7 @@ export async function runBidQualifierAgent(
       submissionDeadline: tender.submissionDeadline,
       mandatoryRequirements: mandatoryCount,
       criticalRequirements: criticalCount,
+      competition,
     };
 
     // ── 1. Deterministic score (the number the LLM cannot set) ──────────────
@@ -179,6 +193,11 @@ ${tender.notes ? `Notes: ${tender.notes.slice(0, 500)}` : ""}
 TOP MANDATORY REQUIREMENTS
 ${topRequirements.map((r, i) => `[${i + 1}] ${r.sectionRef ? `(${r.sectionRef}) ` : ""}${(r.textEn ?? "").slice(0, 200)}`).join("\n") || "(none extracted yet)"}
 
+${cellBenchmark.suppressed ? "" : `COMPETITIVE LANDSCAPE (pooled awards, ${sector ?? "?"} · ${country ?? "?"})
+Cohort: ${cellBenchmark.cohortSize} awards; the top 3 firms hold ${Math.round((competition?.top3Share ?? 0) * 100)}% of wins ${(competition?.top3Share ?? 0) >= 0.6 ? "— an entrenched field" : "— a relatively open field"}.
+Most active winners: ${cellBenchmark.topWinners.slice(0, 4).map((w) => `${w.name} (${w.count})`).join(", ") || "—"}.
+This company is ${competition?.orgIsIncumbent ? "an established winner in this sector (incumbency advantage)" : "not yet an established winner in this sector"}.
+`}
 DETERMINISTIC SCORE (platform-computed, you may only nudge ±0.15)
 Base score: ${det.baseScore} · Confidence: ${det.confidence}
 Factors (0..1, higher is better): ${JSON.stringify(det.factors)}

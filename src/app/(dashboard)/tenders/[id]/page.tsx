@@ -111,6 +111,19 @@ export default async function TenderDetailPage({
       })
     : null;
 
+  // Head-to-head — this org's own losses grouped by the competitor that took the bid.
+  const headToHead = canBenchmark
+    ? (
+        await db.tender.groupBy({
+          by: ["winningCompetitor"],
+          where: { orgId: org.id, status: "LOST", winningCompetitor: { not: null }, deletedAt: null },
+          _count: { _all: true },
+          orderBy: { _count: { winningCompetitor: "desc" } },
+          take: 5,
+        })
+      ).map((g) => ({ name: g.winningCompetitor as string, losses: g._count._all }))
+    : [];
+
   const hasDocuments = tender.documents.length > 0;
   const readyDocuments = tender.documents.filter(
     (d) => d.processingStatus === "READY"
@@ -185,6 +198,7 @@ export default async function TenderDetailPage({
             gated={!canBenchmark}
             benchmark={benchmark}
             cell={{ sector: tender.sector, country: tender.clientCountry, valueBand }}
+            headToHead={headToHead}
           />
 
           {/* Details card */}

@@ -20,13 +20,17 @@ export const NO_BID_THRESHOLD = 0.38;
 export const MIN_CONFIDENCE_FOR_CALL = 0.3;
 
 const WEIGHTS = {
-  profileFit: 0.22, // org type ↔ tender sector affinity
-  geographyFit: 0.16, // home market vs tender country
-  valueFit: 0.16, // contract size vs org capacity band
-  historyFit: 0.24, // win rate + loss patterns in this sector/country
-  deadlinePressure: 0.12, // time left to prepare
-  requirementsRisk: 0.1, // mandatory/critical requirement load
+  profileFit: 0.2, // org type ↔ tender sector affinity
+  geographyFit: 0.15, // home market vs tender country
+  valueFit: 0.15, // contract size vs org capacity band
+  historyFit: 0.22, // win rate + loss patterns in this sector/country
+  competitiveIntensity: 0.1, // how entrenched the field is (award-pool concentration)
+  deadlinePressure: 0.1, // time left to prepare
+  requirementsRisk: 0.08, // mandatory/critical requirement load
 } as const;
+
+/** Below this many pooled awards, the competitive landscape is treated as unknown. */
+const COMP_MIN = 5;
 
 export type FactorKey = keyof typeof WEIGHTS;
 
@@ -51,6 +55,18 @@ export interface HistoryInput {
   sectorPriceLosses: number;
 }
 
+/**
+ * Competitive landscape for the tender's cell, from the cross-customer award pool.
+ * Optional — absent (or below COMP_MIN awards) → the factor stays neutral and never
+ * becomes a penalty, so the engine degrades gracefully when the pool is thin.
+ */
+export interface CompetitionInput {
+  cohortSize: number; // pooled awards backing the concentration read
+  topShare: number; // share of awards won by the single top firm (0..1)
+  top3Share: number; // combined share of the top three firms (0..1)
+  orgIsIncumbent: boolean; // this org already has a foothold in the cell
+}
+
 export interface TenderFactsInput {
   sector: string | null;
   clientCountry: string | null;
@@ -58,6 +74,7 @@ export interface TenderFactsInput {
   submissionDeadline: Date | null;
   mandatoryRequirements: number; // count of MANDATORY/CONDITIONAL extracted
   criticalRequirements: number; // count of CRITICAL priority
+  competition?: CompetitionInput | null; // award-pool concentration for the cell
 }
 
 export interface FactorBreakdown {
@@ -65,6 +82,7 @@ export interface FactorBreakdown {
   geographyFit: number;
   valueFit: number;
   historyFit: number;
+  competitiveIntensity: number;
   deadlinePressure: number;
   requirementsRisk: number;
 }
@@ -125,6 +143,25 @@ export function computeFactors(
   // Repeated PRICE losses in this sector → competitive-pricing red flag.
   if (history.sectorPriceLosses >= 2) historyFit = clamp01(historyFit - 0.15);
 
+  // ── competitiveIntensity ── how entrenched the field is in this cell (from the
+  // cross-customer award pool). A market where a few firms take most awards is
+  // harder to break into — UNLESS this org is itself the incumbent. Unknown / thin
+  // data → neutral, never a penalty.
+  const comp = tender.competition ?? null;
+  let competitiveIntensity: number;
+  if (!comp || comp.cohortSize < COMP_MIN) {
+    competitiveIntensity = 0.6; // unknown landscape — neutral, mildly cautious
+  } else if (comp.top3Share <= 0.4) {
+    competitiveIntensity = 0.85; // fragmented / open field
+  } else if (comp.top3Share <= 0.6) {
+    competitiveIntensity = 0.65;
+  } else if (comp.top3Share <= 0.8) {
+    competitiveIntensity = 0.45; // concentrated
+  } else {
+    competitiveIntensity = 0.3; // entrenched — a few firms take most awards
+  }
+  if (comp?.orgIsIncumbent) competitiveIntensity = Math.max(competitiveIntensity, 0.8);
+
   // ── deadlinePressure ── days left to prepare (higher = more comfortable).
   let deadlinePressure = 0.6; // no deadline known
   if (tender.submissionDeadline) {
@@ -152,6 +189,7 @@ export function computeFactors(
     geographyFit: +geographyFit.toFixed(4),
     valueFit: +valueFit.toFixed(4),
     historyFit: +historyFit.toFixed(4),
+    competitiveIntensity: +competitiveIntensity.toFixed(4),
     deadlinePressure: +deadlinePressure.toFixed(4),
     requirementsRisk: +requirementsRisk.toFixed(4),
   };

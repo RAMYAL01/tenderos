@@ -112,6 +112,20 @@ export async function getAwardBenchmark(filter: {
   };
 }
 
+/**
+ * Market concentration for a cell — the single-top-firm and combined top-3 share of
+ * pooled awards. Feeds the Bid/No-Bid competitiveIntensity factor and the competitor
+ * surface. Pure (operates on an already-fetched benchmark).
+ */
+export function deriveConcentration(
+  b: Pick<AwardBenchmark, "cohortSize" | "topWinners">
+): { topShare: number; top3Share: number } {
+  if (!b.cohortSize) return { topShare: 0, top3Share: 0 };
+  const top1 = b.topWinners[0]?.count ?? 0;
+  const top3 = b.topWinners.slice(0, 3).reduce((s, w) => s + w.count, 0);
+  return { topShare: top1 / b.cohortSize, top3Share: top3 / b.cohortSize };
+}
+
 // ── Price-to-Win: winning-price distribution for a cell ────────────────────────
 
 export interface WinningPriceDistribution {

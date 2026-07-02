@@ -130,6 +130,46 @@ test("deadline already passed zeroes the deadline factor", () => {
   assert.equal(r.factors.deadlinePressure, 0);
 });
 
+test("competitiveIntensity: an entrenched field lowers the factor; an open field raises it", () => {
+  const entrenched = computeFactors(
+    strongOrg,
+    richHistory,
+    { ...idealTender, competition: { cohortSize: 40, topShare: 0.5, top3Share: 0.85, orgIsIncumbent: false } },
+    NOW
+  );
+  const open = computeFactors(
+    strongOrg,
+    richHistory,
+    { ...idealTender, competition: { cohortSize: 40, topShare: 0.15, top3Share: 0.3, orgIsIncumbent: false } },
+    NOW
+  );
+  assert.ok(entrenched.factors.competitiveIntensity < 0.5, `entrenched ${entrenched.factors.competitiveIntensity}`);
+  assert.ok(open.factors.competitiveIntensity > 0.8, `open ${open.factors.competitiveIntensity}`);
+  assert.ok(open.baseScore > entrenched.baseScore, "an open field should not score below an entrenched one");
+});
+
+test("competitiveIntensity: incumbency floors the factor even in an entrenched field", () => {
+  const incumbent = computeFactors(
+    strongOrg,
+    richHistory,
+    { ...idealTender, competition: { cohortSize: 40, topShare: 0.5, top3Share: 0.9, orgIsIncumbent: true } },
+    NOW
+  );
+  assert.ok(incumbent.factors.competitiveIntensity >= 0.8, `incumbent ${incumbent.factors.competitiveIntensity}`);
+});
+
+test("competitiveIntensity: thin or absent landscape stays neutral (never a penalty)", () => {
+  const thin = computeFactors(
+    strongOrg,
+    richHistory,
+    { ...idealTender, competition: { cohortSize: 3, topShare: 1, top3Share: 1, orgIsIncumbent: false } },
+    NOW
+  );
+  const absent = computeFactors(strongOrg, richHistory, idealTender, NOW);
+  assert.equal(thin.factors.competitiveIntensity, 0.6);
+  assert.equal(absent.factors.competitiveIntensity, 0.6);
+});
+
 test("determinism: same inputs → identical output", () => {
   const a = computeFactors(strongOrg, richHistory, idealTender, NOW);
   const b = computeFactors(strongOrg, richHistory, idealTender, NOW);

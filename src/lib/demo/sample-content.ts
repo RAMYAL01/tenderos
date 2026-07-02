@@ -55,6 +55,7 @@ export const SAMPLE_BID = {
     geographyFit: 0.9,
     valueFit: 0.68,
     historyFit: 0.55,
+    competitiveIntensity: 0.45,
     deadlinePressure: 0.5,
     requirementsRisk: 0.65,
   },
@@ -77,6 +78,7 @@ export const FACTOR_LABELS: Record<string, string> = {
   geographyFit: "Geography",
   valueFit: "Value fit",
   historyFit: "Track record",
+  competitiveIntensity: "Market openness",
   deadlinePressure: "Timeline",
   requirementsRisk: "Requirements risk",
 };

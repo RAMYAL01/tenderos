@@ -1,5 +1,5 @@
 import Link from "next/link";
-import { BarChart3, Lock, Users, Trophy, TrendingDown } from "lucide-react";
+import { BarChart3, Lock, Users, Trophy, TrendingDown, Swords } from "lucide-react";
 import type { ValueBand } from "@prisma/client";
 import type { AwardBenchmark } from "@/lib/benchmark/read";
 import { VALUE_BAND_LABELS } from "@/lib/benchmark/bands";
@@ -75,10 +75,13 @@ export function BenchmarkPanel({
   gated,
   benchmark,
   cell,
+  headToHead = [],
 }: {
   gated: boolean;
   benchmark: AwardBenchmark | null;
   cell: { sector: string | null; country: string | null; valueBand: ValueBand | null };
+  /** This org's own head-to-head losses by competitor (Tender.winningCompetitor). */
+  headToHead?: { name: string; losses: number }[];
 }) {
   const subtitle = cellLabel(cell);
 
@@ -118,6 +121,11 @@ export function BenchmarkPanel({
   }
 
   const b = benchmark;
+  const top3Share = b.cohortSize
+    ? b.topWinners.slice(0, 3).reduce((s, w) => s + w.count, 0) / b.cohortSize
+    : 0;
+  const concentration =
+    top3Share >= 0.8 ? "entrenched" : top3Share >= 0.6 ? "concentrated" : top3Share >= 0.4 ? "moderately open" : "open";
   return (
     <Shell>
       <Header subtitle={subtitle} />
@@ -173,6 +181,11 @@ export function BenchmarkPanel({
               </li>
             ))}
           </ul>
+          {top3Share > 0 && (
+            <p className="mt-1.5 text-[10px] text-slate-400">
+              Top 3 hold {Math.round(top3Share * 100)}% of wins · {concentration} field
+            </p>
+          )}
         </div>
       )}
 
@@ -189,6 +202,23 @@ export function BenchmarkPanel({
               </span>
             ))}
           </div>
+        </div>
+      )}
+
+      {/* Head-to-head — this org's own losses by competitor (their data, not the pool) */}
+      {headToHead.length > 0 && (
+        <div className="mb-2">
+          <p className="mb-1 flex items-center gap-1 text-[11px] font-medium text-slate-600 dark:text-slate-300">
+            <Swords className="h-3 w-3 text-slate-500" /> Firms that beat you
+          </p>
+          <ul className="space-y-0.5">
+            {headToHead.slice(0, 4).map((h) => (
+              <li key={h.name} className="flex items-center justify-between text-xs text-slate-600 dark:text-slate-400">
+                <span className="truncate pr-2">{h.name}</span>
+                <span className="shrink-0 tabular-nums text-red-500">{h.losses}× lost</span>
+              </li>
+            ))}
+          </ul>
         </div>
       )}
 
