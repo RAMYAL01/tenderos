@@ -30,6 +30,8 @@ import {
 } from "@/lib/actions/financial";
 import type { CostCategory } from "@prisma/client";
 import type { AwardBenchmark } from "@/lib/benchmark/read";
+import { PriceToWinPanel } from "@/components/financial/price-to-win-panel";
+import type { PriceToWinMarket } from "@/lib/price-to-win/engine";
 
 interface LineRow extends CostLineInput {
   id: string;
@@ -51,6 +53,7 @@ interface Props {
   lines: LineRow[];
   benchmark?: AwardBenchmark | null;
   benchmarkGated?: boolean;
+  priceToWin?: PriceToWinMarket | null;
 }
 
 const CATEGORIES: CostCategory[] = [
@@ -71,7 +74,7 @@ const CAT_COLORS: Record<CostCategory, string> = {
   OTHER_DIRECT: "text-slate-600 bg-slate-100 dark:bg-slate-800",
 };
 
-export function FinancialBuilder({ financialId, currency, assumptions, lines, benchmark, benchmarkGated }: Props) {
+export function FinancialBuilder({ financialId, currency, assumptions, lines, benchmark, benchmarkGated, priceToWin }: Props) {
   const router = useRouter();
   const [pending, startTransition] = useTransition();
 
@@ -380,6 +383,15 @@ export function FinancialBuilder({ financialId, currency, assumptions, lines, be
             </Link>
           ) : null}
         </div>
+
+        {priceToWin && (
+          <PriceToWinPanel
+            market={priceToWin}
+            cost={breakdown.costBeforeProfit}
+            price={breakdown.netPrice}
+            currency={currency}
+          />
+        )}
       </div>
     </div>
   );

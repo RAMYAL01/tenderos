@@ -1,5 +1,6 @@
 import type { PlanTier, ValueBand } from "@prisma/client";
 import { db } from "@/lib/prisma";
+import { buildMarketCurve, type PriceToWinMarket } from "@/lib/price-to-win/engine";
 
 /**
  * Benchmark reads (Wave 1, item 1) — k-anonymized aggregates over the global
@@ -109,6 +110,58 @@ export async function getAwardBenchmark(filter: {
     topWinners,
     lossReasons,
   };
+}
+
+// ── Price-to-Win: winning-price distribution for a cell ────────────────────────
+
+export interface WinningPriceDistribution {
+  market: PriceToWinMarket | null; // null when suppressed or no valued awards
+  suppressed: boolean; // below the k-anonymity cohort floor
+  cohortSize: number; // valued awards in the dominant currency
+}
+
+/**
+ * Winning-price distribution for a {sector · country · value-band} cell — the input
+ * to the Price-to-Win engine. Only ONE (dominant) currency is used so the curve is
+ * comparable. k-anonymized (suppressed below MIN_COHORT) and provenance-free: only
+ * bare award values leave the DB, and only the aggregate curve leaves the server.
+ * PURE READ.
+ */
+export async function getWinningPriceDistribution(filter: {
+  sector?: string | null;
+  country?: string | null;
+  valueBand?: ValueBand | null;
+}): Promise<WinningPriceDistribution> {
+  const rows = await db.awardOutcome.findMany({
+    where: {
+      ...(filter.sector ? { sector: filter.sector } : {}),
+      ...(filter.country ? { country: filter.country } : {}),
+      ...(filter.valueBand ? { valueBand: filter.valueBand } : {}),
+      awardedValueMinor: { not: null },
+    },
+    select: { awardedValueMinor: true, currency: true },
+    take: 5000,
+  });
+
+  // Group by currency — a distribution is only comparable within one currency.
+  const byCurrency = new Map<string, number[]>();
+  for (const r of rows) {
+    if (r.awardedValueMinor == null) continue;
+    const cur = r.currency ?? "?";
+    const list = byCurrency.get(cur) ?? [];
+    list.push(Number(r.awardedValueMinor) / 100);
+    byCurrency.set(cur, list);
+  }
+  const dominant = [...byCurrency.entries()].sort((a, b) => b[1].length - a[1].length)[0];
+  const values = dominant?.[1] ?? [];
+  const currency = dominant && dominant[0] !== "?" ? dominant[0] : null;
+
+  if (values.length < MIN_COHORT) {
+    return { market: null, suppressed: true, cohortSize: values.length };
+  }
+  const market = buildMarketCurve(values);
+  market.currency = currency;
+  return { market, suppressed: false, cohortSize: values.length };
 }
 
 // ── Market-wide overview (the "market dashboard" read) ─────────────────────────

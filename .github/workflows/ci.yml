@@ -70,6 +70,9 @@ jobs:
       - name: Benchmark gazette OCDS-award parser tests (network-free)
         run: npm run test:awards
 
+      - name: Price-to-Win deterministic engine tests
+        run: npm run test:ptw
+
   # ── Job 2: Build ──────────────────────────────────────────────────────────
   build:
     name: Build

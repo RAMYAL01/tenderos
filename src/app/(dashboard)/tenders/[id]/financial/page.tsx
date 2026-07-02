@@ -6,7 +6,7 @@ import { db } from "@/lib/prisma";
 import { FinancialBuilder } from "@/components/financial/financial-builder";
 import { StartFinancialButton } from "@/components/financial/start-financial-button";
 import { ExportFinancialButton } from "@/components/financial/export-financial-button";
-import { canReadBenchmarks, getAwardBenchmark } from "@/lib/benchmark/read";
+import { canReadBenchmarks, getAwardBenchmark, getWinningPriceDistribution } from "@/lib/benchmark/read";
 import { toValueBand } from "@/lib/benchmark/bands";
 
 export const metadata = { title: "Financial Proposal" };
@@ -32,20 +32,21 @@ export default async function FinancialPage({
     },
   });
 
-  // Cross-customer award benchmark for this tender's {sector, region, value-band}
-  // cell — surfaced live against the built total price. Paid-tier only.
+  // Cross-customer award reads for this tender's {sector, region, value-band} cell —
+  // the median comparison AND the Price-to-Win curve. Paid-tier only, fetched together.
   const canBenchmark = canReadBenchmarks(org.planTier);
   const valueBand = tender.estimatedValue
     ? toValueBand(BigInt(Math.round(Number(tender.estimatedValue) * 100)))
     : null;
-  const benchmark =
+  const cell = {
+    sector: tender.sector,
+    country: tender.clientCountry,
+    valueBand: valueBand && valueBand !== "UNKNOWN" ? valueBand : null,
+  };
+  const [benchmark, priceToWin] =
     canBenchmark && financial
-      ? await getAwardBenchmark({
-          sector: tender.sector,
-          country: tender.clientCountry,
-          valueBand: valueBand && valueBand !== "UNKNOWN" ? valueBand : null,
-        })
-      : null;
+      ? await Promise.all([getAwardBenchmark(cell), getWinningPriceDistribution(cell)])
+      : [null, null];
 
   return (
     <>
@@ -94,6 +95,7 @@ export default async function FinancialPage({
             }))}
             benchmark={benchmark}
             benchmarkGated={!canBenchmark}
+            priceToWin={priceToWin?.market ?? null}
           />
         )}
       </div>
