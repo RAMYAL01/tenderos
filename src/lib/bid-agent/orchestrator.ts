@@ -19,12 +19,14 @@
  * tenant. Each AI step consumes one AI credit, matching the manual flow.
  */
 
-import type { AIJobType, BidWorkflowStatus, Prisma } from "@prisma/client";
+import type { AIJobType, BidWorkflowStatus, ContentLanguage, Prisma, SectionType } from "@prisma/client";
 import { db } from "@/lib/prisma";
-import { checkAndConsumeAiCredit } from "@/lib/billing/quota";
+import { checkAndConsumeAiCredit, checkAndConsumeProposalQuota } from "@/lib/billing/quota";
+import { activeModelId } from "@/lib/ai/llm-provider";
 import { runExtractionAgent } from "@/lib/ai/agents/extract-requirements";
 import { runComplianceAgent } from "@/lib/ai/agents/generate-compliance";
 import { runBidQualifierAgent } from "@/lib/ai/agents/bid-qualifier";
+import { generateSectionDraft } from "@/lib/ai/agents/draft-section";
 
 const TERMINAL: BidWorkflowStatus[] = ["COMPLETED", "FAILED"];
 const MAX_ATTEMPTS_PER_STEP = 3;
@@ -99,10 +101,23 @@ export async function advanceBidWorkflow(orgId: string, workflowId: string): Pro
       case "COMPLIANCE_READY":
       case "QUALIFYING": {
         await mark(workflowId, "QUALIFYING");
-        const recommendation = await stepQualify(orgId, wf.tenderId, wf.createdById);
-        const [requirements, complianceRows] = await Promise.all([
+        await stepQualify(orgId, wf.tenderId, wf.createdById);
+        await db.bidWorkflow.update({
+          where: { id: workflowId },
+          data: { status: "QUALIFIED", attempts: 0 },
+        });
+        return "QUALIFIED";
+      }
+
+      // ── Step 4: draft the proposal (or resume DRAFTING_PROPOSAL) ──
+      case "QUALIFIED":
+      case "DRAFTING_PROPOSAL": {
+        await mark(workflowId, "DRAFTING_PROPOSAL");
+        const proposal = await stepDraftProposal(orgId, wf.tenderId, wf.createdById, workflowId);
+        const [requirements, complianceRows, decision] = await Promise.all([
           db.requirement.count({ where: { tenderId: wf.tenderId, orgId, deletedAt: null } }),
           db.complianceMatrixRow.count({ where: { tenderId: wf.tenderId, orgId } }),
+          db.bidDecision.findUnique({ where: { tenderId: wf.tenderId }, select: { recommendation: true } }),
         ]);
         await db.bidWorkflow.update({
           where: { id: workflowId },
@@ -110,7 +125,13 @@ export async function advanceBidWorkflow(orgId: string, workflowId: string): Pro
             status: "COMPLETED",
             attempts: 0,
             completedAt: new Date(),
-            result: toJson({ requirements, complianceRows, recommendation }),
+            result: toJson({
+              requirements,
+              complianceRows,
+              recommendation: decision?.recommendation ?? null,
+              proposalId: proposal.proposalId,
+              draftedSections: proposal.draftedSections,
+            }),
           },
         });
         return "COMPLETED";
@@ -175,12 +196,120 @@ async function stepCompliance(orgId: string, tenderId: string, createdById: stri
   await runComplianceAgent(jobId, tenderId, orgId);
 }
 
-async function stepQualify(orgId: string, tenderId: string, createdById: string | null): Promise<string> {
+async function stepQualify(orgId: string, tenderId: string, createdById: string | null): Promise<void> {
   if (!createdById) throw new Error("Bid qualification requires the run's creator.");
+  // Idempotent: the qualifier upserts on tenderId, so skip if a decision already exists
+  // (avoids re-charging a credit on a resume or a re-run).
+  const existing = await db.bidDecision.findUnique({ where: { tenderId }, select: { id: true } });
+  if (existing) return;
   await consumeCreditOrThrow(orgId);
   const jobId = await createStepJob(orgId, createdById, "BID_QUALIFICATION", tenderId);
-  const res = await runBidQualifierAgent(jobId, tenderId, orgId, createdById);
-  return res.recommendation;
+  await runBidQualifierAgent(jobId, tenderId, orgId, createdById);
+}
+
+/** The narrative sections worth an autonomous first draft; the rest stay as shells. */
+const CORE_SECTIONS: SectionType[] = ["EXECUTIVE_SUMMARY", "TECHNICAL_APPROACH", "COMPANY_OVERVIEW"];
+
+async function stepDraftProposal(
+  orgId: string,
+  tenderId: string,
+  createdById: string | null,
+  workflowId: string
+): Promise<{ proposalId: string; draftedSections: number }> {
+  if (!createdById) throw new Error("Proposal drafting requires the run's creator.");
+
+  // Find or create the proposal — idempotent, never a second one for the tender.
+  let proposal = await db.proposal.findFirst({
+    where: { tenderId, orgId, deletedAt: null },
+    orderBy: { createdAt: "asc" },
+    select: { id: true, language: true },
+  });
+  if (!proposal) {
+    const quota = await checkAndConsumeProposalQuota(orgId);
+    if (!quota.ok) throw new Error(quota.error ?? "Proposal limit reached for this plan.");
+    proposal = await createProposalShell(orgId, tenderId, createdById);
+  }
+
+  const lang = proposal.language;
+  const isAr = lang === "AR" || lang === "AR_SA" || lang === "AR_AE" || lang === "AR_EG";
+
+  const sections = await db.proposalSection.findMany({
+    where: { proposalId: proposal.id, orgId, sectionType: { in: CORE_SECTIONS }, deletedAt: null },
+    orderBy: { orderIndex: "asc" },
+    select: { id: true, sectionType: true, contentEn: true, contentAr: true },
+  });
+
+  let drafted = 0;
+  for (const s of sections) {
+    // Idempotent: skip a section that already has content (manual or a prior run).
+    const existing = isAr ? s.contentAr : s.contentEn;
+    if (existing && existing.trim().length > 0) continue;
+
+    // Meter each draft like the manual flow; out of credits → stop, leave the rest as shells.
+    const credit = await checkAndConsumeAiCredit(orgId);
+    if (!credit.ok) break;
+
+    const text = await generateSectionDraft({
+      sectionId: s.id,
+      sectionType: s.sectionType,
+      tenderId,
+      orgId,
+      language: lang,
+      tone: "formal_government",
+    });
+
+    await db.proposalSection.update({
+      where: { id: s.id },
+      data: {
+        ...(isAr ? { contentAr: text } : { contentEn: text }),
+        isAiGenerated: true,
+        contentSource: "AI_GENERATED",
+        aiModelUsed: activeModelId(),
+        lastEditedById: createdById,
+      },
+    });
+    drafted += 1;
+
+    // Each completed section is progress — reset the attempt counter so a long draft
+    // (or a mid-loop resume) can't trip MAX_ATTEMPTS_PER_STEP.
+    await db.bidWorkflow.update({ where: { id: workflowId }, data: { attempts: 0 } });
+  }
+
+  return { proposalId: proposal.id, draftedSections: drafted };
+}
+
+/** Create a DRAFT proposal with the standard section set (mirrors createProposal). */
+async function createProposalShell(
+  orgId: string,
+  tenderId: string,
+  createdById: string
+): Promise<{ id: string; language: ContentLanguage }> {
+  const tender = await db.tender.findFirst({
+    where: { id: tenderId, orgId },
+    select: { titleEn: true, titleAr: true },
+  });
+  const defaultSections: SectionType[] = [
+    "COVER_LETTER",
+    "EXECUTIVE_SUMMARY",
+    "COMPANY_OVERVIEW",
+    "TECHNICAL_APPROACH",
+    "METHODOLOGY",
+    "WORK_PLAN",
+    "TEAM_QUALIFICATIONS",
+    "PAST_PERFORMANCE",
+  ];
+  return db.proposal.create({
+    data: {
+      tenderId,
+      orgId,
+      title: `Proposal — ${tender?.titleEn ?? tender?.titleAr ?? "Tender"}`.slice(0, 300),
+      language: "EN",
+      status: "DRAFT",
+      createdById,
+      sections: { create: defaultSections.map((sectionType, idx) => ({ orgId, sectionType, orderIndex: idx })) },
+    },
+    select: { id: true, language: true },
+  });
 }
 
 // ── helpers ───────────────────────────────────────────────────────────────────

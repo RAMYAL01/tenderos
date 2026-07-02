@@ -10,12 +10,19 @@ import { startBidAgent } from "@/lib/actions/bid-agent";
 
 type WorkflowStatus =
   | "QUEUED" | "EXTRACTING" | "EXTRACTED" | "CHECKING_COMPLIANCE"
-  | "COMPLIANCE_READY" | "QUALIFYING" | "COMPLETED" | "FAILED";
+  | "COMPLIANCE_READY" | "QUALIFYING" | "QUALIFIED" | "DRAFTING_PROPOSAL"
+  | "COMPLETED" | "FAILED";
 
 export interface BidAgentWorkflow {
   id: string;
   status: WorkflowStatus;
-  result: { requirements?: number; complianceRows?: number; recommendation?: string } | null;
+  result: {
+    requirements?: number;
+    complianceRows?: number;
+    recommendation?: string;
+    proposalId?: string;
+    draftedSections?: number;
+  } | null;
   error: string | null;
   failedStep: string | null;
 }
@@ -24,6 +31,7 @@ const STEPS = [
   { key: "extract", label: "Extract requirements" },
   { key: "compliance", label: "Build compliance matrix" },
   { key: "qualify", label: "Bid / No-Bid score" },
+  { key: "proposal", label: "Draft proposal" },
 ] as const;
 
 /** Step index each status is currently working on (COMPLETED = past the last). */
@@ -31,10 +39,11 @@ const STAGE: Record<WorkflowStatus, number> = {
   QUEUED: 0, EXTRACTING: 0,
   EXTRACTED: 1, CHECKING_COMPLIANCE: 1,
   COMPLIANCE_READY: 2, QUALIFYING: 2,
-  COMPLETED: 3, FAILED: -1,
+  QUALIFIED: 3, DRAFTING_PROPOSAL: 3,
+  COMPLETED: 4, FAILED: -1,
 };
-const FAILED_STAGE: Record<string, number> = { EXTRACTING: 0, CHECKING_COMPLIANCE: 1, QUALIFYING: 2 };
-const ACTIVE_STATUSES: WorkflowStatus[] = ["QUEUED", "EXTRACTING", "EXTRACTED", "CHECKING_COMPLIANCE", "COMPLIANCE_READY", "QUALIFYING"];
+const FAILED_STAGE: Record<string, number> = { EXTRACTING: 0, CHECKING_COMPLIANCE: 1, QUALIFYING: 2, DRAFTING_PROPOSAL: 3 };
+const ACTIVE_STATUSES: WorkflowStatus[] = ["QUEUED", "EXTRACTING", "EXTRACTED", "CHECKING_COMPLIANCE", "COMPLIANCE_READY", "QUALIFYING", "QUALIFIED", "DRAFTING_PROPOSAL"];
 
 function isActive(s?: WorkflowStatus | null): boolean {
   return !!s && ACTIVE_STATUSES.includes(s);
@@ -156,6 +165,7 @@ export function BidAgentCard({
       {wf?.status === "COMPLETED" && wf.result && (
         <div className="mb-3 rounded-lg bg-emerald-50 px-3 py-2 text-xs text-emerald-800 dark:bg-emerald-950/30 dark:text-emerald-300">
           Draft ready — {wf.result.requirements ?? 0} requirements, {wf.result.complianceRows ?? 0} compliance rows
+          {wf.result.draftedSections ? `, ${wf.result.draftedSections} proposal section${wf.result.draftedSections === 1 ? "" : "s"} drafted` : ""}
           {wf.result.recommendation ? `, recommendation: ${wf.result.recommendation.replace("_", "-").toLowerCase()}` : ""}. Review below.
         </div>
       )}
