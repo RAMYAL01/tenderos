@@ -8,7 +8,11 @@
  *   npx tsx prisma/add-gazette-source.ts ksa-ocds-awards ocds-awards \
  *     "https://example-portal/api/ocds/releases?stage=award" SA "KSA portal (awards)"
  *
- * Adapter keys: see src/lib/benchmark/gazette/index.ts (currently: ocds-awards).
+ * Example (World Bank Major Contract Awards, one borrower country):
+ *   npx tsx prisma/add-gazette-source.ts eg-wb-awards wb-contract-awards \
+ *     "https://search.worldbank.org/api/contractdata?format=json&rows=150&countrycode=EG" EG "World Bank awards — Egypt"
+ *
+ * Adapter keys: see src/lib/benchmark/gazette/index.ts (currently: ocds-awards, wb-contract-awards).
  */
 import { PrismaClient } from "@prisma/client";
 
