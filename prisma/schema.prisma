@@ -341,6 +341,7 @@ model Organization {
   knowledgeChunks         KnowledgeChunk[]
   boqWorkflows            BoqWorkflow[]
   bidWorkflows            BidWorkflow[]
+  tenderMilestones        TenderMilestone[]
   aiFeedback              AIFeedback[]
   invitations             Invitation[]
   aiJobs                  AIJob[]
@@ -468,12 +469,37 @@ model Tender {
   financialProposals FinancialProposal[]
   fromOpportunity    OpportunityMatch[]    @relation("TenderFromOpportunity")
   bidDecision        BidDecision?
+  milestones         TenderMilestone[]
 
   @@index([orgId, status])
   @@index([orgId, deletedAt])
   @@index([createdById])
   @@index([assignedManagerId])
   @@map("tenders")
+}
+
+/// Reverse-planned bid schedule (Wave 3, #7). Given a tender's submissionDeadline,
+/// planTenderTimeline() works BACKWARD to due dates for the standard capture stages
+/// so a team can pace the bid. Deterministic (no AI); recomputed on demand.
+model TenderMilestone {
+  id         String    @id @default(cuid())
+  tenderId   String
+  orgId      String // TENANT BINDING
+  key        String // stable stage key: go_no_go | requirements | technical | pricing | review | qa | submit
+  label      String
+  dueAt      DateTime
+  done       Boolean   @default(false)
+  doneAt     DateTime?
+  orderIndex Int       @default(0)
+  createdAt  DateTime  @default(now())
+  updatedAt  DateTime  @updatedAt
+
+  organization Organization @relation(fields: [orgId], references: [id], onDelete: Cascade)
+  tender       Tender       @relation(fields: [tenderId], references: [id], onDelete: Cascade)
+
+  @@index([tenderId, orderIndex])
+  @@index([orgId])
+  @@map("tender_milestones")
 }
 
 // ─────────────────────────────────────────────────────────────────────────────

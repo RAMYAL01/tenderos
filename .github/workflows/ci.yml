@@ -73,6 +73,12 @@ jobs:
       - name: Price-to-Win deterministic engine tests
         run: npm run test:ptw
 
+      - name: Saved-search policy filter tests (Auto-Pursuit)
+        run: npm run test:policies
+
+      - name: Reverse-planned deadline scheduler tests
+        run: npm run test:timeline
+
   # ── Job 2: Build ──────────────────────────────────────────────────────────
   build:
     name: Build

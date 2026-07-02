@@ -18,6 +18,7 @@ import { Separator } from "@/components/ui/separator";
 import { TenderDocumentsPanel } from "@/components/tenders/tender-documents-panel";
 import { BidDecisionCard, type BidDecisionData } from "@/components/tenders/bid-decision-card";
 import { BidAgentCard, type BidAgentWorkflow } from "@/components/tenders/bid-agent-card";
+import { TenderTimelineCard } from "@/components/tenders/tender-timeline-card";
 import { RecordOutcomeDialog } from "@/components/tenders/record-outcome-dialog";
 import { SampleBanner } from "@/components/demo/sample-banner";
 import { BenchmarkPanel } from "@/components/benchmark/benchmark-panel";
@@ -113,6 +114,20 @@ export default async function TenderDetailPage({
         failedStep: bidWorkflowRow.failedStep,
       }
     : null;
+
+  // Reverse-planned bid schedule (Wave 3, #7) — milestones paced back from the deadline.
+  const milestoneRows = await db.tenderMilestone.findMany({
+    where: { tenderId: id, orgId: org.id },
+    orderBy: { orderIndex: "asc" },
+    select: { id: true, key: true, label: true, dueAt: true, done: true },
+  });
+  const milestones = milestoneRows.map((m) => ({
+    id: m.id,
+    key: m.key,
+    label: m.label,
+    dueAt: m.dueAt.toISOString(),
+    done: m.done,
+  }));
 
   // Market benchmark for this tender's cell — k-anonymized cross-customer pool,
   // gated to paid tiers. Pure read; the panel renders gated/suppressed/data states.
@@ -219,6 +234,16 @@ export default async function TenderDetailPage({
             canDecide={hasRole(member.role, "MANAGER")}
             isSample={tender.isSample}
           />
+
+          {/* Reverse-planned bid schedule (Wave 3 #7) */}
+          {!tender.isSample && (
+            <TenderTimelineCard
+              tenderId={id}
+              milestones={milestones}
+              hasDeadline={tender.submissionDeadline != null}
+              canEdit={hasRole(member.role, "WRITER")}
+            />
+          )}
 
           {/* Market benchmark — cross-customer award pool for this tender's cell */}
           <BenchmarkPanel

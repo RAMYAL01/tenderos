@@ -13,6 +13,7 @@ import { matchOpportunityDeltaForOrg } from "@/lib/discovery/match";
 import { ADAPTERS } from "@/lib/discovery/adapters";
 import { enqueueOrgDigest } from "@/lib/email/digest";
 import { drainEmailQueue } from "@/lib/email/email-queue";
+import { matchSatisfiesAnyPolicy, type SavedSearchFilters } from "@/lib/discovery/saved-search-filter";
 
 /**
  * Daily discovery refresh (the cron's brain). Three bounded phases:
@@ -145,51 +146,56 @@ export async function runDiscoveryRefresh(): Promise<RefreshSummary> {
     }
   }
 
-  // ── 3. ALERT (digest per org with an alerts-enabled monitor) ────────────────
-  const monitors = await db.savedSearch.findMany({
+  // ── 3. ALERT — one digest per org, ENFORCING each org's SavedSearch.filters (#7) ─
+  // Every alerts-enabled saved search is a POLICY: its {query, filter} now gates
+  // what gets alerted server-side (previously ignored — the digest sent every
+  // high-relevance profile match). Defense in depth: never digest for Starter,
+  // inactive, or deleted orgs.
+  const alertSearches = await db.savedSearch.findMany({
     where: {
       alertsEnabled: true,
       deletedAt: null,
-      // Defense in depth (applyPlanToOrg also disables on downgrade): never
-      // digest for Starter, inactive, or deleted orgs.
-      organization: {
-        isActive: true,
-        deletedAt: null,
-        planTier: { not: "STARTER" },
-      },
+      organization: { isActive: true, deletedAt: null, planTier: { not: "STARTER" } },
     },
-    select: { id: true, orgId: true, organization: { select: { name: true } } },
-    distinct: ["orgId"], // one digest per org per day
-    take: MAX_ORGS_PER_RUN,
+    select: { id: true, orgId: true, filters: true, organization: { select: { name: true } } },
+    take: MAX_ORGS_PER_RUN * 5, // several saved searches per org
   });
 
-  for (const monitor of monitors) {
+  // Group into one digest per org, collecting all of that org's policies.
+  const orgPolicies = new Map<string, { name: string; searchId: string; policies: SavedSearchFilters[] }>();
+  for (const s of alertSearches) {
+    const entry = orgPolicies.get(s.orgId) ?? { name: s.organization.name, searchId: s.id, policies: [] };
+    entry.policies.push((s.filters as SavedSearchFilters) ?? {});
+    orgPolicies.set(s.orgId, entry);
+  }
+
+  for (const [orgId, { name, searchId, policies }] of [...orgPolicies].slice(0, MAX_ORGS_PER_RUN)) {
     try {
-      // Un-notified, high-relevance, still-suggested matches for THIS org.
-      const fresh = await db.opportunityMatch.findMany({
-        where: {
-          orgId: monitor.orgId,
-          trackingStatus: "NEW",
-          lastNotifiedAt: null,
-          relevanceScore: { gte: ALERT_MIN_SCORE },
-        },
+      // Over-fetch un-notified NEW matches, then apply the org's saved-search filters.
+      const candidates = await db.opportunityMatch.findMany({
+        where: { orgId, trackingStatus: "NEW", lastNotifiedAt: null, relevanceScore: { gte: ALERT_MIN_SCORE } },
         orderBy: { relevanceScore: "desc" },
-        take: ALERT_MAX_ITEMS,
+        take: ALERT_MAX_ITEMS * 3,
         select: {
           id: true,
           relevanceScore: true,
+          trackingStatus: true,
           opportunity: {
-            select: { id: true, titleEn: true, buyerName: true, country: true, closingDate: true },
+            select: { id: true, titleEn: true, titleAr: true, buyerName: true, sector: true, country: true, closingDate: true },
           },
         },
       });
+
+      // ENFORCE the policy — the core of #7. Orgs with no surfacing policy fall
+      // through unchanged (relevance already gates the digest).
+      const fresh = candidates.filter((m) => matchSatisfiesAnyPolicy(m, policies)).slice(0, ALERT_MAX_ITEMS);
       if (fresh.length === 0) continue;
 
       await db.$transaction([
         db.opportunityAlert.create({
           data: {
-            orgId: monitor.orgId,
-            savedSearchId: monitor.id,
+            orgId,
+            savedSearchId: searchId,
             channel: "IN_APP",
             status: "SENT",
             sentAt: new Date(),
@@ -203,20 +209,16 @@ export async function runDiscoveryRefresh(): Promise<RefreshSummary> {
           },
         }),
         db.opportunityMatch.updateMany({
-          where: { id: { in: fresh.map((f) => f.id) }, orgId: monitor.orgId },
+          where: { id: { in: fresh.map((f) => f.id) }, orgId },
           data: { lastNotifiedAt: new Date() },
         }),
       ]);
       summary.alertsCreated++;
 
-      // Same deduped set → email digest. Enqueued now, drained after the loop.
-      // No-ops cleanly when email is unconfigured or no member opted in.
-      summary.digestEmailsQueued += await enqueueOrgDigest(
-        { id: monitor.orgId, name: monitor.organization.name },
-        fresh
-      );
+      // Same deduped set → email digest. No-ops when email is unconfigured.
+      summary.digestEmailsQueued += await enqueueOrgDigest({ id: orgId, name }, fresh);
     } catch (err) {
-      logger.error({ err, orgId: monitor.orgId }, "discovery-refresh: alert failed");
+      logger.error({ err, orgId }, "discovery-refresh: alert failed");
     }
   }
 
