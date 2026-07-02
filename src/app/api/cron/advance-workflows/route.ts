@@ -13,11 +13,13 @@ import { NextResponse } from "next/server";
 import { db } from "@/lib/prisma";
 import { logger } from "@/lib/logger";
 import { runBoqWorkflowToCompletion } from "@/lib/workflow/boq/orchestrator";
+import { runBidWorkflowToCompletion } from "@/lib/bid-agent/orchestrator";
 
 export const dynamic = "force-dynamic";
 export const maxDuration = 300;
 
 const TERMINAL = ["PRICED", "FAILED"] as const;
+const BID_TERMINAL = ["COMPLETED", "FAILED"] as const;
 const BATCH = 8; // bound work per cron tick
 const STALE_MS = 60_000; // only touch workflows untouched for >60s (avoid racing a live after())
 
@@ -53,6 +55,25 @@ export async function GET(req: Request) {
     }
   }
 
-  logger.info({ picked: stuck.length, results }, "advance-workflows tick");
-  return NextResponse.json({ picked: stuck.length, results });
+  // ── Also resume stalled Autonomous Bid Agent runs (Wave 3, #6) ──
+  const stuckBids = await db.bidWorkflow.findMany({
+    where: { status: { notIn: [...BID_TERMINAL] }, updatedAt: { lt: cutoff } },
+    orderBy: { updatedAt: "asc" },
+    take: BATCH,
+    select: { id: true, orgId: true, status: true },
+  });
+
+  const bidResults: Array<{ id: string; from: string; to: string }> = [];
+  for (const wf of stuckBids) {
+    try {
+      const to = await runBidWorkflowToCompletion(wf.orgId, wf.id, { maxSteps: 4 });
+      bidResults.push({ id: wf.id, from: wf.status, to });
+    } catch (err) {
+      logger.error({ err, workflowId: wf.id }, "advance-workflows: bid resume failed");
+      bidResults.push({ id: wf.id, from: wf.status, to: "ERROR" });
+    }
+  }
+
+  logger.info({ picked: stuck.length, results, bidPicked: stuckBids.length, bidResults }, "advance-workflows tick");
+  return NextResponse.json({ picked: stuck.length, results, bidPicked: stuckBids.length, bidResults });
 }

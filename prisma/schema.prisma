@@ -340,6 +340,7 @@ model Organization {
   contentLibraryItems     ContentLibraryItem[]
   knowledgeChunks         KnowledgeChunk[]
   boqWorkflows            BoqWorkflow[]
+  bidWorkflows            BidWorkflow[]
   aiFeedback              AIFeedback[]
   invitations             Invitation[]
   aiJobs                  AIJob[]
@@ -836,6 +837,53 @@ model BoqWorkflow {
 
   @@index([orgId, status])
   @@map("boq_workflows")
+}
+
+/// Autonomous Bid Agent (Wave 3, #6). A durable, resumable state machine that
+/// chains the siloed AI steps into an overnight first-draft for one tender:
+///
+///   QUEUED --extract--> EXTRACTED --compliance--> COMPLIANCE_READY --qualify--> COMPLETED
+///
+/// Same serverless design as BoqWorkflow: advance() runs EXACTLY ONE step and
+/// commits, so a run survives timeouts/crashes and resumes from the persisted
+/// state (in-flight *_ING states re-run idempotently — each step guards against
+/// duplicating rows). Every query is org-scoped. Unlike BoqWorkflow it mutates
+/// tenant tables (Requirement / ComplianceMatrix / BidDecision) via the existing
+/// per-step agents rather than routing a payload between pure functions.
+enum BidWorkflowStatus {
+  QUEUED
+  EXTRACTING
+  EXTRACTED
+  CHECKING_COMPLIANCE
+  COMPLIANCE_READY
+  QUALIFYING
+  COMPLETED
+  FAILED
+}
+
+model BidWorkflow {
+  id          String            @id @default(cuid())
+  orgId       String // TENANT BINDING
+  tenderId    String
+  createdById String?
+  status      BidWorkflowStatus @default(QUEUED)
+
+  // Per-step outcome summary (counts + the final recommendation) — NOT the domain
+  // rows themselves, which the agents write to Requirement/ComplianceMatrix/BidDecision.
+  result      Json?
+  error       String?
+  failedStep  String?
+  attempts    Int       @default(0)
+  startedAt   DateTime  @default(now())
+  updatedAt   DateTime  @updatedAt
+  completedAt DateTime?
+
+  organization Organization @relation(fields: [orgId], references: [id], onDelete: Cascade)
+
+  @@index([orgId, status])
+  @@index([status, updatedAt])
+  @@index([tenderId])
+  @@map("bid_workflows")
 }
 
 /// Phase-3 feedback flywheel. Every time a domain expert reviews an AI output

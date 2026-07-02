@@ -17,6 +17,7 @@ import { PageHeader } from "@/components/ui/page-header";
 import { Separator } from "@/components/ui/separator";
 import { TenderDocumentsPanel } from "@/components/tenders/tender-documents-panel";
 import { BidDecisionCard, type BidDecisionData } from "@/components/tenders/bid-decision-card";
+import { BidAgentCard, type BidAgentWorkflow } from "@/components/tenders/bid-agent-card";
 import { RecordOutcomeDialog } from "@/components/tenders/record-outcome-dialog";
 import { SampleBanner } from "@/components/demo/sample-banner";
 import { BenchmarkPanel } from "@/components/benchmark/benchmark-panel";
@@ -94,6 +95,22 @@ export default async function TenderDetailPage({
         decidedByName: decidedBy?.name ?? null,
         decidedAt: bidDecisionRow.decidedAt?.toISOString() ?? null,
         decisionNotes: bidDecisionRow.decisionNotes,
+      }
+    : null;
+
+  // Autonomous Bid Agent (Wave 3, #6) — latest run for this tender drives the first-draft card.
+  const bidWorkflowRow = await db.bidWorkflow.findFirst({
+    where: { tenderId: id, orgId: org.id },
+    orderBy: { startedAt: "desc" },
+    select: { id: true, status: true, result: true, error: true, failedStep: true },
+  });
+  const bidWorkflow: BidAgentWorkflow | null = bidWorkflowRow
+    ? {
+        id: bidWorkflowRow.id,
+        status: bidWorkflowRow.status,
+        result: (bidWorkflowRow.result as BidAgentWorkflow["result"]) ?? null,
+        error: bidWorkflowRow.error,
+        failedStep: bidWorkflowRow.failedStep,
       }
     : null;
 
@@ -184,6 +201,16 @@ export default async function TenderDetailPage({
 
         {/* ── Sidebar: Tender details ──────────────────────────────────── */}
         <aside className="w-full shrink-0 space-y-4 lg:w-72">
+          {/* Autonomous first-draft (Wave 3 #6) — chains extract → compliance → qualify */}
+          {!tender.isSample && (
+            <BidAgentCard
+              tenderId={id}
+              initial={bidWorkflow}
+              canRun={hasRole(member.role, "WRITER")}
+              hasReadyDocs={readyDocuments.length > 0}
+            />
+          )}
+
           {/* Bid/No-Bid qualification */}
           <BidDecisionCard
             tenderId={id}
