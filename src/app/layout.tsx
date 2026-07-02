@@ -1,4 +1,5 @@
 import type { Metadata, Viewport } from "next";
+import { headers } from "next/headers";
 import { ClerkProvider } from "@clerk/nextjs";
 import { ThemeProvider } from "next-themes";
 import { Toaster } from "@/components/ui/toaster";
@@ -67,11 +68,16 @@ export const viewport: Viewport = {
   initialScale: 1,
 };
 
-export default function RootLayout({
+export default async function RootLayout({
   children,
 }: {
   children: React.ReactNode;
 }) {
+  // Per-request CSP nonce set by middleware (finding #2) — handed to the providers
+  // that inject inline scripts (next-themes anti-flash, Clerk) so those pass a
+  // nonce-based policy.
+  const nonce = (await headers()).get("x-nonce") ?? undefined;
+
   const tree = (
     <html lang="en" suppressHydrationWarning>
       <head>
@@ -85,6 +91,7 @@ export default function RootLayout({
       </head>
       <body className="min-h-screen bg-background antialiased">
         <ThemeProvider
+          nonce={nonce}
           attribute="class"
           defaultTheme="light"
           enableSystem
@@ -102,6 +109,7 @@ export default function RootLayout({
 
   return (
     <ClerkProvider
+      nonce={nonce}
       appearance={{
         variables: {
           colorPrimary: "#2563eb", // brand blue
