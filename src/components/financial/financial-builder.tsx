@@ -2,7 +2,8 @@
 
 import { useMemo, useState, useTransition } from "react";
 import { useRouter } from "next/navigation";
-import { Plus, Trash2, ShieldCheck, Loader2, Save } from "lucide-react";
+import Link from "next/link";
+import { Plus, Trash2, ShieldCheck, Loader2, Save, BarChart3 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
@@ -28,6 +29,7 @@ import {
   updateAssumptions,
 } from "@/lib/actions/financial";
 import type { CostCategory } from "@prisma/client";
+import type { AwardBenchmark } from "@/lib/benchmark/read";
 
 interface LineRow extends CostLineInput {
   id: string;
@@ -47,6 +49,8 @@ interface Props {
     vatPct: number;
   };
   lines: LineRow[];
+  benchmark?: AwardBenchmark | null;
+  benchmarkGated?: boolean;
 }
 
 const CATEGORIES: CostCategory[] = [
@@ -67,7 +71,7 @@ const CAT_COLORS: Record<CostCategory, string> = {
   OTHER_DIRECT: "text-slate-600 bg-slate-100 dark:bg-slate-800",
 };
 
-export function FinancialBuilder({ financialId, currency, assumptions, lines }: Props) {
+export function FinancialBuilder({ financialId, currency, assumptions, lines, benchmark, benchmarkGated }: Props) {
   const router = useRouter();
   const [pending, startTransition] = useTransition();
 
@@ -319,6 +323,62 @@ export function FinancialBuilder({ financialId, currency, assumptions, lines }: 
             <span className="text-sm font-medium text-blue-200">Total Price</span>
             <span className="text-lg font-bold tabular-nums text-white">{formatMoney(breakdown.totalPrice, currency)}</span>
           </div>
+
+          {/* Market benchmark — how this bid compares to what actually wins */}
+          {benchmark && !benchmark.suppressed && benchmark.median != null ? (
+            (() => {
+              const sameCurrency = !benchmark.currency || benchmark.currency === currency;
+              const diff = breakdown.totalPrice > 0 ? (breakdown.totalPrice - benchmark.median) / benchmark.median : 0;
+              const pct = Math.round(Math.abs(diff) * 100);
+              const within =
+                benchmark.p25 != null && benchmark.p75 != null &&
+                breakdown.totalPrice >= benchmark.p25 && breakdown.totalPrice <= benchmark.p75;
+              return (
+                <div className="mt-2 rounded-lg border border-slate-200 bg-slate-50 px-4 py-2.5 text-xs dark:border-slate-800 dark:bg-slate-800/40">
+                  <div className="flex items-center justify-between">
+                    <span className="flex items-center gap-1.5 text-slate-500">
+                      <BarChart3 className="h-3.5 w-3.5" /> Median winning bid
+                    </span>
+                    <span className="font-semibold tabular-nums text-slate-700 dark:text-slate-200">
+                      {formatMoney(benchmark.median, benchmark.currency ?? currency)}
+                    </span>
+                  </div>
+                  {sameCurrency ? (
+                    breakdown.totalPrice > 0 && (
+                      <p
+                        className={`mt-1.5 font-medium ${
+                          within
+                            ? "text-emerald-600 dark:text-emerald-400"
+                            : diff > 0
+                              ? "text-amber-600 dark:text-amber-400"
+                              : "text-blue-600 dark:text-blue-400"
+                        }`}
+                      >
+                        Your price is {pct}% {diff >= 0 ? "above" : "below"} the median
+                        {within
+                          ? " — within the typical winning range."
+                          : diff > 0
+                            ? " — above the typical winning range."
+                            : " — below the typical winning range."}
+                      </p>
+                    )
+                  ) : (
+                    <p className="mt-1.5 text-slate-400">Pool priced in {benchmark.currency}; convert to compare directly.</p>
+                  )}
+                  <p className="mt-1 text-[10px] text-slate-400">
+                    Based on {benchmark.cohortSize} pooled awards for this sector · region · size — anonymized
+                  </p>
+                </div>
+              );
+            })()
+          ) : benchmarkGated ? (
+            <Link
+              href="/settings/billing"
+              className="mt-2 flex items-center gap-1.5 rounded-lg border border-dashed border-slate-200 px-4 py-2.5 text-[11px] text-slate-400 transition-colors hover:border-blue-300 hover:text-blue-600 dark:border-slate-700"
+            >
+              <BarChart3 className="h-3.5 w-3.5 shrink-0" /> See how this price compares to bids that actually win — upgrade to unlock benchmarks.
+            </Link>
+          ) : null}
         </div>
       </div>
     </div>

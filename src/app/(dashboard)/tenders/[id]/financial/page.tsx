@@ -6,6 +6,8 @@ import { db } from "@/lib/prisma";
 import { FinancialBuilder } from "@/components/financial/financial-builder";
 import { StartFinancialButton } from "@/components/financial/start-financial-button";
 import { ExportFinancialButton } from "@/components/financial/export-financial-button";
+import { canReadBenchmarks, getAwardBenchmark } from "@/lib/benchmark/read";
+import { toValueBand } from "@/lib/benchmark/bands";
 
 export const metadata = { title: "Financial Proposal" };
 
@@ -19,7 +21,7 @@ export default async function FinancialPage({
 
   const tender = await db.tender.findFirst({
     where: { id: tenderId, orgId: org.id, deletedAt: null },
-    select: { id: true, titleEn: true, currency: true },
+    select: { id: true, titleEn: true, currency: true, sector: true, clientCountry: true, estimatedValue: true },
   });
   if (!tender) notFound();
 
@@ -29,6 +31,21 @@ export default async function FinancialPage({
       lines: { orderBy: { orderIndex: "asc" } },
     },
   });
+
+  // Cross-customer award benchmark for this tender's {sector, region, value-band}
+  // cell — surfaced live against the built total price. Paid-tier only.
+  const canBenchmark = canReadBenchmarks(org.planTier);
+  const valueBand = tender.estimatedValue
+    ? toValueBand(BigInt(Math.round(Number(tender.estimatedValue) * 100)))
+    : null;
+  const benchmark =
+    canBenchmark && financial
+      ? await getAwardBenchmark({
+          sector: tender.sector,
+          country: tender.clientCountry,
+          valueBand: valueBand && valueBand !== "UNKNOWN" ? valueBand : null,
+        })
+      : null;
 
   return (
     <>
@@ -75,6 +92,8 @@ export default async function FinancialPage({
               quantity: Number(l.quantity),
               unitRate: Number(l.unitRate),
             }))}
+            benchmark={benchmark}
+            benchmarkGated={!canBenchmark}
           />
         )}
       </div>

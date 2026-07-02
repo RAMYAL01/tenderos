@@ -1,8 +1,10 @@
 import Link from "next/link";
-import { ArrowLeft, Building2, CalendarClock, Globe2, Layers, TrendingUp, Sparkles } from "lucide-react";
+import { ArrowLeft, Building2, CalendarClock, Globe2, Layers, TrendingUp, Sparkles, BarChart3, Trophy, Lock } from "lucide-react";
 import { PageHeader } from "@/components/ui/page-header";
 import { Button } from "@/components/ui/button";
 import { getMarketIntelligence } from "@/lib/data/market";
+import { getAuthContext } from "@/lib/auth";
+import { canReadBenchmarks, getBenchmarkOverview, OVERVIEW_MIN } from "@/lib/benchmark/read";
 
 export const metadata = { title: "Market intelligence" };
 export const dynamic = "force-dynamic";
@@ -50,6 +52,10 @@ export default async function MarketInsightsPage() {
   const maxSector = m.bySector[0]?.count ?? 0;
   const maxBuyer = m.topBuyers[0]?.count ?? 0;
 
+  const { org } = await getAuthContext();
+  const canBenchmark = canReadBenchmarks(org.planTier);
+  const overview = canBenchmark ? await getBenchmarkOverview() : null;
+
   return (
     <>
       <PageHeader title="Market intelligence" description="Live demand signals across the tender market.">
@@ -59,6 +65,97 @@ export default async function MarketInsightsPage() {
       </PageHeader>
 
       <div className="mx-auto max-w-5xl space-y-6 p-6">
+        {/* ── Award benchmarks (cross-customer pool, k-anonymized) ─────── */}
+        <section className="rounded-2xl border border-blue-200/70 bg-gradient-to-br from-blue-50/70 to-white p-5 dark:border-blue-900/40 dark:from-blue-950/25 dark:to-slate-900">
+          <div className="mb-4 flex flex-wrap items-center gap-2">
+            <BarChart3 className="h-4 w-4 text-blue-600" />
+            <h3 className="text-sm font-semibold text-slate-900 dark:text-white">Award benchmarks</h3>
+            <span className="rounded-full bg-blue-100 px-2 py-0.5 text-[10px] font-semibold text-blue-700 dark:bg-blue-950/40 dark:text-blue-300">
+              Pooled · anonymized
+            </span>
+            <span className="ml-auto hidden text-xs text-slate-400 sm:inline">who wins, where, at what value</span>
+          </div>
+
+          {!canBenchmark ? (
+            <div className="flex flex-col items-center gap-2 rounded-xl bg-white/70 px-4 py-8 text-center dark:bg-slate-900/50">
+              <Lock className="h-5 w-5 text-slate-400" />
+              <p className="max-w-md text-sm text-slate-600 dark:text-slate-300">
+                See who wins across the market — award volumes by sector and region, and the most active winning firms —
+                pooled and anonymized across every TenderOS workspace and public gazettes.
+              </p>
+              <Link
+                href="/settings/billing"
+                className="mt-1 rounded-md bg-blue-600 px-3 py-1.5 text-xs font-semibold text-white transition-colors hover:bg-blue-700"
+              >
+                Upgrade to unlock
+              </Link>
+            </div>
+          ) : !overview || overview.totalAwards < OVERVIEW_MIN ? (
+            <p className="rounded-xl bg-white/70 px-4 py-6 text-sm text-slate-500 dark:bg-slate-900/50">
+              Pooling award data{overview && overview.totalAwards > 0 ? ` — ${overview.totalAwards} so far` : ""}. Market
+              benchmarks unlock as awards accumulate across the network and public gazettes. Every debrief you record on a
+              won or lost bid strengthens the pool.
+            </p>
+          ) : (
+            <div className="space-y-5">
+              <div className="grid grid-cols-3 gap-3">
+                {[
+                  { v: overview.totalAwards, l: "Pooled awards" },
+                  { v: overview.fromGazette, l: "From public gazettes" },
+                  { v: overview.fromNetwork, l: "From the network" },
+                ].map((s) => (
+                  <div key={s.l} className="rounded-xl bg-white px-3 py-2.5 dark:bg-slate-900">
+                    <p className="text-xl font-bold text-slate-900 dark:text-white">{s.v}</p>
+                    <p className="text-[11px] text-slate-500">{s.l}</p>
+                  </div>
+                ))}
+              </div>
+
+              <div className="grid gap-5 lg:grid-cols-2">
+                <div>
+                  <h4 className="mb-2.5 text-xs font-medium text-slate-600 dark:text-slate-300">Awards by sector</h4>
+                  <div className="space-y-2.5">
+                    {overview.bySector.slice(0, 8).map((s) => (
+                      <Bar key={s.sector} label={SECTOR_LABEL[s.sector] ?? s.sector} count={s.count} max={overview.bySector[0]?.count ?? 0} tone="bg-blue-500" />
+                    ))}
+                  </div>
+                </div>
+                <div>
+                  <h4 className="mb-2.5 text-xs font-medium text-slate-600 dark:text-slate-300">Awards by region</h4>
+                  <div className="space-y-2.5">
+                    {overview.byCountry.slice(0, 8).map((c) => (
+                      <Bar key={c.country} label={COUNTRY_NAME[c.country] ?? c.country} count={c.count} max={overview.byCountry[0]?.count ?? 0} tone="bg-emerald-500" />
+                    ))}
+                  </div>
+                </div>
+              </div>
+
+              {overview.topWinners.length > 0 && (
+                <div>
+                  <h4 className="mb-2.5 flex items-center gap-1.5 text-xs font-medium text-slate-600 dark:text-slate-300">
+                    <Trophy className="h-3.5 w-3.5 text-amber-500" /> Most active winners
+                  </h4>
+                  <ol className="grid gap-1.5 sm:grid-cols-2">
+                    {overview.topWinners.map((w, i) => (
+                      <li key={w.name} className="flex items-center gap-2.5 rounded-lg bg-white px-3 py-1.5 text-sm dark:bg-slate-900">
+                        <span className="flex h-5 w-5 shrink-0 items-center justify-center rounded-full bg-slate-100 text-[10px] font-semibold text-slate-500 dark:bg-slate-800">
+                          {i + 1}
+                        </span>
+                        <span className="min-w-0 flex-1 truncate text-slate-700 dark:text-slate-200" title={w.name}>{w.name}</span>
+                        <span className="shrink-0 tabular-nums text-slate-400">{w.count}</span>
+                      </li>
+                    ))}
+                  </ol>
+                </div>
+              )}
+
+              <p className="text-[10px] text-slate-400">
+                Based on {overview.totalAwards} pooled awards across the market · anonymized (firms shown have won ≥3).
+              </p>
+            </div>
+          )}
+        </section>
+
         {/* Market activity */}
         <div className="grid grid-cols-2 gap-3 sm:grid-cols-5">
           {[

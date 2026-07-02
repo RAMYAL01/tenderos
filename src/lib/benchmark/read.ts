@@ -110,3 +110,57 @@ export async function getAwardBenchmark(filter: {
     lossReasons,
   };
 }
+
+// ── Market-wide overview (the "market dashboard" read) ─────────────────────────
+
+export const OVERVIEW_MIN = 5; // don't render market stats below this many pooled awards
+
+export interface BenchmarkOverview {
+  totalAwards: number;
+  fromGazette: number;
+  fromNetwork: number;
+  bySector: { sector: string; count: number }[];
+  byCountry: { country: string; count: number }[];
+  topWinners: { name: string; count: number }[];
+}
+
+/**
+ * Market-wide aggregates over the whole AwardOutcome pool for the standalone
+ * dashboard. k-anonymized: only firms with a real track record (≥3 awards) are
+ * named, and no individual award is ever surfaced. PURE READ.
+ */
+export async function getBenchmarkOverview(): Promise<BenchmarkOverview> {
+  const [totalAwards, fromGazette, sectorGroups, countryGroups, winnerRows] = await Promise.all([
+    db.awardOutcome.count(),
+    db.awardOutcome.count({ where: { sourceType: "GAZETTE" } }),
+    db.awardOutcome.groupBy({ by: ["sector"], _count: { _all: true } }),
+    db.awardOutcome.groupBy({ by: ["country"], _count: { _all: true } }),
+    db.awardOutcome.findMany({
+      where: { OR: [{ competitorId: { not: null } }, { winnerNameRaw: { not: null } }] },
+      select: { winnerNameRaw: true, competitor: { select: { canonicalName: true } } },
+      take: 5000,
+    }),
+  ]);
+
+  const bySector = sectorGroups
+    .filter((g) => g.sector)
+    .map((g) => ({ sector: g.sector as string, count: g._count._all }))
+    .sort((a, b) => b.count - a.count);
+  const byCountry = countryGroups
+    .filter((g) => g.country)
+    .map((g) => ({ country: g.country as string, count: g._count._all }))
+    .sort((a, b) => b.count - a.count);
+
+  const winnerCounts = new Map<string, number>();
+  for (const r of winnerRows) {
+    const name = r.competitor?.canonicalName ?? r.winnerNameRaw;
+    if (name) winnerCounts.set(name, (winnerCounts.get(name) ?? 0) + 1);
+  }
+  const topWinners = [...winnerCounts.entries()]
+    .filter(([, c]) => c >= 3) // k-anon: a firm with a track record, never a single award
+    .sort((a, b) => b[1] - a[1])
+    .slice(0, 10)
+    .map(([name, count]) => ({ name, count }));
+
+  return { totalAwards, fromGazette, fromNetwork: totalAwards - fromGazette, bySector, byCountry, topWinners };
+}
