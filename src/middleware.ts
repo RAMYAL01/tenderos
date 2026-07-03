@@ -135,7 +135,8 @@ const clerkHandler = clerkMiddleware(async (auth, req: NextRequest) => {
 
   // Per-request nonce → let Next nonce its own <script> tags (it reads the nonce
   // from the request's CSP header) and expose it to server components via x-nonce.
-  const nonce = Buffer.from(crypto.randomUUID()).toString("base64");
+  // NB: middleware runs in the Edge runtime — no Node `Buffer`; use Web `btoa`.
+  const nonce = btoa(crypto.randomUUID());
   const csp = buildReportOnlyCsp(nonce);
   const requestHeaders = new Headers(req.headers);
   requestHeaders.set("x-nonce", nonce);
