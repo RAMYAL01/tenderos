@@ -68,32 +68,6 @@ async function rateGuard(req: NextRequest): Promise<NextResponse | null> {
   return result.success ? null : tooManyRequests(result.resetIn);
 }
 
-/**
- * Strict, nonce-based CSP shipped in REPORT-ONLY mode (finding #2).
- *
- * `script-src` uses a per-request nonce + `strict-dynamic` and drops `'unsafe-inline'`
- * / `'unsafe-eval'` — the XSS backstop the enforced policy (next.config.ts) can't
- * provide. Report-Only means the browser NEVER blocks; it only reports what WOULD be
- * blocked, so we can gather the punch-list (Clerk/Tiptap/PostHog/Next) with zero risk
- * before flipping to enforce. `'unsafe-inline' https:` remain only as fallbacks that
- * strict-dynamic-capable browsers ignore.
- */
-function buildReportOnlyCsp(nonce: string): string {
-  return [
-    `default-src 'self'`,
-    `script-src 'self' 'nonce-${nonce}' 'strict-dynamic' https: 'unsafe-inline'`,
-    `style-src 'self' 'unsafe-inline' https://fonts.googleapis.com`,
-    `font-src 'self' https://fonts.gstatic.com`,
-    `img-src 'self' data: blob: https://img.clerk.com https://*.amazonaws.com https://*.cloudfront.net https://*.r2.cloudflarestorage.com`,
-    `connect-src 'self' https://*.clerk.accounts.dev https://clerk.thetenderos.com https://challenges.cloudflare.com https://*.sentry.io wss://*.clerk.accounts.dev https://*.amazonaws.com https://*.r2.cloudflarestorage.com https://us.i.posthog.com https://us-assets.i.posthog.com`,
-    `frame-src 'self' https://*.clerk.accounts.dev https://challenges.cloudflare.com`,
-    `worker-src 'self' blob:`,
-    `object-src 'none'`,
-    `base-uri 'self'`,
-    `form-action 'self'`,
-  ].join("; ");
-}
-
 /** Security response headers shared by both auth providers. */
 function withSecurityHeaders(res: NextResponse): NextResponse {
   if (process.env.NODE_ENV === "production") {
@@ -133,18 +107,7 @@ const clerkHandler = clerkMiddleware(async (auth, req: NextRequest) => {
     }
   }
 
-  // Per-request nonce → let Next nonce its own <script> tags (it reads the nonce
-  // from the request's CSP header) and expose it to server components via x-nonce.
-  // NB: middleware runs in the Edge runtime — build the nonce from crypto.randomUUID()
-  // only (already used above; no Node Buffer / no btoa dependency).
-  const nonce = (crypto.randomUUID() + crypto.randomUUID()).replace(/-/g, "");
-  const csp = buildReportOnlyCsp(nonce);
-  const requestHeaders = new Headers(req.headers);
-  requestHeaders.set("x-nonce", nonce);
-  requestHeaders.set("content-security-policy", csp); // request-only: Next reads the nonce; never sent to the browser
-  const res = NextResponse.next({ request: { headers: requestHeaders } });
-  res.headers.set("content-security-policy-report-only", csp); // observe only — enforced CSP (next.config) is unchanged
-  return withSecurityHeaders(res);
+  return withSecurityHeaders(NextResponse.next());
 });
 
 // ── On-prem: OIDC cookie gate (full JWT verify happens in getOidcAuthContext) ───
