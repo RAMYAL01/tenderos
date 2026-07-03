@@ -158,6 +158,7 @@ enum AIJobType {
   EMBED_CONTENT
   TRANSLATE_CONTENT
   BID_QUALIFICATION
+  COMMERCIAL_MODEL
 }
 
 enum ContentLanguage {
@@ -357,6 +358,7 @@ model Organization {
   opportunityMatches      OpportunityMatch[]
   opportunityAlerts       OpportunityAlert[]
   bidDecisions            BidDecision[]
+  commercialModels        CommercialModel[]
   proposalReviews         ProposalReviewEvent[]
   marketplaceProfile      MarketplaceProfile?
   sentConnections         PartnerConnection[]      @relation("ConnectionRequester")
@@ -469,6 +471,7 @@ model Tender {
   financialProposals FinancialProposal[]
   fromOpportunity    OpportunityMatch[]    @relation("TenderFromOpportunity")
   bidDecision        BidDecision?
+  commercialModel    CommercialModel?
   milestones         TenderMilestone[]
 
   @@index([orgId, status])
@@ -1545,6 +1548,28 @@ model BidDecision {
   @@index([orgId, recommendation])
   @@index([orgId, createdAt])
   @@map("bid_decisions")
+}
+
+/// PER-TENANT — the AI-generated commercial/business model for a single bid:
+/// delivery approach, pricing strategy, partnering/subcontracting, commercial
+/// terms, risks, and win themes. One per tender (latest generation). Grounded in
+/// the tender facts, the org's Knowledge Brain (RAG), and the award benchmark.
+model CommercialModel {
+  id           String   @id @default(cuid())
+  orgId        String // TENANT BINDING
+  tenderId     String   @unique
+  summary      String   @db.Text // one-paragraph executive framing
+  content      Json // {deliveryApproach, pricingStrategy, partnering, commercialTerms[], risks[], winThemes[]}
+  modelVersion String?
+  createdById  String
+  createdAt    DateTime @default(now())
+  updatedAt    DateTime @updatedAt
+
+  organization Organization @relation(fields: [orgId], references: [id], onDelete: Cascade)
+  tender       Tender       @relation(fields: [tenderId], references: [id], onDelete: Cascade)
+
+  @@index([orgId])
+  @@map("commercial_models")
 }
 
 /// PER-TENANT — append-only proposal review trail. Every gate transition

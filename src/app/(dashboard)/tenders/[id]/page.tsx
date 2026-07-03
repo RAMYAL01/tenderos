@@ -17,6 +17,7 @@ import { PageHeader } from "@/components/ui/page-header";
 import { Separator } from "@/components/ui/separator";
 import { TenderDocumentsPanel } from "@/components/tenders/tender-documents-panel";
 import { BidDecisionCard, type BidDecisionData } from "@/components/tenders/bid-decision-card";
+import { CommercialModelCard, type CommercialModelData } from "@/components/tenders/commercial-model-card";
 import { BidAgentCard, type BidAgentWorkflow } from "@/components/tenders/bid-agent-card";
 import { TenderTimelineCard } from "@/components/tenders/tender-timeline-card";
 import { RecordOutcomeDialog } from "@/components/tenders/record-outcome-dialog";
@@ -97,6 +98,15 @@ export default async function TenderDetailPage({
         decidedAt: bidDecisionRow.decidedAt?.toISOString() ?? null,
         decisionNotes: bidDecisionRow.decisionNotes,
       }
+    : null;
+
+  // Per-bid commercial model (delivery / pricing / partnering / terms / risks / win themes).
+  const commercialRow = await db.commercialModel.findFirst({
+    where: { tenderId: id, orgId: org.id },
+    select: { summary: true, content: true },
+  });
+  const commercialModel: CommercialModelData | null = commercialRow
+    ? { summary: commercialRow.summary, content: (commercialRow.content as CommercialModelData["content"]) ?? {} }
     : null;
 
   // Autonomous Bid Agent (Wave 3, #6) — latest run for this tender drives the first-draft card.
@@ -233,6 +243,13 @@ export default async function TenderDetailPage({
             canRun={hasRole(member.role, "WRITER")}
             canDecide={hasRole(member.role, "MANAGER")}
             isSample={tender.isSample}
+          />
+
+          {/* Per-bid commercial model */}
+          <CommercialModelCard
+            tenderId={id}
+            model={commercialModel}
+            canRun={hasRole(member.role, "WRITER")}
           />
 
           {/* Reverse-planned bid schedule (Wave 3 #7) */}
