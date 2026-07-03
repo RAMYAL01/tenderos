@@ -111,15 +111,25 @@ export async function runExtractionAgent(
       data: { progress: 10 },
     });
 
-    // ── 2. Extract requirements from each document ─────────────────────────────
+    // ── 2. Extract requirements — collect chunk tasks across all docs, then run
+    //       them with BOUNDED CONCURRENCY. Sequential per-chunk calls made a big
+    //       RFP crawl (and sit at 10% until the first chunk returned); N workers
+    //       pulling from a shared queue is ~Nx faster and advances progress as
+    //       each chunk finishes. ─────────────────────────────────────────────
     const allRequirements: ExtractedRequirement[] = [];
-    let docIndex = 0;
+
+    interface ChunkTask {
+      chunk: string;
+      chunkIdx: number;
+      chunkCount: number;
+      systemPrompt: string;
+      tenderType: string;
+    }
+    const tasks: ChunkTask[] = [];
 
     for (const doc of documents) {
-      // Load processed content from S3
       const contentKey = getProcessedContentKey(doc.id);
       let content: ProcessedContent;
-
       try {
         const buffer = await downloadFromS3(contentKey);
         content = JSON.parse(buffer.toString("utf-8"));
@@ -128,63 +138,60 @@ export async function runExtractionAgent(
         continue;
       }
 
-      const fullText = content.fullText;
-      const docLanguage = (doc.languageDetected?.toLowerCase() ?? "en") as
-        | "en"
-        | "ar"
-        | "bilingual";
-
+      const docLanguage = (doc.languageDetected?.toLowerCase() ?? "en") as "en" | "ar" | "bilingual";
       const systemPrompt = getExtractionSystemPrompt({
         language: docLanguage === "bilingual" ? "bilingual" : docLanguage === "ar" ? "ar" : "en",
         documentType: tender?.tenderType ?? "RFP",
         sector: undefined,
       });
 
-      // ── Chunk the document if large ────────────────────────────────────────
-      const chunks = chunkText(fullText, MAX_CHUNK_CHARS, CHUNK_OVERLAP_CHARS);
-      console.log(
-        `[extraction] Doc ${doc.id}: ${fullText.length} chars → ${chunks.length} chunk(s)`
+      const chunks = chunkText(content.fullText, MAX_CHUNK_CHARS, CHUNK_OVERLAP_CHARS);
+      console.log(`[extraction] Doc ${doc.id}: ${content.fullText.length} chars → ${chunks.length} chunk(s)`);
+      chunks.forEach((chunk, chunkIdx) =>
+        tasks.push({ chunk, chunkIdx, chunkCount: chunks.length, systemPrompt, tenderType: tender?.tenderType ?? "RFP" })
       );
-
-      for (let chunkIdx = 0; chunkIdx < chunks.length; chunkIdx++) {
-        const chunk = chunks[chunkIdx];
-        const userMessage = getExtractionUserMessage(
-          chunk,
-          tender?.tenderType ?? "RFP",
-          chunks.length > 1 ? chunkIdx : undefined,
-          chunks.length > 1 ? chunks.length : undefined
-        );
-
-        const result = await withRetry(() =>
-          generateObject({
-            model: getChatModel(MODELS.CLAUDE_HAIKU), // cloud Haiku or local vLLM
-            schema: ExtractionResultSchema,
-            schemaName: "extracted_requirements",
-            temperature: 0,
-            maxOutputTokens: 8000,
-            system: systemPrompt,
-            prompt: userMessage,
-          })
-        );
-
-        totalPromptTokens += result.usage.inputTokens ?? 0;
-        totalCompletionTokens += result.usage.outputTokens ?? 0;
-        allRequirements.push(...((result.object.requirements ?? []) as ExtractedRequirement[]));
-
-        // Update progress
-        const overallProgress = Math.round(
-          10 +
-            ((docIndex + (chunkIdx + 1) / chunks.length) / documents.length) *
-              60
-        );
-        await db.aIJob.update({
-          where: { id: jobId },
-          data: { progress: overallProgress },
-        });
-      }
-
-      docIndex++;
     }
+
+    const EXTRACTION_CONCURRENCY = 4;
+    let completedChunks = 0;
+    const queue = [...tasks];
+
+    async function runChunk(task: ChunkTask): Promise<void> {
+      const userMessage = getExtractionUserMessage(
+        task.chunk,
+        task.tenderType,
+        task.chunkCount > 1 ? task.chunkIdx : undefined,
+        task.chunkCount > 1 ? task.chunkCount : undefined
+      );
+      const result = await withRetry(() =>
+        generateObject({
+          model: getChatModel(MODELS.CLAUDE_HAIKU), // cloud Haiku or local vLLM
+          schema: ExtractionResultSchema,
+          schemaName: "extracted_requirements",
+          temperature: 0,
+          maxOutputTokens: 8000,
+          system: task.systemPrompt,
+          prompt: userMessage,
+        })
+      );
+      totalPromptTokens += result.usage.inputTokens ?? 0;
+      totalCompletionTokens += result.usage.outputTokens ?? 0;
+      allRequirements.push(...((result.object.requirements ?? []) as ExtractedRequirement[]));
+
+      completedChunks++;
+      const overallProgress = Math.round(10 + (tasks.length ? completedChunks / tasks.length : 1) * 60);
+      await db.aIJob.update({ where: { id: jobId }, data: { progress: overallProgress } }).catch(() => {});
+    }
+
+    // N workers pull from the shared queue until it drains (single-threaded event
+    // loop → the shared counters/array mutate safely between awaits).
+    await Promise.all(
+      Array.from({ length: Math.min(EXTRACTION_CONCURRENCY, queue.length) }, async () => {
+        for (let task = queue.shift(); task; task = queue.shift()) {
+          await runChunk(task);
+        }
+      })
+    );
 
     // ── 3. Deduplicate requirements ────────────────────────────────────────────
     const deduplicated = deduplicateRequirements(allRequirements);

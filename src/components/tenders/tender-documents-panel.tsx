@@ -83,7 +83,9 @@ export function TenderDocumentsPanel({
     onComplete: (doc) => {
       toast({
         title: "Document ready ✓",
-        description: `"${doc.filename}" — ${doc.pageCount ?? "?"} pages, ${LANG_LABELS[doc.language ?? ""] ?? doc.language}`,
+        description: `"${doc.filename}" — ${doc.pageCount ?? "?"} pages${
+          doc.language && LANG_LABELS[doc.language] ? `, ${LANG_LABELS[doc.language]}` : ""
+        }`,
       });
       // Refresh the page to show new document in the existing list
       window.location.reload();
