@@ -3,6 +3,7 @@ import { getAuthContext } from "@/lib/auth";
 import { db } from "@/lib/prisma";
 import { AskPanel } from "@/components/knowledge/ask-panel";
 import { AddKnowledgeDialog } from "@/components/knowledge/add-knowledge-dialog";
+import { UploadKnowledgeButton } from "@/components/knowledge/upload-knowledge-button";
 import { KnowledgeList } from "@/components/knowledge/knowledge-list";
 
 export const metadata = { title: "Knowledge Brain" };
@@ -37,6 +38,7 @@ export default async function LibraryPage() {
         title="Knowledge Brain"
         description="Your company's knowledge — ask questions, get answers grounded in your own documents."
       >
+        <UploadKnowledgeButton />
         <AddKnowledgeDialog />
       </PageHeader>
 
