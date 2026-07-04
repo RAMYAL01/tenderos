@@ -58,6 +58,14 @@ interface ExtractionResult {
 const MAX_CHUNK_CHARS = 60_000; // ~15K tokens
 const CHUNK_OVERLAP_CHARS = 2_000;
 
+/** Bound any promise so a hung I/O call can't stall to the function-reaping wall. */
+function withTimeout<T>(p: Promise<T>, ms: number, label: string): Promise<T> {
+  return Promise.race([
+    p,
+    new Promise<T>((_, reject) => setTimeout(() => reject(new Error(`${label} timed out after ${Math.round(ms / 1000)}s`)), ms)),
+  ]);
+}
+
 /**
  * Main extraction function — called by the processing pipeline.
  * Creates requirements + compliance matrix rows in the DB.
@@ -127,14 +135,20 @@ export async function runExtractionAgent(
     }
     const tasks: ChunkTask[] = [];
 
+    // Marker: reached the content-download stage. A stall's progress value now
+    // pinpoints WHERE it stopped (10 = before download, 12 = in download, 15 = extracting).
+    await db.aIJob.update({ where: { id: jobId }, data: { progress: 12 } }).catch(() => {});
+
     for (const doc of documents) {
       const contentKey = getProcessedContentKey(doc.id);
       let content: ProcessedContent;
       try {
-        const buffer = await downloadFromS3(contentKey);
+        // Bounded: a hung storage download must not sit until the 300s reaping wall
+        // (this is the pre-LLM path that produced "stuck at 10%").
+        const buffer = await withTimeout(downloadFromS3(contentKey), 30_000, "document content download");
         content = JSON.parse(buffer.toString("utf-8"));
-      } catch {
-        console.warn(`[extraction] Could not load content for doc ${doc.id} — skipping`);
+      } catch (e) {
+        console.warn(`[extraction] Could not load content for doc ${doc.id} — skipping:`, e instanceof Error ? e.message : e);
         continue;
       }
 
@@ -151,6 +165,15 @@ export async function runExtractionAgent(
         tasks.push({ chunk, chunkIdx, chunkCount: chunks.length, systemPrompt, tenderType: tender?.tenderType ?? "RFP" })
       );
     }
+
+    // Fail loudly if NO content could be read (download failed/timed out) — never
+    // hang or silently "complete" with zero requirements.
+    if (tasks.length === 0) {
+      throw new Error(
+        "Could not read the processed document content (storage download failed or timed out). Please re-upload the document and try again."
+      );
+    }
+    await db.aIJob.update({ where: { id: jobId }, data: { progress: 15 } }).catch(() => {});
 
     const EXTRACTION_CONCURRENCY = 4;
     // Hard per-call cap. Without it a hung LLM call sits until the 300s function
