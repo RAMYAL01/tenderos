@@ -395,7 +395,17 @@ function chunkText(
     }
 
     chunks.push(text.slice(start, breakPoint));
-    start = breakPoint - overlap;
+
+    // Reached the end of the text — stop. Without this, `start = breakPoint -
+    // overlap` parks at `length - overlap` and the loop spins forever on the tail:
+    // a SYNCHRONOUS infinite loop that blocks the event loop. THIS is what actually
+    // froze extraction at ~10% with no error and no timeout firing (a blocked event
+    // loop can't run setTimeout, so none of the async timeouts could fire).
+    if (breakPoint >= text.length) break;
+
+    // Always advance — never re-process the same window.
+    const nextStart = breakPoint - overlap;
+    start = nextStart > start ? nextStart : breakPoint;
   }
 
   return chunks;
