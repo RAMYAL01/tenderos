@@ -54,9 +54,11 @@ interface ExtractionResult {
   };
 }
 
-// Max chars per chunk to stay within Claude's token budget
-const MAX_CHUNK_CHARS = 60_000; // ~15K tokens
-const CHUNK_OVERLAP_CHARS = 2_000;
+// Max chars per chunk. Kept modest so each extraction call finishes comfortably
+// within the per-call timeout — a 60k chunk + 8k structured output could take
+// >75s and get cut (the API itself is fast; the heavy per-chunk call was not).
+const MAX_CHUNK_CHARS = 30_000; // ~7.5K tokens
+const CHUNK_OVERLAP_CHARS = 1_000;
 
 /** Bound any promise so a hung I/O call can't stall to the function-reaping wall. */
 function withTimeout<T>(p: Promise<T>, ms: number, label: string): Promise<T> {
@@ -178,7 +180,7 @@ export async function runExtractionAgent(
     const EXTRACTION_CONCURRENCY = 4;
     // Hard per-call cap. Without it a hung LLM call sits until the 300s function
     // reaping wall, leaving the job at 10% forever with no error (the bug).
-    const CHUNK_TIMEOUT_MS = 75_000;
+    const CHUNK_TIMEOUT_MS = 90_000;
     let completedChunks = 0;
     let failedChunks = 0;
     const queue = [...tasks];
@@ -196,7 +198,7 @@ export async function runExtractionAgent(
           schema: ExtractionResultSchema,
           schemaName: "extracted_requirements",
           temperature: 0,
-          maxOutputTokens: 8000,
+          maxOutputTokens: 6000,
           system: task.systemPrompt,
           prompt: userMessage,
           abortSignal: AbortSignal.timeout(CHUNK_TIMEOUT_MS),
