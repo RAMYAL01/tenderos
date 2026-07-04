@@ -82,32 +82,32 @@ export async function POST(req: Request) {
     },
   });
 
-  // Run extraction SYNCHRONOUSLY within the request. Vercel FREEZES the function
-  // once the response is sent, which was suspending the `after()` continuation
-  // mid-run — the job froze at ~10% forever, no error. Awaiting here keeps the
-  // function alive for the full budget (this route is nodejs, maxDuration 300).
-  // The client still polls the job; by the time this returns it is COMPLETED/FAILED.
+  // Run extraction in the background via after() (returns 202 immediately; the
+  // client polls the job). The stuck-at-10% was a SYNCHRONOUS infinite loop in the
+  // chunker blocking the event loop — NOT an after() problem (a synchronous run
+  // stuck at the same point) — so the async model is correct now that the loop is
+  // fixed, and it avoids the browser fetch being cut at Cloudflare's ~100s limit
+  // for a multi-minute extraction. The function keeps running for the full 300s.
   const docIds = readyDocs.map((d) => d.id);
-  try {
-    await runExtractionAgent(job.id, tenderId, docIds, org.id);
-    after(() =>
-      track(ANALYTICS_EVENTS.REQUIREMENTS_EXTRACTED, apiContext({ userId, org }), {
+  after(async () => {
+    try {
+      await runExtractionAgent(job.id, tenderId, docIds, org.id);
+      await track(ANALYTICS_EVENTS.REQUIREMENTS_EXTRACTED, apiContext({ userId, org }), {
         documentCount: docIds.length,
-      })
-    );
-  } catch (err) {
-    console.error("[extract-requirements] agent failed:", err);
-    await db.aIJob
-      .update({
-        where: { id: job.id },
-        data: { status: "FAILED", errorMessage: err instanceof Error ? err.message : "Extraction failed" },
-      })
-      .catch(() => {});
-    return NextResponse.json(
-      { jobId: job.id, status: "FAILED", error: err instanceof Error ? err.message : "Extraction failed" },
-      { status: 200 }
-    );
-  }
+      });
+    } catch (err) {
+      console.error("[extract-requirements] agent failed:", err);
+      await db.aIJob
+        .update({
+          where: { id: job.id },
+          data: { status: "FAILED", errorMessage: err instanceof Error ? err.message : "Extraction failed" },
+        })
+        .catch(() => {});
+    }
+  });
 
-  return NextResponse.json({ jobId: job.id, status: "COMPLETED" }, { status: 200 });
+  return NextResponse.json(
+    { jobId: job.id, status: "QUEUED", estimatedSeconds: docIds.length * 30 },
+    { status: 202 }
+  );
 }
