@@ -153,34 +153,63 @@ export async function runExtractionAgent(
     }
 
     const EXTRACTION_CONCURRENCY = 4;
+    // Hard per-call cap. Without it a hung LLM call sits until the 300s function
+    // reaping wall, leaving the job at 10% forever with no error (the bug).
+    const CHUNK_TIMEOUT_MS = 75_000;
     let completedChunks = 0;
+    let failedChunks = 0;
     const queue = [...tasks];
 
-    async function runChunk(task: ChunkTask): Promise<void> {
+    async function callModel(task: ChunkTask, model: ReturnType<typeof getChatModel>) {
       const userMessage = getExtractionUserMessage(
         task.chunk,
         task.tenderType,
         task.chunkCount > 1 ? task.chunkIdx : undefined,
         task.chunkCount > 1 ? task.chunkCount : undefined
       );
-      const result = await withRetry(() =>
+      return withRetry(() =>
         generateObject({
-          model: getChatModel(MODELS.CLAUDE_HAIKU), // cloud Haiku or local vLLM
+          model,
           schema: ExtractionResultSchema,
           schemaName: "extracted_requirements",
           temperature: 0,
           maxOutputTokens: 8000,
           system: task.systemPrompt,
           prompt: userMessage,
+          abortSignal: AbortSignal.timeout(CHUNK_TIMEOUT_MS),
         })
       );
-      totalPromptTokens += result.usage.inputTokens ?? 0;
-      totalCompletionTokens += result.usage.outputTokens ?? 0;
-      allRequirements.push(...((result.object.requirements ?? []) as ExtractedRequirement[]));
+    }
 
-      completedChunks++;
-      const overallProgress = Math.round(10 + (tasks.length ? completedChunks / tasks.length : 1) * 60);
-      await db.aIJob.update({ where: { id: jobId }, data: { progress: overallProgress } }).catch(() => {});
+    async function runChunk(task: ChunkTask): Promise<void> {
+      try {
+        // Fast/cheap Haiku first; on ANY failure (incl. a timeout/hang) fall back to
+        // the default model — the one every other agent uses reliably.
+        let result;
+        try {
+          result = await callModel(task, getChatModel(MODELS.CLAUDE_HAIKU));
+        } catch (haikuErr) {
+          console.warn(
+            `[extraction] chunk ${task.chunkIdx + 1}/${task.chunkCount} — Haiku failed (${haikuErr instanceof Error ? haikuErr.message : haikuErr}); retrying on the default model`
+          );
+          result = await callModel(task, getChatModel());
+        }
+        totalPromptTokens += result.usage.inputTokens ?? 0;
+        totalCompletionTokens += result.usage.outputTokens ?? 0;
+        allRequirements.push(...((result.object.requirements ?? []) as ExtractedRequirement[]));
+      } catch (err) {
+        // Both models failed for this chunk — skip it (partial results beat total
+        // failure) but count it so we can fail the job if NOTHING was extracted.
+        failedChunks++;
+        console.error(
+          `[extraction] chunk ${task.chunkIdx + 1}/${task.chunkCount} failed on both models:`,
+          err instanceof Error ? err.message : err
+        );
+      } finally {
+        completedChunks++;
+        const overallProgress = Math.round(10 + (tasks.length ? completedChunks / tasks.length : 1) * 60);
+        await db.aIJob.update({ where: { id: jobId }, data: { progress: overallProgress } }).catch(() => {});
+      }
     }
 
     // N workers pull from the shared queue until it drains (single-threaded event
@@ -192,6 +221,15 @@ export async function runExtractionAgent(
         }
       })
     );
+
+    // If EVERY chunk failed, the model is unavailable/timing out — fail LOUDLY with a
+    // clear message instead of hanging or "completing" with zero requirements.
+    if (tasks.length > 0 && allRequirements.length === 0) {
+      throw new Error(
+        `Extraction failed: the AI model timed out or errored on all ${tasks.length} document section(s). ` +
+          `Please try again — if it persists, the document may be too large or the model temporarily unavailable.`
+      );
+    }
 
     // ── 3. Deduplicate requirements ────────────────────────────────────────────
     const deduplicated = deduplicateRequirements(allRequirements);
