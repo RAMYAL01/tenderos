@@ -4,9 +4,11 @@ import { db } from "@/lib/prisma";
 import { PLAN_LIMITS } from "@/lib/constants";
 import { formatBytes } from "@/lib/utils";
 import { isBillingEnabled } from "@/lib/billing/stripe";
+import { formatMoney } from "@/lib/billing/invoices";
 import { BillingActions } from "@/components/settings/billing-actions";
+import { ReportPaymentButton } from "@/components/settings/report-payment-button";
 import { Badge } from "@/components/ui/badge";
-import { CheckCircle2, XCircle, CreditCard, Zap, HardDrive, Users } from "lucide-react";
+import { CheckCircle2, XCircle, CreditCard, Zap, HardDrive, Users, FileText } from "lucide-react";
 
 export const metadata = { title: "Billing" };
 
@@ -20,6 +22,14 @@ export default async function BillingPage({
 
   const subscription = await db.subscription.findUnique({
     where: { orgId: org.id },
+  });
+
+  // Manually-issued invoices the customer should see (everything except drafts
+  // and voided). Most recent first.
+  const invoices = await db.invoice.findMany({
+    where: { orgId: org.id, status: { in: ["SENT", "OVERDUE", "PAID"] } },
+    orderBy: { createdAt: "desc" },
+    take: 24,
   });
 
   const plan = subscription?.planTier ?? "STARTER";
@@ -161,6 +171,77 @@ export default async function BillingPage({
             />
           </div>
         </div>
+
+        {/* Invoices — manual billing (bank transfer / wire) */}
+        {invoices.length > 0 && (
+          <div className="rounded-2xl border border-slate-200 bg-white p-6 shadow-sm dark:border-slate-800 dark:bg-slate-900">
+            <h3 className="mb-4 flex items-center gap-2 text-sm font-semibold text-slate-900 dark:text-slate-100">
+              <FileText className="h-4 w-4 text-slate-400" /> Invoices
+            </h3>
+            <ul className="space-y-3">
+              {invoices.map((inv) => {
+                const unpaid = inv.status === "SENT" || inv.status === "OVERDUE";
+                return (
+                  <li
+                    key={inv.id}
+                    className="rounded-xl border border-slate-100 p-4 dark:border-slate-800"
+                  >
+                    <div className="flex flex-wrap items-center justify-between gap-3">
+                      <div>
+                        <p className="font-mono text-xs text-slate-500">{inv.number}</p>
+                        <p className="mt-0.5 text-sm font-semibold text-slate-900 dark:text-slate-100">
+                          {formatMoney(inv.amountDue, inv.currency)}
+                          <span className="ml-2 text-xs font-normal text-slate-400">
+                            {inv.planTier} · {inv.billingCycle}
+                          </span>
+                        </p>
+                      </div>
+                      <div className="flex items-center gap-3">
+                        <Badge
+                          className={`border-0 ${
+                            inv.status === "PAID"
+                              ? "bg-emerald-100 text-emerald-700 dark:bg-emerald-950 dark:text-emerald-300"
+                              : inv.status === "OVERDUE"
+                              ? "bg-amber-100 text-amber-700 dark:bg-amber-950 dark:text-amber-300"
+                              : "bg-blue-100 text-blue-700 dark:bg-blue-950 dark:text-blue-300"
+                          }`}
+                        >
+                          {inv.status === "PAID"
+                            ? "Paid"
+                            : inv.status === "OVERDUE"
+                            ? "Overdue"
+                            : "Awaiting payment"}
+                        </Badge>
+                        {unpaid && canManage && (
+                          <ReportPaymentButton
+                            invoiceId={inv.id}
+                            reported={Boolean(inv.paymentReportedAt)}
+                          />
+                        )}
+                      </div>
+                    </div>
+                    {inv.dueAt && unpaid && (
+                      <p className="mt-2 text-xs text-slate-400">
+                        Due{" "}
+                        {new Date(inv.dueAt).toLocaleDateString("en-US", {
+                          month: "long",
+                          day: "numeric",
+                          year: "numeric",
+                        })}
+                      </p>
+                    )}
+                    {unpaid && inv.paymentInstructions && (
+                      <div className="mt-3 whitespace-pre-wrap rounded-lg bg-slate-50 p-3 text-xs text-slate-600 dark:bg-slate-950/50 dark:text-slate-400">
+                        <p className="mb-1 font-semibold text-slate-500">Payment instructions</p>
+                        {inv.paymentInstructions}
+                      </div>
+                    )}
+                  </li>
+                );
+              })}
+            </ul>
+          </div>
+        )}
 
         {/* Plan selection + Stripe customer portal */}
         <BillingActions

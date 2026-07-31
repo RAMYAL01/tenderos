@@ -188,7 +188,12 @@ function PriceCard({ tier, annual }: { tier: PricingTier; annual: boolean }) {
 
   const price = annual ? Math.round(tier.monthly * 0.8) : tier.monthly;
   const Icon = tier.icon;
+  // Higher-touch tiers are sales-assisted (invoiced), so they route to a demo
+  // request rather than a self-serve trial. Starter/Professional stay self-serve.
+  const isHighTouch = tier.name === "Business";
   const checkoutHref = `/checkout?tier=${tier.name.toUpperCase()}&cycle=${annual ? "annual" : "monthly"}`;
+  const ctaHref = isHighTouch ? "/contact?plan=business" : checkoutHref;
+  const ctaLabel = isHighTouch ? "Book a demo" : "Start Free Trial";
 
   if (tier.highlighted) {
     // Premium dark card with rotating glow border
@@ -268,8 +273,8 @@ function PriceCard({ tier, annual }: { tier: PricingTier; annual: boolean }) {
             ))}
           </ul>
 
-          <ShinyButton href={checkoutHref} variant="primary" size="lg" className="relative mt-8 w-full">
-            Start Free Trial
+          <ShinyButton href={ctaHref} variant="primary" size="lg" className="relative mt-8 w-full">
+            {ctaLabel}
           </ShinyButton>
         </div>
       </div>
@@ -327,8 +332,8 @@ function PriceCard({ tier, annual }: { tier: PricingTier; annual: boolean }) {
         ))}
       </ul>
 
-      <ShinyButton href={checkoutHref} variant="ghost" size="lg" className="relative mt-8 w-full">
-        Start Free Trial
+      <ShinyButton href={ctaHref} variant="ghost" size="lg" className="relative mt-8 w-full">
+        {ctaLabel}
       </ShinyButton>
     </div>
   );

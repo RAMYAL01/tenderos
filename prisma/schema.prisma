@@ -53,6 +53,17 @@ enum InvitationStatus {
   EXPIRED
 }
 
+/// Lifecycle of a manually-issued invoice. Payment is collected off-platform
+/// (bank transfer / wire) because no card processor onboards our current
+/// entity — the operator confirms receipt and PAID activates the plan.
+enum InvoiceStatus {
+  DRAFT // operator is preparing it; not yet visible to the customer
+  SENT // issued to the customer, awaiting payment
+  PAID // payment confirmed by the operator → plan activated
+  OVERDUE // past the due date, still unpaid
+  VOID // cancelled, never to be paid
+}
+
 enum TenderStatus {
   DRAFT
   ACTIVE
@@ -347,6 +358,7 @@ model Organization {
   invitations             Invitation[]
   aiJobs                  AIJob[]
   subscription            Subscription?
+  invoices                Invoice[]
   auditLogs               AuditLog[]
   financialProposals      FinancialProposal[]
   rateCatalogueItems      RateCatalogueItem[]
@@ -1112,6 +1124,59 @@ model Subscription {
   organization Organization @relation(fields: [orgId], references: [id], onDelete: Cascade)
 
   @@map("subscriptions")
+}
+
+// ─────────────────────────────────────────────────────────────────────────────
+// MODEL: Invoice
+// Manually-issued invoice for a workspace. Payment is collected off-platform
+// (bank transfer / wire); the platform operator confirms receipt, and marking
+// an invoice PAID activates the org's plan via applyPlanToOrg(). Amounts are
+// stored in MINOR units (e.g. cents) to avoid floating-point money bugs.
+// ─────────────────────────────────────────────────────────────────────────────
+model Invoice {
+  id           String        @id @default(cuid())
+  orgId        String
+  number       String        @unique // human-facing, e.g. "TOS-2026-0001"
+  status       InvoiceStatus @default(DRAFT)
+  planTier     PlanTier
+  billingCycle String        @default("monthly") // monthly | annual
+
+  // Money — minor units (cents). currency is ISO-4217.
+  currency     String        @default("USD")
+  amountDue    Int // total payable, in minor units
+  lineItems    Json          @default("[]") // [{ description, quantity, unitAmount, amount }]
+
+  // Billing period this invoice covers.
+  periodStart  DateTime
+  periodEnd    DateTime
+
+  // Lifecycle timestamps.
+  issuedAt     DateTime? // set when status moves DRAFT → SENT
+  dueAt        DateTime?
+  paidAt       DateTime? // set when the operator confirms payment
+  voidedAt     DateTime?
+
+  // Customer-reported payment (they wired it; operator still confirms PAID).
+  paymentReportedAt DateTime?
+
+  // Free-text.
+  notes               String? @db.Text
+  paymentInstructions String? @db.Text // bank details shown to the customer
+  paymentReference    String? // wire reference recorded on confirmation
+
+  // Actors (Clerk user ids — operator or member).
+  createdByUserId String?
+  paidByUserId    String?
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  // Relations
+  organization Organization @relation(fields: [orgId], references: [id], onDelete: Cascade)
+
+  @@index([orgId, status])
+  @@index([status])
+  @@map("invoices")
 }
 
 // ─────────────────────────────────────────────────────────────────────────────
