@@ -34,7 +34,14 @@ const inputCls =
   "w-full rounded-lg border border-slate-200 bg-white px-3 py-2 text-sm text-slate-900 outline-none focus:border-blue-400 focus:ring-2 focus:ring-blue-100 dark:border-slate-700 dark:bg-slate-950 dark:text-slate-100 dark:focus:ring-blue-900/40";
 const labelCls = "mb-1 block text-xs font-medium text-slate-600 dark:text-slate-400";
 
-export function CreateInvoiceForm({ orgs }: { orgs: OrgOption[] }) {
+export function CreateInvoiceForm({
+  orgs,
+  emailLive = false,
+}: {
+  orgs: OrgOption[];
+  /** True when Resend is configured, so issuing also emails the invoice. */
+  emailLive?: boolean;
+}) {
   const router = useRouter();
   const [orgId, setOrgId] = useState(orgs[0]?.id ?? "");
   const [tier, setTier] = useState<Tier>("PROFESSIONAL");
@@ -84,7 +91,11 @@ export function CreateInvoiceForm({ orgs }: { orgs: OrgOption[] }) {
       if (!res.ok) throw new Error(data.error || "Could not create invoice");
       toast({
         title: `Invoice ${data.invoice.number} created`,
-        description: sendNow ? "Issued to the customer." : "Saved as draft.",
+        description: !sendNow
+          ? "Saved as draft."
+          : emailLive
+          ? "Issued and emailed to the customer."
+          : "Issued — visible in the customer's billing page (email is off until Resend is set).",
       });
       setNotes("");
       setAmountEdited(false);

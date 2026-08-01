@@ -5,7 +5,8 @@ import { logger } from "@/lib/logger";
 import { APP_URL, PLAN_LIMITS } from "@/lib/constants";
 import { sendEmail } from "./send-email";
 import { resolveRecipients, ROLE_SETS } from "./recipients";
-import { categoryFor, type NotificationEvent, type Recipient } from "./types";
+import { categoryFor, type NotificationEvent, type Recipient, type InvoiceLineItemView } from "./types";
+import { formatMoney } from "@/lib/billing/invoices";
 
 import InvitationEmail, { subject as invitationSubject } from "./templates/invitation";
 import WelcomeEmail, { subject as welcomeSubject } from "./templates/welcome";
@@ -15,6 +16,8 @@ import ApprovalResultEmail, { subject as approvalResultSubject } from "./templat
 import TrialEndingEmail, { subject as trialEndingSubject } from "./templates/trial-ending";
 import SubscriptionChangeEmail, { subject as subChangeSubject } from "./templates/subscription-change";
 import PaymentFailedEmail, { subject as paymentFailedSubject } from "./templates/payment-failed";
+import InvoiceIssuedEmail, { subject as invoiceIssuedSubject } from "./templates/invoice-issued";
+import InvoiceReceiptEmail, { subject as invoiceReceiptSubject } from "./templates/invoice-receipt";
 
 /**
  * Event-driven dispatch — the ONE public API the rest of the app calls when
@@ -31,6 +34,11 @@ const billingUrl = `${APP_URL}/settings/billing`;
 
 function planLabel(tier: keyof typeof PLAN_LIMITS): string {
   return PLAN_LIMITS[tier]?.label ?? "your";
+}
+
+function fmtDate(d: Date | null): string {
+  if (!d) return "—";
+  return new Date(d).toLocaleDateString("en-US", { month: "short", day: "numeric", year: "numeric" });
 }
 
 async function safe(event: NotificationEvent, fn: () => Promise<unknown>): Promise<void> {
@@ -287,6 +295,82 @@ export function notifySubscriptionChange(args: {
         billingUrl,
       };
       return { subject: subChangeSubject(payload), react: React.createElement(SubscriptionChangeEmail, payload) };
+    });
+  });
+}
+
+// ── INVOICE_ISSUED (manual invoicing) ─────────────────────────────────────────
+// Emails the customer their invoice + payment instructions when the operator
+// issues it. Dormant-safe: sendEmail no-ops until RESEND_API_KEY is configured.
+export function notifyInvoiceIssued(args: { orgId: string; invoiceId: string }): Promise<void> {
+  return safe("INVOICE_ISSUED", async () => {
+    const invoice = await db.invoice.findFirst({ where: { id: args.invoiceId, orgId: args.orgId } });
+    if (!invoice) return;
+    const org = await db.organization.findUnique({ where: { id: args.orgId }, select: { name: true } });
+    if (!org) return;
+
+    const recipients = await resolveRecipients(args.orgId, {
+      roles: ROLE_SETS.ADMINS,
+      category: "TRANSACTIONAL",
+    });
+    if (recipients.length === 0) return;
+
+    const currency = invoice.currency;
+    const rawItems = Array.isArray(invoice.lineItems)
+      ? (invoice.lineItems as Array<{ description?: unknown; quantity?: unknown; amount?: unknown }>)
+      : [];
+    const lineItems: InvoiceLineItemView[] = rawItems.map((li) => ({
+      description: String(li.description ?? "TenderOS subscription"),
+      quantity: Number(li.quantity ?? 1),
+      amount: formatMoney(Number(li.amount ?? 0), currency),
+    }));
+
+    const base = {
+      organizationName: org.name,
+      invoiceNumber: invoice.number,
+      planName: planLabel(invoice.planTier),
+      billingCycle: invoice.billingCycle,
+      amountDue: formatMoney(invoice.amountDue, currency),
+      dueDate: fmtDate(invoice.dueAt),
+      periodLabel: `${fmtDate(invoice.periodStart)} – ${fmtDate(invoice.periodEnd)}`,
+      lineItems,
+      paymentInstructions: invoice.paymentInstructions,
+      invoiceUrl: billingUrl,
+    };
+
+    await fanOut(args.orgId, "INVOICE_ISSUED", recipients, (r) => {
+      const payload = { ...base, recipientName: r.name };
+      return { subject: invoiceIssuedSubject(payload), react: React.createElement(InvoiceIssuedEmail, payload) };
+    });
+  });
+}
+
+// ── INVOICE_PAID (receipt) ────────────────────────────────────────────────────
+export function notifyInvoicePaid(args: { orgId: string; invoiceId: string }): Promise<void> {
+  return safe("INVOICE_PAID", async () => {
+    const invoice = await db.invoice.findFirst({ where: { id: args.invoiceId, orgId: args.orgId } });
+    if (!invoice) return;
+    const org = await db.organization.findUnique({ where: { id: args.orgId }, select: { name: true } });
+    if (!org) return;
+
+    const recipients = await resolveRecipients(args.orgId, {
+      roles: ROLE_SETS.ADMINS,
+      category: "TRANSACTIONAL",
+    });
+    if (recipients.length === 0) return;
+
+    const base = {
+      organizationName: org.name,
+      invoiceNumber: invoice.number,
+      planName: planLabel(invoice.planTier),
+      amountPaid: formatMoney(invoice.amountDue, invoice.currency),
+      paidDate: fmtDate(invoice.paidAt ?? new Date()),
+      invoiceUrl: billingUrl,
+    };
+
+    await fanOut(args.orgId, "INVOICE_PAID", recipients, (r) => {
+      const payload = { ...base, recipientName: r.name };
+      return { subject: invoiceReceiptSubject(payload), react: React.createElement(InvoiceReceiptEmail, payload) };
     });
   });
 }

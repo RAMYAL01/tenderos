@@ -1,7 +1,8 @@
-import { NextResponse } from "next/server";
+import { NextResponse, after } from "next/server";
 import { z } from "zod";
 import { requirePlatformAdmin, PlatformAdminForbiddenError } from "@/lib/auth/platform-admin";
 import { createInvoice } from "@/lib/billing/invoices";
+import { notifyInvoiceIssued } from "@/lib/email/events";
 import { db } from "@/lib/prisma";
 
 export const runtime = "nodejs";
@@ -43,6 +44,11 @@ export async function POST(req: Request) {
 
   try {
     const invoice = await createInvoice({ ...input, createdByUserId: operatorId });
+    // Email the customer their invoice if it was issued (not saved as a draft).
+    // No-ops until Resend is configured; runs after the response either way.
+    if (invoice.status === "SENT") {
+      after(() => notifyInvoiceIssued({ orgId: invoice.orgId, invoiceId: invoice.id }));
+    }
     return NextResponse.json({ invoice }, { status: 201 });
   } catch (err) {
     console.error("[admin/invoices] create failed:", err);

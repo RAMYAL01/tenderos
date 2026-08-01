@@ -1,6 +1,7 @@
-import { NextResponse } from "next/server";
+import { NextResponse, after } from "next/server";
 import { requirePlatformAdmin, PlatformAdminForbiddenError } from "@/lib/auth/platform-admin";
 import { sendInvoice } from "@/lib/billing/invoices";
+import { notifyInvoiceIssued } from "@/lib/email/events";
 
 export const runtime = "nodejs";
 
@@ -18,6 +19,10 @@ export async function POST(_req: Request, { params }: { params: Promise<{ id: st
   const { id } = await params;
   try {
     const invoice = await sendInvoice(id);
+    // Email the invoice to the customer (no-ops until Resend is configured).
+    if (invoice.status === "SENT") {
+      after(() => notifyInvoiceIssued({ orgId: invoice.orgId, invoiceId: invoice.id }));
+    }
     return NextResponse.json({ invoice });
   } catch (err) {
     const msg = err instanceof Error ? err.message : "Could not send invoice";

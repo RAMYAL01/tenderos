@@ -2,9 +2,11 @@ import { notFound } from "next/navigation";
 import { getPlatformAdmin } from "@/lib/auth/platform-admin";
 import { db } from "@/lib/prisma";
 import { formatMoney } from "@/lib/billing/invoices";
+import { isEmailLive } from "@/lib/email/resend";
 import { CreateInvoiceForm } from "@/components/admin/create-invoice-form";
 import { InvoiceAdminActions } from "@/components/admin/invoice-admin-actions";
 import { Badge } from "@/components/ui/badge";
+import { Mail, MailWarning } from "lucide-react";
 
 export const metadata = { title: "Billing operations" };
 export const dynamic = "force-dynamic";
@@ -48,6 +50,7 @@ export default async function AdminBillingPage() {
   ]);
 
   const orgOptions = orgs.map((o) => ({ id: o.id, name: o.name, planTier: o.planTier }));
+  const emailLive = isEmailLive();
 
   return (
     <div className="mx-auto max-w-6xl space-y-8 p-6">
@@ -58,12 +61,27 @@ export default async function AdminBillingPage() {
         </p>
       </div>
 
+      {/* Email-delivery status — invoices are always visible in-app; whether they
+          also go out by email depends on Resend being configured. */}
+      {emailLive ? (
+        <div className="flex items-center gap-2 rounded-lg border border-emerald-200 bg-emerald-50 px-4 py-2.5 text-sm text-emerald-800 dark:border-emerald-900/50 dark:bg-emerald-950/30 dark:text-emerald-300">
+          <Mail className="h-4 w-4 shrink-0" />
+          Email is live — issuing an invoice also emails it to the customer, and marking one paid emails a receipt.
+        </div>
+      ) : (
+        <div className="flex items-center gap-2 rounded-lg border border-amber-200 bg-amber-50 px-4 py-2.5 text-sm text-amber-800 dark:border-amber-900/50 dark:bg-amber-950/30 dark:text-amber-300">
+          <MailWarning className="h-4 w-4 shrink-0" />
+          Email is off (RESEND_API_KEY not set). Invoices are created and shown in the customer&apos;s billing page,
+          but no email is sent — notify them yourself for now. It auto-activates once Resend is configured.
+        </div>
+      )}
+
       {/* Create invoice */}
       <section className="rounded-2xl border border-slate-200 bg-white p-6 shadow-sm dark:border-slate-800 dark:bg-slate-900">
         <h2 className="mb-4 text-sm font-semibold text-slate-900 dark:text-slate-100">
           Issue an invoice
         </h2>
-        <CreateInvoiceForm orgs={orgOptions} />
+        <CreateInvoiceForm orgs={orgOptions} emailLive={emailLive} />
       </section>
 
       {/* Invoices */}
@@ -114,6 +132,7 @@ export default async function AdminBillingPage() {
                         invoiceId={inv.id}
                         status={inv.status}
                         paymentReference={inv.paymentReference}
+                        emailLive={emailLive}
                       />
                     </td>
                   </tr>

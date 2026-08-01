@@ -18,6 +18,8 @@ export const NOTIFICATION_EVENTS = [
   "PAYMENT_FAILED",
   "SUBSCRIPTION_UPGRADED",
   "SUBSCRIPTION_CANCELLED",
+  "INVOICE_ISSUED",
+  "INVOICE_PAID",
   "NEW_DISCOVERY_MATCH",
 ] as const;
 
@@ -39,6 +41,11 @@ export const EVENT_CATEGORY: Record<NotificationEvent, EmailCategory> = {
   PAYMENT_FAILED: "BILLING",
   SUBSCRIPTION_UPGRADED: "BILLING",
   SUBSCRIPTION_CANCELLED: "BILLING",
+  // An invoice and its receipt are financial documents the customer must
+  // receive to pay / for their records — TRANSACTIONAL so they can never be
+  // muted by a billing-notifications preference.
+  INVOICE_ISSUED: "TRANSACTIONAL",
+  INVOICE_PAID: "TRANSACTIONAL",
   NEW_DISCOVERY_MATCH: "DIGEST",
 };
 
@@ -151,4 +158,36 @@ export interface PasswordResetPayload {
   recipientName: string;
   resetUrl: string;
   expiresInMinutes: number;
+}
+
+/** One line on the invoice, pre-formatted for display (no math in the template). */
+export interface InvoiceLineItemView {
+  description: string;
+  quantity: number;
+  /** Already-formatted currency string, e.g. "$1,299.00". */
+  amount: string;
+}
+
+export interface InvoiceIssuedPayload {
+  organizationName: string;
+  recipientName: string;
+  invoiceNumber: string;
+  planName: string;
+  billingCycle: string; // "monthly" | "annual"
+  amountDue: string; // formatted "$1,299.00"
+  dueDate: string; // formatted
+  periodLabel: string; // "Jan 1 – Jan 31, 2026"
+  lineItems: InvoiceLineItemView[];
+  paymentInstructions: string | null;
+  invoiceUrl: string; // /settings/billing
+}
+
+export interface InvoicePaidPayload {
+  organizationName: string;
+  recipientName: string;
+  invoiceNumber: string;
+  planName: string;
+  amountPaid: string; // formatted
+  paidDate: string; // formatted
+  invoiceUrl: string;
 }

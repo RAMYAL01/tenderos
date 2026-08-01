@@ -13,10 +13,13 @@ export function InvoiceAdminActions({
   invoiceId,
   status,
   paymentReference,
+  emailLive = false,
 }: {
   invoiceId: string;
   status: string;
   paymentReference: string | null;
+  /** True when Resend is configured, so issuing/paying actually emails. */
+  emailLive?: boolean;
 }) {
   const router = useRouter();
   const [busy, setBusy] = useState<string | null>(null);
@@ -34,10 +37,14 @@ export function InvoiceAdminActions({
       toast({
         title:
           action === "mark-paid"
-            ? "Invoice paid — plan activated"
+            ? emailLive
+              ? "Invoice paid — plan activated, receipt emailed"
+              : "Invoice paid — plan activated"
             : action === "void"
             ? "Invoice voided"
-            : "Invoice sent",
+            : emailLive
+            ? "Invoice sent — emailed to the customer"
+            : "Invoice issued — visible in the customer's billing page",
       });
       router.refresh();
     } catch (err) {
@@ -86,9 +93,10 @@ export function InvoiceAdminActions({
           onClick={() => act("send")}
           disabled={busy !== null}
           className={`${btn} bg-blue-600 text-white hover:bg-blue-700`}
+          title={emailLive ? "Issue and email to the customer" : "Issue (visible in the customer's billing page; no email until Resend is on)"}
         >
           {spin("send") ?? <Send className="h-3.5 w-3.5" />}
-          Send
+          {emailLive ? "Send" : "Issue"}
         </button>
       )}
       <button

@@ -1,7 +1,8 @@
-import { NextResponse } from "next/server";
+import { NextResponse, after } from "next/server";
 import { z } from "zod";
 import { requirePlatformAdmin, PlatformAdminForbiddenError } from "@/lib/auth/platform-admin";
 import { markInvoicePaid } from "@/lib/billing/invoices";
+import { notifyInvoicePaid } from "@/lib/email/events";
 
 export const runtime = "nodejs";
 
@@ -26,6 +27,12 @@ export async function POST(req: Request, { params }: { params: Promise<{ id: str
 
   try {
     const invoice = await markInvoicePaid(id, { paidByUserId: operatorId, paymentReference });
+    // Email a receipt confirming payment + plan activation (no-ops until Resend
+    // is configured). markInvoicePaid is idempotent, but a re-confirm still fires
+    // a receipt only when the row actually flips to PAID here.
+    if (invoice.status === "PAID") {
+      after(() => notifyInvoicePaid({ orgId: invoice.orgId, invoiceId: invoice.id }));
+    }
     return NextResponse.json({ invoice });
   } catch (err) {
     const msg = err instanceof Error ? err.message : "Could not mark invoice paid";
